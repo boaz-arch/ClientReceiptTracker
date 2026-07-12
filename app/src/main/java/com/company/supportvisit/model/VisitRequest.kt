@@ -2,8 +2,6 @@ package com.company.supportvisit.model
 
 data class VisitRequest(
 
-    val visitId: String,
-
     val clientName: String,
 
     val visitDate: String,

@@ -1,5 +1,6 @@
 package com.company.supportvisit.adapter
 
+import android.annotation.SuppressLint
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
@@ -20,40 +21,51 @@ class VisitAdapter(
         viewType: Int
     ): ViewHolder {
 
-        val binding = ItemVisitBinding.inflate(
-            LayoutInflater.from(parent.context),
-            parent,
-            false
-        )
+        val binding =
+            ItemVisitBinding.inflate(
+                LayoutInflater.from(parent.context),
+                parent,
+                false
+            )
 
         return ViewHolder(binding)
     }
 
+    @SuppressLint("SetTextI18n")
     override fun onBindViewHolder(
         holder: ViewHolder,
         position: Int
     ) {
 
-        val visit = visits[position]
+        val visit =
+            visits[position]
 
         holder.binding.tvClientName.text =
             visit.clientName
 
         holder.binding.tvDate.text =
-            visit.visitDate
+            "${visit.visitDate} • ${visit.startTime} - ${visit.endTime}"
+
+        holder.binding.tvDescription.text =
+            visit.workDescription
 
         holder.itemView.setOnClickListener {
+
             onClick(visit)
         }
     }
 
-    override fun getItemCount() =
-        visits.size
+    override fun getItemCount(): Int {
+
+        return visits.size
+    }
 
     fun updateData(
         newList: List<Visit>
     ) {
+
         visits = newList
+
         notifyDataSetChanged()
     }
 }

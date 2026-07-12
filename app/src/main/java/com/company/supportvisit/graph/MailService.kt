@@ -1,70 +1,142 @@
 package com.company.supportvisit.graph
 
 import com.company.supportvisit.model.VisitRequest
-import com.company.supportvisit.utils.EmailBuilder
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
+import java.io.File
+import java.util.Base64
 
 object MailService {
+
+    private val client =
+        OkHttpClient()
 
     fun sendVisitMail(
 
         visit: VisitRequest,
 
-        signatureUrl: String
+        pdfFile: File
 
     ) {
 
         val token =
-            AuthManager.getToken()
+            MicrosoftAuthManager.getToken()
 
-        val html =
-            EmailBuilder.buildHtml(
+        if (token.isBlank()) {
 
-                visit,
-
-                signatureUrl
+            throw Exception(
+                "Microsoft account not connected"
             )
+        }
+
+        val pdfBytes =
+            pdfFile.readBytes()
+
+        val pdfBase64 =
+            Base64.getEncoder()
+                .encodeToString(
+                    pdfBytes
+                )
+
+        val bodyText =
+            """
+Client: ${visit.clientName}
+
+Date: ${visit.visitDate}
+
+Start Time: ${visit.startTime}
+
+End Time: ${visit.endTime}
+
+Email: ${visit.clientEmail}
+
+Description:
+
+${visit.workDescription}
+            """.trimIndent()
 
         val json = """
-        {
-          "message": {
+{
+  "message": {
 
-            "subject":
-            "Support Visit ${visit.visitId}",
+    "subject": "Support Visit Report - ${visit.clientName}",
 
-            "body": {
-              "contentType": "HTML",
-              "content": ${JSONObject.quote(html)}
-            },
+    "body": {
+      "contentType": "Text",
+      "content": ${JSONObject.quote(bodyText)}
+    },
 
-            "toRecipients": [
-              {
-                "emailAddress": {
-                  "address":
-                  "${visit.clientEmail}"
-                }
-              }
-            ],
-
-            "ccRecipients": [
-              {
-                "emailAddress": {
-                  "address":
-                  "YOUR_EMAIL@COMPANY.COM"
-                }
-              }
-            ]
-          }
+    "toRecipients": [
+      {
+        "emailAddress": {
+          "address":
+          "${visit.clientEmail}"
         }
+      },
+      {
+        "emailAddress": {
+          "address":
+          "${MicrosoftAuthManager.getEmail()}"
+        }
+      }
+    ],
+
+    "attachments": [
+      {
+        "@odata.type":
+        "#microsoft.graph.fileAttachment",
+
+        "name":
+        "${pdfFile.name}",
+
+        "contentType":
+        "application/pdf",
+
+        "contentBytes":
+        "$pdfBase64"
+      }
+    ]
+  },
+
+  "saveToSentItems": true
+}
         """.trimIndent()
 
-        GraphClient.post(
+        val request =
+            Request.Builder()
 
-            "https://graph.microsoft.com/v1.0/me/sendMail",
+                .url(
+                    "https://graph.microsoft.com/v1.0/me/sendMail"
+                )
 
-            token,
+                .addHeader(
+                    "Authorization",
+                    "Bearer $token"
+                )
 
-            json
-        )
+                .post(
+                    json.toRequestBody(
+                        "application/json"
+                            .toMediaType()
+                    )
+                )
+
+                .build()
+
+        client.newCall(request)
+            .execute()
+            .use {
+
+                if (!it.isSuccessful) {
+
+                    throw Exception(
+                        it.body?.string()
+                            ?: "Email Failed"
+                    )
+                }
+            }
     }
 }

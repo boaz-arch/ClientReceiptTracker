@@ -1,28 +1,32 @@
 package com.company.supportvisit
 
+import android.annotation.SuppressLint
+import android.app.TimePickerDialog
 import android.os.Bundle
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import com.company.supportvisit.databinding.ActivityNewVisitBinding
-import com.company.supportvisit.utils.DateUtils
+import com.company.supportvisit.graph.MailService
+import com.company.supportvisit.graph.OneDriveService
 import com.company.supportvisit.model.VisitRequest
 import com.company.supportvisit.repository.GraphRepository
-import com.company.supportvisit.signature.SignatureManager
-import com.company.supportvisit.utils.VisitIdGenerator
-import java.io.File
-import android.widget.Toast
-import com.company.supportvisit.utils.ValidationUtils
-import androidx.lifecycle.lifecycleScope
+import com.company.supportvisit.repository.VisitCache
+import com.company.supportvisit.repository.VisitStorage
+import com.company.supportvisit.utils.DateUtils
+import com.company.supportvisit.utils.PdfReportGenerator
 import com.company.supportvisit.utils.ResultState
+import com.company.supportvisit.utils.ValidationUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 
 class NewVisitActivity : AppCompatActivity() {
 
-    private lateinit var binding: ActivityNewVisitBinding
-
-    private var startTime = ""
-    private var endTime = ""
+    private lateinit var binding:
+            ActivityNewVisitBinding
 
     override fun onCreate(
         savedInstanceState: Bundle?
@@ -40,23 +44,7 @@ class NewVisitActivity : AppCompatActivity() {
         binding.tvDate.text =
             DateUtils.currentDate()
 
-        binding.btnStart.setOnClickListener {
-
-            startTime =
-                DateUtils.currentTime()
-
-            binding.tvStartTime.text =
-                startTime
-        }
-
-        binding.btnEnd.setOnClickListener {
-
-            endTime =
-                DateUtils.currentTime()
-
-            binding.tvEndTime.text =
-                endTime
-        }
+        setupTimePickers()
 
         binding.btnClearSignature
             .setOnClickListener {
@@ -70,71 +58,141 @@ class NewVisitActivity : AppCompatActivity() {
         }
     }
 
+    private fun setupTimePickers() {
+
+        binding.etStartTime.setOnClickListener {
+
+            showTimePicker {
+
+                binding.etStartTime.setText(it)
+            }
+        }
+
+        binding.etEndTime.setOnClickListener {
+
+            showTimePicker {
+
+                binding.etEndTime.setText(it)
+            }
+        }
+    }
+
+    @SuppressLint("DefaultLocale")
+    private fun showTimePicker(
+        onTimeSelected: (String) -> Unit
+    ) {
+
+        val dialog =
+            TimePickerDialog(
+                this,
+                { _, hour, minute ->
+
+                    val time =
+                        String.format(
+                            "%02d:%02d",
+                            hour,
+                            minute
+                        )
+
+                    onTimeSelected(time)
+
+                },
+                9,
+                0,
+                true
+            )
+
+        dialog.show()
+    }
+
     private fun submitVisit() {
+
+        val startTime =
+            binding.etStartTime.text
+                .toString()
+
+        val endTime =
+            binding.etEndTime.text
+                .toString()
+
         if (
             !ValidationUtils.isValidVisit(
-
                 binding.etClientName.text.toString(),
-
                 binding.etClientEmail.text.toString(),
-
                 startTime,
-
                 endTime
             )
         ) {
 
             Toast.makeText(
-
                 this,
-
                 "Please complete all fields",
-
                 Toast.LENGTH_LONG
-
             ).show()
 
             return
         }
 
-        val visitId =
-            VisitIdGenerator.generate()
+        if (
+            !isValidTimeRange(
+                startTime,
+                endTime
+            )
+        ) {
+
+            Toast.makeText(
+                this,
+                "End time must be after start time",
+                Toast.LENGTH_LONG
+            ).show()
+
+            return
+        }
+
+        if (
+            binding.signaturePad.isEmpty
+        ) {
+
+            Toast.makeText(
+                this,
+                "Please provide a signature",
+                Toast.LENGTH_LONG
+            ).show()
+
+            return
+        }
 
         val bitmap =
             binding.signaturePad.signatureBitmap
 
-        val signatureFile =
-            SignatureManager.saveSignature(
+        val visit =
+            VisitRequest(
 
-                this,
+                clientName =
+                    binding.etClientName.text.toString(),
 
-                bitmap,
+                visitDate =
+                    binding.tvDate.text.toString(),
 
-                visitId
+                startTime =
+                    startTime,
+
+                endTime =
+                    endTime,
+
+                workDescription =
+                    binding.etDescription.text.toString(),
+
+                clientEmail =
+                    binding.etClientEmail.text.toString()
             )
 
-        val visit = VisitRequest(
-
-            visitId = visitId,
-
-            clientName =
-                binding.etClientName.text.toString(),
-
-            visitDate =
-                binding.tvDate.text.toString(),
-
-            startTime =
-                startTime,
-
-            endTime =
-                endTime,
-
-            workDescription =
-                binding.etDescription.text.toString(),
-
-            clientEmail =
-                binding.etClientEmail.text.toString()
-        )
+        val pdfFile =
+            PdfReportGenerator.createReport(
+                this,
+                visit,
+                bitmap
+            )
 
         lifecycleScope.launch {
 
@@ -143,19 +201,53 @@ class NewVisitActivity : AppCompatActivity() {
                     Dispatchers.IO
                 ) {
 
-                    GraphRepository.submitVisit(
-                        visit,
-                        signatureFile
-                    )
+                    try {
+
+                        val pdfLink =
+                            OneDriveService.uploadFile(
+                                pdfFile
+                            )
+
+                        val saveResult =
+                            GraphRepository.submitVisit(
+                                visit,
+                                pdfFile,
+                                pdfLink
+                            )
+
+                        if (
+                            saveResult is ResultState.Success
+                        ) {
+
+                            MailService.sendVisitMail(
+                                visit,
+                                pdfFile
+                            )
+                        }
+
+                        saveResult
+
+                    } catch (e: Exception) {
+
+                        ResultState.Error(
+                            e.message
+                                ?: "Unknown Error"
+                        )
+                    }
                 }
 
             when (result) {
 
                 is ResultState.Success -> {
 
+                    VisitStorage.saveVisits(
+                        this@NewVisitActivity,
+                        VisitCache.visits
+                    )
+
                     Toast.makeText(
                         this@NewVisitActivity,
-                        "Visit Submitted",
+                        "Visit Submitted Successfully",
                         Toast.LENGTH_LONG
                     ).show()
 
@@ -174,5 +266,37 @@ class NewVisitActivity : AppCompatActivity() {
         }
     }
 
+    private fun isValidTimeRange(
+        start: String,
+        end: String
+    ): Boolean {
 
+        return try {
+
+            val formatter =
+                DateTimeFormatter.ofPattern(
+                    "HH:mm"
+                )
+
+            val startTime =
+                LocalTime.parse(
+                    start,
+                    formatter
+                )
+
+            val endTime =
+                LocalTime.parse(
+                    end,
+                    formatter
+                )
+
+            endTime.isAfter(
+                startTime
+            )
+
+        } catch (e: Exception) {
+
+            false
+        }
+    }
 }

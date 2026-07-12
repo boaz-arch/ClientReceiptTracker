@@ -2,10 +2,6 @@ package com.company.supportvisit.model
 
 data class Visit(
 
-    val id: String,
-
-    val visitId: String,
-
     val clientName: String,
 
     val visitDate: String,
@@ -18,5 +14,5 @@ data class Visit(
 
     val clientEmail: String,
 
-    val signatureUrl: String
+    val pdfLink: String
 )

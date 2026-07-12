@@ -4,19 +4,46 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:layout_marginBottom="12dp"
+    android:background="#FFFFFF"
+    android:elevation="3dp"
     android:orientation="vertical"
     android:padding="16dp">
 
     <TextView
         android:id="@+id/tvClientName"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textStyle="bold"
-        android:textSize="18sp"/>
+        android:textColor="#1976D2"
+        android:textSize="18sp"
+        android:textStyle="bold"/>
 
     <TextView
         android:id="@+id/tvDate"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"/>
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:textColor="#666666"
+        android:textSize="14sp"/>
+
+    <TextView
+        android:id="@+id/tvDescription"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:maxLines="2"
+        android:text="Work description"
+        android:textColor="#444444"
+        android:textSize="15sp"/>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="32dp"
+        android:gravity="center"
+        android:text="Livnelavan LTD"
+        android:textColor="@color/text_muted"
+        android:textSize="12sp"
+        android:paddingBottom="40dp"/>
 
 </LinearLayout>

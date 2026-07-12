@@ -1,15 +1,18 @@
-<?xml version="1.0" encoding="utf-8"?>
-
 <resources>
-
-    <color name="purple_200">#BB86FC</color>
-    <color name="purple_500">#6200EE</color>
-    <color name="purple_700">#3700B3</color>
-
-    <color name="teal_200">#03DAC5</color>
-    <color name="teal_700">#018786</color>
-
-    <color name="black">#000000</color>
+    <color name="primary">#1565C0</color>
+    <color name="primary_dark">#0D47A1</color>
     <color name="white">#FFFFFF</color>
 
+    <color name="signature_bg">#F5F5F5</color>
+    <color name="signature_border">#BDBDBD</color>
+
+    <color name="dashboard_card">#FFFFFF</color>
+    <color name="past_visit_search">#FFFFFF</color>
+
+
+    <color name="text_secondary">#757575</color>
+    <color name="text_muted">#9E9E9E</color>
+    <color name="text_body">#424242</color>
+
+    <color name="requirement_met">#2E7D32</color>
 </resources>

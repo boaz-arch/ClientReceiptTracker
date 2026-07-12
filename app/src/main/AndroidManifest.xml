@@ -3,13 +3,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission
-        android:name="android.permission.INTERNET"/>
+        android:name="android.permission.INTERNET" />
 
     <application
-
         android:allowBackup="true"
         android:label="Support Visit Manager"
-        android:supportsRtl="true">
+        android:supportsRtl="true"
+        android:theme="@style/Theme.SupportVisit">
 
         <provider
             android:name="androidx.core.content.FileProvider"
@@ -19,17 +19,14 @@
 
             <meta-data
                 android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/file_paths"/>
+                android:resource="@xml/file_paths" />
 
         </provider>
 
+        <activity
 
-
-        <activity android:name=".SettingsActivity"/>
-        <activity android:name=".VisitDetailsActivity"/>
-        <activity android:name=".PastVisitsActivity"/>
-        <activity android:name=".NewVisitActivity"/>
-
+            android:name=".LoginActivity"
+            android:exported="false" />
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -37,14 +34,56 @@
             <intent-filter>
 
                 <action
-                    android:name="android.intent.action.MAIN"/>
+                    android:name="android.intent.action.MAIN" />
 
                 <category
-                    android:name="android.intent.category.LAUNCHER"/>
+                    android:name="android.intent.category.LAUNCHER" />
 
             </intent-filter>
 
         </activity>
+
+        <activity
+            android:name=".ChangeLoginActivity" />
+
+
+        <activity
+            android:name=".NewVisitActivity" />
+
+        <activity
+            android:name=".PastVisitsActivity" />
+
+        <activity
+            android:name=".VisitDetailsActivity" />
+
+        <activity
+            android:name=".SettingsActivity" />
+
+
+        <activity
+            android:name="com.microsoft.identity.client.BrowserTabActivity"
+            android:exported="true">
+
+            <intent-filter>
+
+                <action
+                    android:name="android.intent.action.VIEW" />
+
+                <category
+                    android:name="android.intent.category.DEFAULT" />
+
+                <category
+                    android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:scheme="msauth"
+                    android:host="com.company.supportvisit"
+                    android:path="/e1JWiOtcwpK9Dil55k5G4sg75xA=" />
+
+            </intent-filter>
+
+        </activity>
+
 
     </application>
 

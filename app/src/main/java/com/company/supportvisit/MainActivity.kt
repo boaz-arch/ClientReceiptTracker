@@ -1,17 +1,47 @@
 package com.company.supportvisit
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.Bundle
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.company.supportvisit.databinding.ActivityMainBinding
 import com.company.supportvisit.graph.AuthManager
+import com.company.supportvisit.utils.AppConfig
+import com.company.supportvisit.graph.MicrosoftAuthManager
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding:
             ActivityMainBinding
 
+
+    @SuppressLint("SetTextI18n")
+    private fun refreshUserDisplay() {
+
+        MicrosoftAuthManager.refreshAccount(this) {
+
+            runOnUiThread {
+
+                if (MicrosoftAuthManager.isConnected()) {
+
+                    val name =
+                        MicrosoftAuthManager
+                            .getEmail()
+                            .substringBefore("@")
+
+                    binding.tvUser.text =
+                        "Signed in as $name"
+
+                } else {
+
+                    binding.tvUser.text =
+                        "Signed in as Guest"
+                }
+            }
+        }
+    }
+
+    @SuppressLint("SetTextI18n")
     override fun onCreate(
         savedInstanceState: Bundle?
     ) {
@@ -25,26 +55,23 @@ class MainActivity : AppCompatActivity() {
 
         setContentView(binding.root)
 
-        AuthManager.signIn(
-            this,
-            {
+        if (
+            AppConfig.LOGIN_ENABLED &&
+            !AuthManager.isLoggedIn()
+        ) {
 
-                Toast.makeText(
+            startActivity(
+                Intent(
                     this,
-                    "Microsoft Login Success",
-                    Toast.LENGTH_LONG
-                ).show()
+                    LoginActivity::class.java
+                )
+            )
 
-            },
-            {
+            finish()
 
-                Toast.makeText(
-                    this,
-                    it,
-                    Toast.LENGTH_LONG
-                ).show()
-            }
-        )
+            return
+        }
+
 
         binding.btnNewVisit.setOnClickListener {
 
@@ -75,5 +102,12 @@ class MainActivity : AppCompatActivity() {
                 )
             )
         }
+    }
+
+    override fun onResume() {
+
+        super.onResume()
+
+        refreshUserDisplay()
     }
 }

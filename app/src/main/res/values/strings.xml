@@ -17,5 +17,23 @@
     <string name="settings">
         Settings
     </string>
+    <string name="export_csv">Export CSV</string>
+    <string name="login_settings">Login settings</string>
+    <string name="system_mode">System Mode</string>
+    <string name="dark_mode">Dark Mode</string>
+    <string name="change_login_info">Change Login Info</string>
+    <string name="logout">Logout</string>
+    <string name="livnelavan_ltd">Livnelavan LTD</string>
+    <string name="light_mode">Light Mode</string>
+    <string name="mode_settings">Mode settings</string>
+    <string name="export_data">Export data</string>
+    <string name="connect_microsoft_account">Connect Microsoft Account</string>
+    <string name="disconnect_microsoft_account">Disconnect Microsoft Account</string>
+    <string name="signed_in">Signed in</string>
+    <string name="what_would_you_like_to_do">What would you like to do?</string>
+    <string name="add_new_visit_report">ADD New Visit Report</string>
+    <string name="view_my_past_visits">VIEW My Past Visits</string>
+    <string name="past_visit_reports">Past Visit Reports</string>
+    <string name="refresh">Refresh</string>
 
 </resources>

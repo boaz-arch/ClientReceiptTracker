@@ -13,7 +13,14 @@ object OneDriveService {
     ): String {
 
         val token =
-            AuthManager.getToken()
+            MicrosoftAuthManager.getToken()
+
+        if (token.isBlank()) {
+
+            throw Exception(
+                "Microsoft account not connected"
+            )
+        }
 
         val body =
             file.readBytes().toRequestBody(
@@ -23,14 +30,18 @@ object OneDriveService {
 
         val request =
             Request.Builder()
+
                 .url(
-                    "https://graph.microsoft.com/v1.0/me/drive/root:/SupportVisits/Signatures/${file.name}:/content"
+                    "https://graph.microsoft.com/v1.0/me/drive/root:/SupportVisits/PDFReports/${file.name}:/content"
                 )
+
                 .put(body)
+
                 .addHeader(
                     "Authorization",
                     "Bearer $token"
                 )
+
                 .build()
 
         val response =
@@ -45,12 +56,14 @@ object OneDriveService {
         if (!response.isSuccessful) {
 
             throw Exception(
-                "Upload Failed"
+                responseBody
             )
         }
 
         val json =
-            JSONObject(responseBody)
+            JSONObject(
+                responseBody
+            )
 
         return json.optString(
             "webUrl"

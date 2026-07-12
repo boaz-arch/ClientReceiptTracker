@@ -10,6 +10,7 @@ import com.company.supportvisit.adapter.VisitAdapter
 import com.company.supportvisit.databinding.ActivityPastVisitsBinding
 import com.company.supportvisit.repository.GraphRepository
 import com.company.supportvisit.repository.VisitCache
+import com.company.supportvisit.repository.VisitStorage
 import com.company.supportvisit.utils.LoadingDialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -42,6 +43,19 @@ class PastVisitsActivity : AppCompatActivity() {
         loading =
             LoadingDialog(this)
 
+        try {
+
+            VisitCache.clear()
+
+            VisitCache.visits.addAll(
+                VisitStorage.loadVisits(this)
+            )
+
+        } catch (e: Exception) {
+
+            e.printStackTrace()
+        }
+
         adapter =
             VisitAdapter(emptyList()) { visit ->
 
@@ -50,11 +64,6 @@ class PastVisitsActivity : AppCompatActivity() {
                         this,
                         VisitDetailsActivity::class.java
                     )
-
-                intent.putExtra(
-                    "visitId",
-                    visit.visitId
-                )
 
                 intent.putExtra(
                     "client",
@@ -87,8 +96,8 @@ class PastVisitsActivity : AppCompatActivity() {
                 )
 
                 intent.putExtra(
-                    "signatureUrl",
-                    visit.signatureUrl
+                    "pdfLink",
+                    visit.pdfLink
                 )
 
                 startActivity(intent)
@@ -117,11 +126,6 @@ class PastVisitsActivity : AppCompatActivity() {
                         search,
                         true
                     ) ||
-
-                            visit.visitId.contains(
-                                search,
-                                true
-                            ) ||
 
                             visit.workDescription.contains(
                                 search,
@@ -160,20 +164,8 @@ class PastVisitsActivity : AppCompatActivity() {
                         GraphRepository.loadVisits()
                     }
 
-                allVisits.clear()
-
-                allVisits.addAll(
-                    visits
-                )
-
-                VisitCache.clear()
-
-                VisitCache.visits.addAll(
-                    visits
-                )
-
                 adapter.updateData(
-                    allVisits
+                    visits
                 )
 
             } finally {

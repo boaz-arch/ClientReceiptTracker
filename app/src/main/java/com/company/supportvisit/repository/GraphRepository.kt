@@ -1,9 +1,5 @@
 package com.company.supportvisit.repository
 
-import com.company.supportvisit.graph.MailService
-import com.company.supportvisit.graph.OneDriveService
-import com.company.supportvisit.graph.SharePointService
-import com.company.supportvisit.graph.VisitParser
 import com.company.supportvisit.model.Visit
 import com.company.supportvisit.model.VisitRequest
 import com.company.supportvisit.utils.ResultState
@@ -13,24 +9,37 @@ object GraphRepository {
 
     fun submitVisit(
         visit: VisitRequest,
-        signature: File
+        pdf: File,
+        pdfLink: String
     ): ResultState {
 
         return try {
 
-            val signatureUrl =
-                OneDriveService.uploadFile(
-                    signature
+            VisitCache.visits.add(
+
+                Visit(
+
+                    clientName =
+                        visit.clientName,
+
+                    visitDate =
+                        visit.visitDate,
+
+                    startTime =
+                        visit.startTime,
+
+                    endTime =
+                        visit.endTime,
+
+                    workDescription =
+                        visit.workDescription,
+
+                    clientEmail =
+                        visit.clientEmail,
+
+                    pdfLink =
+                        pdfLink
                 )
-
-            SharePointService.createVisit(
-                visit,
-                signatureUrl
-            )
-
-            MailService.sendVisitMail(
-                visit,
-                signatureUrl
             )
 
             ResultState.Success
@@ -45,24 +54,7 @@ object GraphRepository {
 
     fun loadVisits(): List<Visit> {
 
-        return try {
-
-            val json =
-                SharePointService.getVisits()
-
-            if (json.isNullOrBlank()) {
-
-                emptyList()
-            } else {
-
-                VisitParser.parse(json)
-            }
-
-        } catch (e: Exception) {
-
-            e.printStackTrace()
-
-            emptyList()
-        }
+        return VisitCache.visits
     }
 }
+

@@ -9,47 +9,106 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="20dp">
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="64dp"
+        android:paddingBottom="40dp">
 
         <TextView
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Theme"
-            android:textSize="20sp"/>
+            android:gravity="center"
+            android:text="@string/mode_settings"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="16dp"/>
 
         <Button
-            android:id="@+id/btnLight"
+            android:id="@+id/btnLightMode"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Light Mode"/>
+            android:layout_marginTop="8dp"
+            android:text="@string/light_mode"/>
 
         <Button
-            android:id="@+id/btnDark"
+            android:id="@+id/btnDarkMode"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Dark Mode"/>
+            android:layout_marginTop="8dp"
+            android:text="@string/dark_mode"/>
 
         <Button
-            android:id="@+id/btnSystem"
+            android:id="@+id/btnSystemMode"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="System Theme"/>
+            android:layout_marginTop="8dp"
+            android:text="@string/system_mode"/>
 
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="24dp"/>
-
-        <Button
-            android:id="@+id/btnExportExcel"
+        <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Export Excel"/>
+            android:gravity="center"
+            android:text="@string/export_data"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="16dp"/>
 
         <Button
             android:id="@+id/btnExportCsv"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Export CSV"/>
+            android:layout_marginTop="8dp"
+            android:text="@string/export_csv" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="@string/login_settings"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="16dp"/>
+
+        <Button
+            android:id="@+id/btnConnectMicrosoft"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/connect_microsoft_account" />
+
+        <Button
+            android:id="@+id/btnDisconnectMicrosoft"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/disconnect_microsoft_account" />
+
+        <Button
+            android:id="@+id/btnChangeLogin"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/change_login_info"/>
+
+        <Button
+            android:id="@+id/btnLogout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/logout"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="32dp"
+            android:gravity="center"
+            android:text="@string/livnelavan_ltd"
+            android:textColor="@color/text_muted"
+            android:textSize="12sp"
+            android:paddingBottom="40dp"/>
+
 
     </LinearLayout>
 
