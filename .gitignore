@@ -15,3 +15,16 @@ local.properties
 
 # APK files
 *.apk
+
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Signing keys
+*.jks
+*.keystore
+msal_config.json
+
+# Logs
+*.log
