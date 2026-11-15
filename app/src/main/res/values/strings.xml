@@ -39,8 +39,6 @@
     <!-- Past visits -->
     <string name="past_visit_reports">Past Visit Reports</string>
     <string name="search_hint">Search by client, date, or description</string>
-    <string name="sync_now">Sync now</string>
-    <string name="sync_started">Syncing…</string>
     <string name="no_visits">No visits yet</string>
     <string name="visit_date_time">%1$s • %2$s - %3$s</string>
     <string name="retry">Retry</string>
@@ -111,5 +109,74 @@
     <!-- Email -->
     <string name="email_subject">Support Visit Report - %1$s</string>
     <string name="email_body">Client: %1$s\nDate: %2$s\nTime: %3$s – %4$s\n\nWork description:\n%5$s\n\nThe signed report is attached.\n%6$s</string>
+
+
+    <!-- Phase 2: clients, visit types, photos, parts, team server -->
+    <string name="client_picker_helper">Pick from your clients or type a new name</string>
+    <string name="label_visit_type">Visit type</string>
+    <string name="visit_type_installation">Installation</string>
+    <string name="visit_type_repair">Repair</string>
+    <string name="visit_type_maintenance">Maintenance</string>
+    <string name="visit_type_remote">Remote support</string>
+    <string name="visit_type_other">Other</string>
+    <string name="photos_header">Photos</string>
+    <string name="photos_header_count">Photos (%1$d/%2$d)</string>
+    <string name="take_photo">Camera</string>
+    <string name="pick_photos">Gallery</string>
+    <string name="photo_thumbnail">Attached photo</string>
+    <string name="remove_photo">Remove photo</string>
+    <string name="photo_limit_reached">You can attach up to 10 photos</string>
+    <string name="photo_read_failed">Some photos could not be read</string>
+    <string name="no_camera_app">No camera app found</string>
+    <string name="label_parts">Parts used</string>
+    <string name="add_part">Add part</string>
+    <string name="remove_part">Remove part</string>
+    <string name="hint_part_description">Description</string>
+    <string name="hint_part_quantity">Quantity</string>
+    <string name="hint_part_unit_price">Unit price</string>
+    <string name="error_part_invalid">Enter a description, a quantity above 0 and a valid price</string>
+    <string name="part_detail">%1$s × %2$s = %3$s</string>
+    <string name="part_line">%1$s (%2$s): %3$s</string>
+    <string name="parts_total">Parts total: %1$s</string>
+    <string name="add">Add</string>
+    <string name="cancel">Cancel</string>
+    <string name="save">Save</string>
+    <string name="label_technician_signature">Technician signature</string>
+    <string name="label_technician_signature_optional">Technician signature (optional)</string>
+    <string name="clients_title">Clients</string>
+    <string name="search_clients_hint">Search clients</string>
+    <string name="add_client">Add client</string>
+    <string name="edit_client">Edit client</string>
+    <string name="no_clients">No clients yet</string>
+    <string name="hint_contact_person">Contact person</string>
+    <string name="hint_email">Email</string>
+    <string name="hint_phone">Phone</string>
+    <string name="hint_address">Address</string>
+    <string name="hint_hourly_rate">Hourly rate</string>
+    <string name="hint_notes">Notes</string>
+    <string name="error_client_name_required">Enter the client name</string>
+    <string name="error_invalid_rate">Enter a valid hourly rate</string>
+    <string name="client_saved">Client saved</string>
+    <string name="pull_to_refresh_hint">Pull down to sync with the team</string>
+    <string name="server_not_configured">Set the server address in Settings to share visits with the team</string>
+    <string name="refresh_failed_offline">Could not reach the server. Showing visits saved on this phone.</string>
+    <string name="refresh_failed">Sync failed. Try again later.</string>
+    <string name="photos_waiting_upload">Photos: %1$d (waiting to upload)</string>
+    <string name="open_photo">Open photo %1$d</string>
+    <string name="open_file_failed">Could not open the file. Check your connection.</string>
+    <string name="server_settings">Team server</string>
+    <string name="hint_server_url">Server address (https://…)</string>
+    <string name="save_and_test_server">Save and test connection</string>
+    <string name="server_url_must_be_https">The server address must start with https://</string>
+    <string name="server_testing">Testing…</string>
+    <string name="server_connected_as">Connected to the server as %1$s</string>
+    <string name="server_consent_missing">An administrator must approve the app for your organization first (see the setup guide).</string>
+    <string name="server_unauthorized">The server did not accept this account</string>
+    <string name="server_unreachable">Could not reach the server</string>
+    <string name="admin_consent_missing">Your organization has not approved this app yet. Ask your Microsoft 365 administrator.</string>
+    <string name="pdf_part_line">%1$s: %2$s × %3$s = %4$s</string>
+    <string name="pdf_photos_title">Photos</string>
+    <string name="pdf_photo_caption">Photo %1$d</string>
+    <string name="email_report_too_large">The report with photos is too large to attach. Ask your technician for a copy.</string>
 
 </resources>
