@@ -1,6 +1,5 @@
 package com.company.supportvisit
 
-import com.company.supportvisit.ui.applySystemBarInsets
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
@@ -16,6 +15,7 @@ import com.company.supportvisit.adapter.VisitAdapter
 import com.company.supportvisit.databinding.ActivityPastVisitsBinding
 import com.company.supportvisit.ui.PastVisitsViewModel
 import com.company.supportvisit.ui.SignInHelper
+import com.company.supportvisit.ui.applySystemBarInsets
 import kotlinx.coroutines.launch
 
 class PastVisitsActivity : AppCompatActivity() {
@@ -25,9 +25,7 @@ class PastVisitsActivity : AppCompatActivity() {
     private val viewModel: PastVisitsViewModel by viewModels()
 
     private val adapter = VisitAdapter(
-        onClick = { visit ->
-            startActivity(VisitDetailsActivity.intent(this, visit.id))
-        },
+        onClick = { visit -> startActivity(VisitDetailsActivity.intent(this, visit.id)) },
         onRetry = { visit -> retry(visit.id) }
     )
 
@@ -43,17 +41,25 @@ class PastVisitsActivity : AppCompatActivity() {
 
         binding.etSearch.doAfterTextChanged { viewModel.setQuery(it?.toString().orEmpty()) }
 
-        binding.btnRefresh.setOnClickListener {
-            viewModel.syncNow()
-            Toast.makeText(this, R.string.sync_started, Toast.LENGTH_SHORT).show()
-        }
+        binding.swipeRefresh.setOnRefreshListener { viewModel.refresh() }
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.visits.collect { visits ->
-                    if (visits == null) return@collect
-                    adapter.submitList(visits)
-                    binding.tvEmpty.visibility = if (visits.isEmpty()) View.VISIBLE else View.GONE
+                launch {
+                    viewModel.visits.collect { visits ->
+                        if (visits == null) return@collect
+                        adapter.submitList(visits)
+                        binding.tvEmpty.visibility = if (visits.isEmpty()) View.VISIBLE else View.GONE
+                    }
+                }
+                launch { viewModel.refreshing.collect { binding.swipeRefresh.isRefreshing = it } }
+                launch {
+                    viewModel.message.collect { message ->
+                        if (message != null) {
+                            Toast.makeText(this@PastVisitsActivity, message, Toast.LENGTH_LONG).show()
+                            viewModel.messageShown()
+                        }
+                    }
                 }
             }
         }
