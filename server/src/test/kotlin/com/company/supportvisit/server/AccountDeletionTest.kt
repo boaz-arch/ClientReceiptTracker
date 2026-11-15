@@ -119,18 +119,17 @@ class AccountDeletionTest {
     }
 
     @Test
-    fun `legacy rows without a creator are claimable only by their last writer and still purged`() {
-        val store = Store(File(dataDir, "c.db"))
-        val files = FileStore(dataDir, 1_000_000)
+    fun `rows without a recorded creator are read-only and never auto-purged`() = testApplication {
+        application { module(config, fakeVerify) }
+        val store = Store(File(dataDir, "supportvisit.db"))
         // Simulates a row stored before creators were tracked.
-        store.upsert(Store.Kind.VISITS, "t1", "old", JSONObject(visit("old", "tech@a.test")), "tech@a.test", createdBy = null)
+        store.upsert(Store.Kind.VISITS, "t7", "old", JSONObject(visit("old", "tech@a.test")), "tech@a.test", createdBy = null)
 
-        val owner = store.ownershipOf(Store.Kind.VISITS, "t1", "old")!!
-        assertEquals(null, owner.createdBy)
-        assertEquals("tech@a.test", owner.updatedBy)
+        val write = client.put("/api/v1/visits/old") { bearerAuth("t7:tech@a.test"); setBody(visit("old", "tech@a.test")) }
+        assertEquals(io.ktor.http.HttpStatusCode.Forbidden, write.status)
 
-        store.requestDeletion(Store.DeletionRequest("t1", "oid", "tech@a.test", false, 0, purgeAt = 1))
-        AccountPurge.run(store, files, now = 2)
-        assertTrue(store.changesSince(Store.Kind.VISITS, "t1", 0).single().data.getBoolean("deleted"))
+        store.requestDeletion(Store.DeletionRequest("t7", "oid-tech@a.test", "tech@a.test", false, 0, purgeAt = 1))
+        AccountPurge.run(store, FileStore(dataDir, 1_000_000), now = 2)
+        assertFalse(store.changesSince(Store.Kind.VISITS, "t7", 0).single().data.optBoolean("deleted"))
     }
 }

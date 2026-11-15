@@ -110,8 +110,7 @@ class Store(dbFile: File) {
             """
             INSERT INTO ${kind.table} (tenant_id, id, data, updated_by, server_updated_at, created_by) VALUES (?, ?, ?, ?, ?, ?)
             ON CONFLICT (tenant_id, id) DO UPDATE SET
-                data = excluded.data, updated_by = excluded.updated_by, server_updated_at = excluded.server_updated_at,
-                created_by = COALESCE(created_by, excluded.created_by)
+                data = excluded.data, updated_by = excluded.updated_by, server_updated_at = excluded.server_updated_at
             """.trimIndent()
         ).use { ps ->
             ps.setString(1, tenantId)
@@ -206,12 +205,12 @@ class Store(dbFile: File) {
      * visit was first stored (never by editable fields such as technicianEmail).
      */
     @Synchronized
-    fun visitIdsCreatedBy(tenantId: String, userId: String, email: String): List<String> =
+    fun visitIdsCreatedBy(tenantId: String, userId: String): List<String> =
         connection.prepareStatement(
-            "SELECT id FROM visits WHERE tenant_id = ? AND updated_by != ? AND " +
-                "(created_by = ? OR (created_by IS NULL AND lower(updated_by) = lower(?)))"
+            // Only by the immutable creator id; rows without one are never purged automatically.
+            "SELECT id FROM visits WHERE tenant_id = ? AND updated_by != ? AND created_by = ?"
         ).use { ps ->
-            ps.setString(1, tenantId); ps.setString(2, SYSTEM_DELETION); ps.setString(3, userId); ps.setString(4, email)
+            ps.setString(1, tenantId); ps.setString(2, SYSTEM_DELETION); ps.setString(3, userId)
             ps.executeQuery().use { rs -> buildList { while (rs.next()) add(rs.getString(1)) } }
         }
 

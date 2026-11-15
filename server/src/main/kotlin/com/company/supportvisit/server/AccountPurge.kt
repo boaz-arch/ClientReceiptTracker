@@ -13,7 +13,7 @@ object AccountPurge {
         due.forEach { request ->
             var removed = 0
             if (!request.keepShared) {
-                store.visitIdsCreatedBy(request.tenantId, request.userId, request.email).forEach { visitId ->
+                store.visitIdsCreatedBy(request.tenantId, request.userId).forEach { visitId ->
                     files.deleteVisit(request.tenantId, visitId)
                     store.tombstone(Store.Kind.VISITS, request.tenantId, visitId)
                     removed++

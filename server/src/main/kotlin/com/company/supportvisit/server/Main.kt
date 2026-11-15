@@ -183,12 +183,10 @@ fun Application.module(config: Config, verify: (String) -> Caller) {
                     body.remove("serverUpdatedAt")
                     body.remove("deleted")
                     if (kind == Store.Kind.VISITS) {
-                        // Fail closed: only the creator may overwrite a visit. Rows from before
-                        // creators were tracked can only be claimed by the account that last wrote them.
+                        // Fail closed: only the creator (immutable Microsoft user id) may overwrite a
+                        // visit. Rows without a recorded creator are read-only.
                         val owner = store.ownershipOf(kind, c.tenantId, id)
-                        val allowed = owner == null ||
-                            owner.createdBy == c.userId ||
-                            (owner.createdBy == null && owner.updatedBy.equals(c.email.ifBlank { c.userId }, ignoreCase = true))
+                        val allowed = owner == null || owner.createdBy == c.userId
                         if (!allowed) {
                             call.respondJson(HttpStatusCode.Forbidden, JSONObject().put("error", "not_your_visit"))
                             return@put
