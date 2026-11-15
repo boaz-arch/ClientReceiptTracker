@@ -34,9 +34,17 @@ class SettingsActivity : AppCompatActivity() {
         setContentView(binding.root)
         binding.root.applySystemBarInsets()
 
-        binding.btnLightMode.setOnClickListener { applyThemeMode(AppCompatDelegate.MODE_NIGHT_NO) }
-        binding.btnDarkMode.setOnClickListener { applyThemeMode(AppCompatDelegate.MODE_NIGHT_YES) }
-        binding.btnSystemMode.setOnClickListener { applyThemeMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM) }
+        val modes = mapOf(
+            R.id.btnLightMode to AppCompatDelegate.MODE_NIGHT_NO,
+            R.id.btnDarkMode to AppCompatDelegate.MODE_NIGHT_YES,
+            R.id.btnSystemMode to AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+        )
+        val current = ThemeManager.savedMode(this)
+        modes.entries.firstOrNull { it.value == current }?.let { binding.themeToggle.check(it.key) }
+        binding.themeToggle.addOnButtonCheckedListener { _, id, checked ->
+            val mode = modes[id]
+            if (checked && mode != null && mode != ThemeManager.savedMode(this)) applyThemeMode(mode)
+        }
 
         binding.btnCustomizeReport.setOnClickListener {
             startActivity(Intent(this, ReportSettingsActivity::class.java))

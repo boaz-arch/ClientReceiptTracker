@@ -1,22 +1,40 @@
 <resources>
-    <color name="primary">#1565C0</color>
-    <color name="primary_dark">#0D47A1</color>
+    <!-- Material 3 palette, dark. -->
+    <color name="md_primary">#ADC6FF</color>
+    <color name="md_on_primary">#002E69</color>
+    <color name="md_primary_container">#004494</color>
+    <color name="md_on_primary_container">#D8E2FF</color>
+    <color name="md_secondary">#5FDBCA</color>
+    <color name="md_on_secondary">#003731</color>
+    <color name="md_secondary_container">#005048</color>
+    <color name="md_on_secondary_container">#7DF8E6</color>
+    <color name="md_tertiary">#F7BD48</color>
+    <color name="md_on_tertiary">#402D00</color>
+    <color name="md_error">#FFB4AB</color>
+    <color name="md_on_error">#690005</color>
+    <color name="md_background">#111318</color>
+    <color name="md_on_background">#E2E2E9</color>
+    <color name="md_surface">#111318</color>
+    <color name="md_on_surface">#E2E2E9</color>
+    <color name="md_surface_variant">#44474F</color>
+    <color name="md_on_surface_variant">#C4C6D0</color>
+    <color name="md_outline">#8E9099</color>
+    <color name="md_outline_variant">#44474F</color>
+    <color name="md_surface_container_lowest">#0C0E13</color>
+    <color name="md_surface_container_low">#1A1C21</color>
+    <color name="md_surface_container">#1E2025</color>
+    <color name="md_surface_container_high">#282A2F</color>
+    <color name="md_surface_container_highest">#33353A</color>
+
+    <color name="card_surface">@color/md_surface_container</color>
+    <color name="search_field">@color/md_surface_container_high</color>
+    <color name="text_secondary">@color/md_on_surface_variant</color>
+    <color name="text_muted">#8E9099</color>
     <color name="white">#FFFFFF</color>
 
-    <color name="signature_bg">#F5F5F5</color>
-    <color name="signature_border">#BDBDBD</color>
+    <color name="signature_bg">#FFFFFF</color>
 
-    <color name="dashboard_card">#1E1E1E</color>
-    <color name="past_visit_search">#1E1E1E</color>
-
-
-    <color name="text_secondary">#757575</color>
-    <color name="text_muted">#9E9E9E</color>
-    <color name="text_body">#424242</color>
-
-    <color name="requirement_met">#2E7D32</color>
-
-    <color name="status_pending">#EF6C00</color>
-    <color name="status_done">#388E3C</color>
-    <color name="status_failed">#E53935</color>
+    <color name="status_pending">#D97706</color>
+    <color name="status_done">#2E9E52</color>
+    <color name="status_failed">#DC362E</color>
 </resources>

@@ -12,8 +12,8 @@
     <string name="signed_in_as">Signed in as %1$s</string>
     <string name="signed_in_guest">Signed in as Guest</string>
     <string name="what_would_you_like_to_do">What would you like to do?</string>
-    <string name="add_new_visit_report">ADD New Visit Report</string>
-    <string name="view_my_past_visits">VIEW My Past Visits</string>
+    <string name="add_new_visit_report">New visit report</string>
+    <string name="view_my_past_visits">Past visits</string>
     <string name="settings">Settings</string>
 
     <!-- New visit -->
@@ -71,10 +71,10 @@
     <string name="visit_not_found">Visit not found</string>
 
     <!-- Settings -->
-    <string name="mode_settings">Mode settings</string>
-    <string name="light_mode">Light Mode</string>
-    <string name="dark_mode">Dark Mode</string>
-    <string name="system_mode">System Mode</string>
+    <string name="mode_settings">Theme</string>
+    <string name="light_mode">Light</string>
+    <string name="dark_mode">Dark</string>
+    <string name="system_mode">System</string>
     <string name="export_data">Export data</string>
     <string name="export_csv">Export CSV</string>
     <string name="share_csv">Share CSV</string>

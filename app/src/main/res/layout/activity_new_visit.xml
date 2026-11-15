@@ -22,13 +22,13 @@
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
             android:text="@string/new_visit_title"
-            android:textColor="@color/primary_dark"
+            android:textColor="?attr/colorPrimary"
             android:textSize="22sp"
             android:textStyle="bold" />
 
         <!-- Client: pick from the client list (searchable) or type a new name. -->
         <com.google.android.material.textfield.TextInputLayout
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+            style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:hint="@string/hint_client_name"
@@ -57,13 +57,13 @@
             android:paddingTop="4dp"
             android:paddingBottom="8dp"
             android:textAlignment="viewStart"
-            android:textColor="@color/primary_dark"
+            android:textColor="?attr/colorPrimary"
             android:textSize="16sp"
             android:textStyle="bold" />
 
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/tilVisitType"
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+            style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:hint="@string/label_visit_type">
@@ -164,7 +164,7 @@
 
             <Button
                 android:id="@+id/btnTakePhoto"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="8dp"
@@ -172,7 +172,7 @@
 
             <Button
                 android:id="@+id/btnPickPhotos"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/pick_photos" />
@@ -215,7 +215,7 @@
 
             <Button
                 android:id="@+id/btnAddPart"
-                style="@style/Widget.MaterialComponents.Button.TextButton"
+                style="@style/Widget.Material3.Button.TextButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/add_part" />
@@ -251,7 +251,7 @@
 
         <Button
             android:id="@+id/btnClearSignature"
-            style="@style/Widget.MaterialComponents.Button.TextButton"
+            style="@style/Widget.Material3.Button.TextButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="end"
@@ -280,7 +280,7 @@
 
         <Button
             android:id="@+id/btnClearTechnicianSignature"
-            style="@style/Widget.MaterialComponents.Button.TextButton"
+            style="@style/Widget.Material3.Button.TextButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="end"
@@ -291,7 +291,6 @@
             android:layout_width="match_parent"
             android:layout_height="52dp"
             android:layout_marginTop="16dp"
-            android:backgroundTint="@color/primary"
             android:text="@string/submit_and_send"
             android:textColor="@color/white"
             android:textSize="16sp" />

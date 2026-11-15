@@ -9,8 +9,8 @@
     <string name="signed_in_as">מחובר בתור %1$s</string>
     <string name="signed_in_guest">מחובר כאורח</string>
     <string name="what_would_you_like_to_do">מה תרצה לעשות?</string>
-    <string name="add_new_visit_report">הוספת דוח ביקור חדש</string>
-    <string name="view_my_past_visits">הצגת הביקורים שלי</string>
+    <string name="add_new_visit_report">דוח ביקור חדש</string>
+    <string name="view_my_past_visits">ביקורים קודמים</string>
     <string name="settings">הגדרות</string>
 
     <!-- New visit -->
@@ -68,10 +68,10 @@
     <string name="visit_not_found">הביקור לא נמצא</string>
 
     <!-- Settings -->
-    <string name="mode_settings">מצב תצוגה</string>
-    <string name="light_mode">מצב בהיר</string>
-    <string name="dark_mode">מצב כהה</string>
-    <string name="system_mode">לפי המערכת</string>
+    <string name="mode_settings">ערכת נושא</string>
+    <string name="light_mode">בהיר</string>
+    <string name="dark_mode">כהה</string>
+    <string name="system_mode">מערכת</string>
     <string name="export_data">ייצוא נתונים</string>
     <string name="export_csv">ייצוא CSV</string>
     <string name="share_csv">שיתוף CSV</string>
