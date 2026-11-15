@@ -22,7 +22,6 @@ import com.company.supportvisit.databinding.ActivityMonthlyReportBinding
 import com.company.supportvisit.graph.MailService
 import com.company.supportvisit.graph.MicrosoftAuthManager
 import com.company.supportvisit.settings.BillingSettings
-import com.company.supportvisit.settings.FormSettings
 import com.company.supportvisit.ui.SignInHelper
 import com.company.supportvisit.ui.applySystemBarInsets
 import com.company.supportvisit.utils.Money
@@ -44,8 +43,8 @@ class MonthlyReportActivity : AppCompatActivity() {
 
     private val exportDir by lazy { File(filesDir, "exports") }
 
-    /** Billing is optional; without it reports show hours and parts but no amounts. */
-    private val billingOn by lazy { FormSettings.isEnabled(this, FormSettings.Section.BILLING) }
+    /** Monthly-report billing is its own optional switch; without it reports show hours and parts only. */
+    private val billingOn by lazy { BillingSettings.monthlyBillingEnabled(this) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -95,8 +94,11 @@ class MonthlyReportActivity : AppCompatActivity() {
         lifecycleScope.launch {
             val (from, to) = month.isoRange()
             val visits = app.visitRepository.getVisitsInRange(from, to, c.id)
-            val r = MonthlyReport.build(c, month, visits, BillingSettings.vatPercent(this@MonthlyReportActivity),
-                BillingSettings.currency(this@MonthlyReportActivity))
+            val r = MonthlyReport.build(
+                c, month, visits, BillingSettings.vatPercent(this@MonthlyReportActivity),
+                BillingSettings.currency(this@MonthlyReportActivity),
+                defaultRate = BillingSettings.defaultHourlyRate(this@MonthlyReportActivity)
+            )
             report = r
             render(r)
         }

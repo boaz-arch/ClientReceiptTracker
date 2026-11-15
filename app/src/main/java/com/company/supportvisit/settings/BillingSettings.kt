@@ -18,6 +18,7 @@ object BillingSettings {
     private const val KEY_VAT = "vat_percent"
     private const val KEY_DEFAULT_RATE = "default_hourly_rate"
     private const val KEY_SHOW_PRICES = "show_prices_on_pdf"
+    private const val KEY_MONTHLY_BILLING = "monthly_billing_enabled"
     private const val KEY_PROVIDER = "invoice_provider"
     private const val KEY_GREEN_SANDBOX = "green_invoice_sandbox"
 
@@ -37,6 +38,16 @@ object BillingSettings {
     fun setDefaultHourlyRate(context: Context, value: Double?) = prefs(context).edit {
         if (value == null) remove(KEY_DEFAULT_RATE) else putFloat(KEY_DEFAULT_RATE, value.toFloat())
     }
+
+    /** Amounts, VAT and draft invoices in monthly reports. Separate from per-visit billing; off by default. */
+    fun monthlyBillingEnabled(context: Context): Boolean = prefs(context).getBoolean(KEY_MONTHLY_BILLING, false)
+
+    fun setMonthlyBillingEnabled(context: Context, value: Boolean) =
+        prefs(context).edit { putBoolean(KEY_MONTHLY_BILLING, value) }
+
+    /** Visit billing or monthly-report billing is on (rates, currency and VAT are needed). */
+    fun anyBillingEnabled(context: Context): Boolean =
+        monthlyBillingEnabled(context) || FormSettings.isEnabled(context, FormSettings.Section.BILLING)
 
     /** Whether rates and amounts appear on the PDF the client receives. */
     fun showPricesOnPdf(context: Context): Boolean = prefs(context).getBoolean(KEY_SHOW_PRICES, true)

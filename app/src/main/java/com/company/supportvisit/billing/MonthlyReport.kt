@@ -44,12 +44,17 @@ data class MonthlyReport(
             month: YearMonth,
             visits: List<VisitEntity>,
             vatPercent: Double,
-            currency: String
+            currency: String,
+            /** Used for visits recorded without a rate (when the client has none either). */
+            defaultRate: Double? = null
         ): MonthlyReport {
             val lines = visits
                 .filter { it.clientId == client.id && runCatching { YearMonth.from(LocalDate.parse(it.visitDate)) }.getOrNull() == month }
                 .sortedWith(compareBy({ it.visitDate }, { it.startTime }))
-                .map { ReportLine(it, it.bill()) }
+                .map { v ->
+                    val visit = if (v.hourlyRate == null) v.copy(hourlyRate = client.hourlyRate ?: defaultRate) else v
+                    ReportLine(visit, visit.bill())
+                }
             return MonthlyReport(client, month, lines, vatPercent, currency)
         }
     }

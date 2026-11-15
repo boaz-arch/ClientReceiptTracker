@@ -11,6 +11,7 @@ import com.company.supportvisit.billing.RetainerLevel
 import com.company.supportvisit.billing.isoRange
 import com.company.supportvisit.data.ClientEntity
 import com.company.supportvisit.utils.Money
+import com.company.supportvisit.settings.BillingSettings
 import java.time.YearMonth
 import com.company.supportvisit.databinding.ActivityClientEditBinding
 import com.company.supportvisit.sync.SyncScheduler
@@ -41,6 +42,10 @@ class ClientEditActivity : AppCompatActivity() {
                 if (savedInstanceState == null) existing?.let(::fill)
             }
         }
+
+        // A custom hourly rate per client only matters when billing is on.
+        binding.tilHourlyRate.visibility =
+            if (BillingSettings.anyBillingEnabled(this)) android.view.View.VISIBLE else android.view.View.GONE
 
         binding.btnSave.setOnClickListener { save() }
     }

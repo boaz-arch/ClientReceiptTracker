@@ -78,6 +78,7 @@
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilHourlyRate"
             style="@style/ClientField"
             android:hint="@string/hint_hourly_rate">
 

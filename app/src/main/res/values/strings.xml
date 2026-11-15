@@ -262,6 +262,25 @@
 
     <string name="label_default_rate">Default hourly rate</string>
     <string name="default_rate_helper">Used for every visit. A client\'s own rate, if set, takes precedence.</string>
-    <string name="setting_enable_billing">Enable billing</string>
-    <string name="setting_enable_billing_hint">Calculate the amount of each visit from its start and end time and an hourly rate, and show prices in reports. Off by default.</string>
+    <string name="setting_enable_billing">Billing on visit reports</string>
+    <string name="setting_enable_billing_hint">Calculate each visit\'s amount from its start and end time and the hourly rate, and show it in the visit PDF.</string>
+
+    <!-- Account deletion -->
+    <string name="delete_account">Delete account</string>
+    <string name="delete_account_confirm">Delete</string>
+    <string name="delete_account_message">Your account will be deleted in 14 days. Until then you can restore it by signing in again.\n\nAfter 14 days, all your visit reports, PDFs and photos are permanently wiped from the server and from your coworkers\' phones. This phone\'s data is removed now.\n\nClients you added stay with your company. Emails already sent can\'t be recalled.</string>
+    <string name="delete_account_keep_shared">Keep my visit reports in my company\'s records</string>
+    <string name="delete_account_keep_shared_hint">Your account is deleted, but the reports you recorded stay in the company log.</string>
+    <string name="delete_account_scheduled">Your account will be deleted on %1$s. Sign in again before then to restore it.</string>
+    <string name="delete_account_done_local">Your data was removed from this phone.</string>
+    <string name="delete_account_unsent">Some visits haven\'t been sent yet. Send them first (Past visits), then delete your account.</string>
+    <string name="delete_account_failed">Could not delete the account. Check your connection and try again.</string>
+    <string name="restore_account_title">Account scheduled for deletion</string>
+    <string name="restore_account_message">This account will be permanently deleted on %1$s. Do you want to restore it?</string>
+    <string name="restore_account">Restore account</string>
+    <string name="restore_account_keep_deleting">Keep deleting</string>
+    <string name="restore_account_done">Account restored. Your data is downloading.</string>
+
+    <string name="setting_monthly_billing">Billing on monthly reports and invoices</string>
+    <string name="setting_monthly_billing_hint">Show amounts and VAT in monthly reports and create draft invoices from them.</string>
 </resources>

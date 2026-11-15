@@ -259,6 +259,25 @@
 
     <string name="label_default_rate">תעריף שעתי ברירת מחדל</string>
     <string name="default_rate_helper">משמש לכל ביקור. תעריף ייעודי של לקוח, אם הוגדר, גובר עליו.</string>
-    <string name="setting_enable_billing">הפעלת חיוב</string>
-    <string name="setting_enable_billing_hint">חישוב הסכום של כל ביקור לפי שעת ההתחלה והסיום ותעריף שעתי, והצגת מחירים בדוחות. כבוי כברירת מחדל.</string>
+    <string name="setting_enable_billing">חיוב בדוחות ביקור</string>
+    <string name="setting_enable_billing_hint">חישוב הסכום של כל ביקור לפי שעת ההתחלה והסיום והתעריף השעתי, והצגתו ב-PDF של הביקור.</string>
+
+    <!-- Account deletion -->
+    <string name="delete_account">מחיקת חשבון</string>
+    <string name="delete_account_confirm">מחיקה</string>
+    <string name="delete_account_message">החשבון שלך יימחק בעוד 14 יום. עד אז אפשר לשחזר אותו על ידי התחברות מחדש.\n\nאחרי 14 יום, כל דוחות הביקור, קובצי ה-PDF והתמונות שלך יימחקו לצמיתות מהשרת ומהטלפונים של עמיתיך. הנתונים בטלפון זה נמחקים עכשיו.\n\nלקוחות שהוספת נשארים בחברה. לא ניתן לבטל אימיילים שכבר נשלחו.</string>
+    <string name="delete_account_keep_shared">השארת דוחות הביקור שלי ברישומי החברה</string>
+    <string name="delete_account_keep_shared_hint">החשבון שלך יימחק, אבל הדוחות שתיעדת יישארו ביומן החברה.</string>
+    <string name="delete_account_scheduled">החשבון שלך יימחק ב-%1$s. התחברו שוב לפני כן כדי לשחזר אותו.</string>
+    <string name="delete_account_done_local">הנתונים שלך נמחקו מהטלפון הזה.</string>
+    <string name="delete_account_unsent">יש ביקורים שעדיין לא נשלחו. שלחו אותם קודם (ביקורים קודמים), ואז מחקו את החשבון.</string>
+    <string name="delete_account_failed">לא ניתן למחוק את החשבון. בדקו את החיבור ונסו שוב.</string>
+    <string name="restore_account_title">החשבון מתוזמן למחיקה</string>
+    <string name="restore_account_message">החשבון הזה יימחק לצמיתות ב-%1$s. לשחזר אותו?</string>
+    <string name="restore_account">שחזור החשבון</string>
+    <string name="restore_account_keep_deleting">להמשיך במחיקה</string>
+    <string name="restore_account_done">החשבון שוחזר. הנתונים מורדים.</string>
+
+    <string name="setting_monthly_billing">חיוב בדוחות חודשיים ובחשבוניות</string>
+    <string name="setting_monthly_billing_hint">הצגת סכומים ומע״מ בדוחות החודשיים ויצירת טיוטות חשבונית מהם.</string>
 </resources>

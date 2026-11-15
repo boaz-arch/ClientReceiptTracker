@@ -29,6 +29,15 @@
             style="@style/ReportSwitchHint"
             android:text="@string/setting_enable_billing_hint" />
 
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/switchMonthlyBilling"
+            style="@style/ReportSwitch"
+            android:text="@string/setting_monthly_billing" />
+
+        <TextView
+            style="@style/ReportSwitchHint"
+            android:text="@string/setting_monthly_billing_hint" />
+
         <LinearLayout
             android:id="@+id/billingOptions"
             android:layout_width="match_parent"
@@ -89,6 +98,7 @@
                 android:text="@string/setting_show_prices_hint" />
     
             <TextView
+                android:id="@+id/tvInvoicesHeader"
                 style="@style/SettingsSectionHeader"
                 android:text="@string/invoices_header" />
     
@@ -96,6 +106,7 @@
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:id="@+id/tilInvoiceProvider"
                 android:hint="@string/label_invoice_provider">
     
                 <com.google.android.material.textfield.MaterialAutoCompleteTextView

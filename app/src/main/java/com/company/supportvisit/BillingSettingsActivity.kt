@@ -28,16 +28,17 @@ class BillingSettingsActivity : AppCompatActivity() {
         setContentView(binding.root)
         binding.root.applySystemBarInsets()
 
-        // Master switch: billing is optional and off by default.
-        fun showOptions(on: Boolean) {
-            binding.billingOptions.visibility = if (on) View.VISIBLE else View.GONE
-        }
-        val enabled = FormSettings.isEnabled(this, FormSettings.Section.BILLING)
-        binding.switchEnableBilling.isChecked = enabled
-        showOptions(enabled)
+        // Two independent switches, both off by default: billing on visit reports, and billing on
+        // monthly reports & invoices. Rates, currency and VAT show when either is on.
+        binding.switchEnableBilling.isChecked = FormSettings.isEnabled(this, FormSettings.Section.BILLING)
+        binding.switchMonthlyBilling.isChecked = BillingSettings.monthlyBillingEnabled(this)
         binding.switchEnableBilling.setOnCheckedChangeListener { _, on ->
             FormSettings.setEnabled(this, FormSettings.Section.BILLING, on)
-            showOptions(on)
+            updateVisibility()
+        }
+        binding.switchMonthlyBilling.setOnCheckedChangeListener { _, on ->
+            BillingSettings.setMonthlyBillingEnabled(this, on)
+            updateVisibility()
         }
 
         // Currency
@@ -61,10 +62,9 @@ class BillingSettingsActivity : AppCompatActivity() {
         binding.actProvider.setAdapter(ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, labels))
         val current = BillingSettings.invoiceProvider(this)
         binding.actProvider.setText(getString(current.labelRes()), false)
-        showProviderFields(current)
         binding.actProvider.setOnItemClickListener { _, _, i, _ ->
             BillingSettings.setInvoiceProvider(this, providers[i])
-            showProviderFields(providers[i])
+            updateVisibility()
         }
 
         // Green Invoice key: the secret is never shown again once saved.
@@ -73,6 +73,20 @@ class BillingSettingsActivity : AppCompatActivity() {
         binding.switchSandbox.isChecked = BillingSettings.greenInvoiceSandbox(this)
         binding.switchSandbox.setOnCheckedChangeListener { _, on -> BillingSettings.setGreenInvoiceSandbox(this, on) }
         binding.btnTestInvoice.setOnClickListener { saveAndTest() }
+
+        updateVisibility()
+    }
+
+    private fun updateVisibility() {
+        fun View.show(on: Boolean) { visibility = if (on) View.VISIBLE else View.GONE }
+        val monthly = BillingSettings.monthlyBillingEnabled(this)
+        binding.billingOptions.show(BillingSettings.anyBillingEnabled(this))
+        // Invoices are made from monthly reports.
+        binding.tvInvoicesHeader.show(monthly)
+        binding.tilInvoiceProvider.show(monthly)
+        val provider = BillingSettings.invoiceProvider(this)
+        binding.greenInvoiceGroup.show(monthly && provider == InvoiceProviderId.GREEN_INVOICE)
+        binding.tvProviderStub.show(monthly && (provider == InvoiceProviderId.ICOUNT || provider == InvoiceProviderId.RIVHIT))
     }
 
     override fun onPause() {
@@ -87,11 +101,6 @@ class BillingSettingsActivity : AppCompatActivity() {
             ?.let { BillingSettings.setVatPercent(this, it) }
     }
 
-    private fun showProviderFields(id: InvoiceProviderId) {
-        binding.greenInvoiceGroup.visibility = if (id == InvoiceProviderId.GREEN_INVOICE) View.VISIBLE else View.GONE
-        binding.tvProviderStub.visibility =
-            if (id == InvoiceProviderId.ICOUNT || id == InvoiceProviderId.RIVHIT) View.VISIBLE else View.GONE
-    }
 
     private fun saveAndTest() {
         SecretStore.put(this, SecretStore.GREEN_INVOICE_KEY_ID, binding.etApiKeyId.text.toString().trim())

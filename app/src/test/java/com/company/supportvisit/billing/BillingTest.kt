@@ -102,6 +102,20 @@ class BillingTest {
     }
 
     @Test
+    fun `monthly report falls back to the client rate, then the default rate`() {
+        val noRate = visit("1", "2026-11-03", "09:00", "10:00", rate = null)
+        val withClientRate = MonthlyReport.build(client, YearMonth.of(2026, 11), listOf(noRate), 18.0, "ILS", defaultRate = 100.0)
+        assertEquals(200.0, withClientRate.laborAmount, 0.0)
+
+        val noClientRate = client.copy(hourlyRate = null)
+        val withDefault = MonthlyReport.build(noClientRate, YearMonth.of(2026, 11), listOf(noRate), 18.0, "ILS", defaultRate = 100.0)
+        assertEquals(100.0, withDefault.laborAmount, 0.0)
+
+        val snapshotWins = MonthlyReport.build(client, YearMonth.of(2026, 11), listOf(noRate.copy(hourlyRate = 300.0)), 18.0, "ILS", 100.0)
+        assertEquals(300.0, snapshotWins.laborAmount, 0.0)
+    }
+
+    @Test
     fun `green invoice document has a labour line and one line per part`() {
         val visits = listOf(visit("1", "2026-11-03", "09:00", "11:00", parts = listOf(PartItem("Switch", 1.0, 100.0))))
         val report = MonthlyReport.build(client, YearMonth.of(2026, 11), visits, 18.0, "ILS")
