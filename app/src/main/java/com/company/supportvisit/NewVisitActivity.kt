@@ -27,6 +27,7 @@ import com.company.supportvisit.data.partsTotal
 import com.company.supportvisit.databinding.ActivityNewVisitBinding
 import com.company.supportvisit.databinding.DialogPartBinding
 import com.company.supportvisit.databinding.ItemPartBinding
+import com.company.supportvisit.settings.FormSettings
 import com.company.supportvisit.ui.NewVisitUiState
 import com.company.supportvisit.ui.NewVisitViewModel
 import com.company.supportvisit.ui.VisitForm
@@ -82,8 +83,16 @@ class NewVisitActivity : AppCompatActivity() {
         binding.btnAddPart.setOnClickListener { showAddPartDialog() }
         binding.btnClearSignature.setOnClickListener { binding.signaturePad.clear() }
         binding.btnClearTechnicianSignature.setOnClickListener { binding.technicianSignaturePad.clear() }
+        val technicianSignature = FormSettings.technicianSignatureEnabled(this)
+        listOf(binding.tvTechnicianSignatureHeader, binding.technicianSignatureFrame, binding.btnClearTechnicianSignature)
+            .forEach { it.visibility = if (technicianSignature) View.VISIBLE else View.GONE }
+
         binding.btnSubmit.setOnClickListener {
-            viewModel.submit(currentForm(), binding.signaturePad.bitmapOrNull(), binding.technicianSignaturePad.bitmapOrNull())
+            viewModel.submit(
+                currentForm(),
+                binding.signaturePad.bitmapOrNull(),
+                binding.technicianSignaturePad.bitmapOrNull().takeIf { technicianSignature }
+            )
         }
 
         restoreDraft(isFreshStart = savedInstanceState == null)

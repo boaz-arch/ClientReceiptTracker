@@ -176,4 +176,7 @@
     <string name="pdf_photo_caption">תמונה %1$d</string>
     <string name="email_report_too_large">הדוח עם התמונות גדול מכדי לצרף אותו. בקשו עותק מהטכנאי.</string>
 
+    <string name="report_settings">דוחות</string>
+    <string name="setting_technician_signature">בקשת חתימת טכנאי בדוחות</string>
+
 </resources>

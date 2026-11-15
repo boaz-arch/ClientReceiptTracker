@@ -16,6 +16,7 @@ import com.company.supportvisit.graph.GraphException
 import com.company.supportvisit.graph.MicrosoftAuthManager
 import com.company.supportvisit.graph.isConsentMissing
 import com.company.supportvisit.remote.ServerApi
+import com.company.supportvisit.settings.FormSettings
 import com.company.supportvisit.settings.ServerSettings
 import com.company.supportvisit.settings.ThemeManager
 import com.company.supportvisit.sync.SyncScheduler
@@ -41,6 +42,11 @@ class SettingsActivity : AppCompatActivity() {
         binding.btnLightMode.setOnClickListener { applyThemeMode(AppCompatDelegate.MODE_NIGHT_NO) }
         binding.btnDarkMode.setOnClickListener { applyThemeMode(AppCompatDelegate.MODE_NIGHT_YES) }
         binding.btnSystemMode.setOnClickListener { applyThemeMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM) }
+
+        binding.switchTechnicianSignature.isChecked = FormSettings.technicianSignatureEnabled(this)
+        binding.switchTechnicianSignature.setOnCheckedChangeListener { _, checked ->
+            FormSettings.setTechnicianSignatureEnabled(this, checked)
+        }
 
         binding.btnExportCsv.setOnClickListener { exportCsv() }
 

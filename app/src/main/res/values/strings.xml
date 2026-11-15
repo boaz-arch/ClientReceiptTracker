@@ -179,4 +179,7 @@
     <string name="pdf_photo_caption">Photo %1$d</string>
     <string name="email_report_too_large">The report with photos is too large to attach. Ask your technician for a copy.</string>
 
+    <string name="report_settings">Reports</string>
+    <string name="setting_technician_signature">Ask for the technician\'s signature on reports</string>
+
 </resources>

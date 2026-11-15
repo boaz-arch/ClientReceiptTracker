@@ -253,12 +253,14 @@
             android:layout_gravity="end"
             android:text="@string/clear_signature" />
 
-        <!-- Technician signature (optional) -->
+        <!-- Technician signature (optional; shown only when enabled in Settings) -->
         <TextView
+            android:id="@+id/tvTechnicianSignatureHeader"
             style="@style/FormSectionHeader"
             android:text="@string/label_technician_signature_optional" />
 
         <FrameLayout
+            android:id="@+id/technicianSignatureFrame"
             android:layout_width="match_parent"
             android:layout_height="140dp"
             android:layout_marginTop="6dp"
