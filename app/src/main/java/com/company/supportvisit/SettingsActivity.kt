@@ -2,168 +2,111 @@ package com.company.supportvisit
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
+import android.view.View
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.content.FileProvider
+import androidx.lifecycle.lifecycleScope
 import com.company.supportvisit.databinding.ActivitySettingsBinding
 import com.company.supportvisit.graph.AuthManager
-import com.company.supportvisit.repository.VisitCache
-import com.company.supportvisit.utils.CsvExporter
-import android.widget.Toast
 import com.company.supportvisit.graph.MicrosoftAuthManager
+import com.company.supportvisit.settings.ThemeManager
+import com.company.supportvisit.sync.SyncScheduler
+import com.company.supportvisit.ui.SignInHelper
+import com.company.supportvisit.utils.AppConfig
+import com.company.supportvisit.utils.CsvExporter
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
 
 class SettingsActivity : AppCompatActivity() {
 
-    private lateinit var binding:
-            ActivitySettingsBinding
+    private lateinit var binding: ActivitySettingsBinding
 
-    override fun onCreate(
-        savedInstanceState: Bundle?
-    ) {
-
+    override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        binding =
-            ActivitySettingsBinding.inflate(
-                layoutInflater
-            )
-
+        binding = ActivitySettingsBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        binding.btnLightMode.setOnClickListener {
+        binding.btnLightMode.setOnClickListener { applyThemeMode(AppCompatDelegate.MODE_NIGHT_NO) }
+        binding.btnDarkMode.setOnClickListener { applyThemeMode(AppCompatDelegate.MODE_NIGHT_YES) }
+        binding.btnSystemMode.setOnClickListener { applyThemeMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM) }
 
-            AppCompatDelegate.setDefaultNightMode(
-                AppCompatDelegate.MODE_NIGHT_NO
-            )
-        }
+        binding.btnExportCsv.setOnClickListener { exportCsv() }
 
-        binding.btnDarkMode.setOnClickListener {
+        binding.btnConnectMicrosoft.setOnClickListener { connectMicrosoft() }
+        binding.btnDisconnectMicrosoft.setOnClickListener { disconnectMicrosoft() }
 
-            AppCompatDelegate.setDefaultNightMode(
-                AppCompatDelegate.MODE_NIGHT_YES
-            )
-        }
-
-        binding.btnSystemMode.setOnClickListener {
-
-            AppCompatDelegate.setDefaultNightMode(
-                AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
-            )
-        }
+        // Local login buttons only make sense when the local login screen is enabled.
+        val localLoginVisibility = if (AppConfig.LOGIN_ENABLED) View.VISIBLE else View.GONE
+        binding.btnChangeLogin.visibility = localLoginVisibility
+        binding.btnLogout.visibility = localLoginVisibility
 
         binding.btnChangeLogin.setOnClickListener {
-
-            startActivity(
-                Intent(
-                    this,
-                    ChangeLoginActivity::class.java
-                )
-            )
+            startActivity(Intent(this, ChangeLoginActivity::class.java))
         }
-
         binding.btnLogout.setOnClickListener {
-
             AuthManager.logout()
-
-            startActivity(
-                Intent(
-                    this,
-                    LoginActivity::class.java
-                )
-            )
-
+            startActivity(Intent(this, LoginActivity::class.java))
             finishAffinity()
         }
+    }
 
-        binding.btnExportCsv.setOnClickListener {
+    private fun applyThemeMode(mode: Int) {
+        ThemeManager.setMode(this, mode)
+    }
 
-            val file =
-                CsvExporter.exportVisits(
-                    this,
-                    VisitCache.visits
-                )
-
-            val uri =
-                androidx.core.content.FileProvider.getUriForFile(
-                    this,
-                    "${applicationContext.packageName}.provider",
-                    file
-                )
-
-            val shareIntent =
-                Intent(
-                    Intent.ACTION_SEND
-                ).apply {
-
+    private fun exportCsv() {
+        lifecycleScope.launch {
+            try {
+                val file = withContext(Dispatchers.IO) {
+                    val visits = app.visitRepository.getAllVisits()
+                    CsvExporter.writeTo(File(File(filesDir, "exports"), "SupportVisits.csv"), visits)
+                }
+                val uri = FileProvider.getUriForFile(this@SettingsActivity, "$packageName.provider", file)
+                val share = Intent(Intent.ACTION_SEND).apply {
                     type = "text/csv"
-
-                    putExtra(
-                        Intent.EXTRA_STREAM,
-                        uri
-                    )
-
-                    addFlags(
-                        Intent.FLAG_GRANT_READ_URI_PERMISSION
-                    )
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
-
-            startActivity(
-
-                Intent.createChooser(
-                    shareIntent,
-                    "Share CSV"
-                )
-            )
+                startActivity(Intent.createChooser(share, getString(R.string.share_csv)))
+            } catch (e: Exception) {
+                Log.w(TAG, "CSV export failed", e)
+                Toast.makeText(this@SettingsActivity, R.string.export_failed, Toast.LENGTH_LONG).show()
+            }
         }
+    }
 
-        binding.btnConnectMicrosoft.setOnClickListener {
-
-            MicrosoftAuthManager.connect(
-
-                this,
-
-                {
-
-                    Toast.makeText(
-                        this,
-                        "Connected: $it\nToken Length: ${
-                            MicrosoftAuthManager
-                                .getToken()
-                                .length
-                        }",
-                        Toast.LENGTH_LONG
-                    ).show()
-                },
-
-                {
-
-                    android.app.AlertDialog.Builder(this)
-
-                        .setTitle(
-                            "Microsoft Login Error"
-                        )
-
-                        .setMessage(it)
-
-                        .setPositiveButton(
-                            "OK",
-                            null
-                        )
-
-                        .show()
-                }
-            )
-        }
-
-        binding.btnDisconnectMicrosoft.setOnClickListener {
-
-            MicrosoftAuthManager.disconnect()
-
+    private fun connectMicrosoft() {
+        lifecycleScope.launch {
+            if (!SignInHelper.ensureSignedIn(this@SettingsActivity)) return@launch
+            val email = MicrosoftAuthManager.accountEmail.value.orEmpty()
             Toast.makeText(
-                this,
-                "Microsoft Account Disconnected",
-                Toast.LENGTH_LONG
+                this@SettingsActivity, getString(R.string.connected_as, email), Toast.LENGTH_LONG
             ).show()
+            // Visits that failed for lack of a session can go now.
+            app.visitRepository.retryAllFailed()
+            SyncScheduler.enqueue(this@SettingsActivity)
         }
+    }
 
+    private fun disconnectMicrosoft() {
+        lifecycleScope.launch {
+            try {
+                MicrosoftAuthManager.signOut()
+                Toast.makeText(this@SettingsActivity, R.string.microsoft_disconnected, Toast.LENGTH_LONG).show()
+            } catch (e: Exception) {
+                Log.w(TAG, "Sign-out failed", e)
+                Toast.makeText(this@SettingsActivity, R.string.sign_out_failed, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    companion object {
+        private const val TAG = "SettingsActivity"
     }
 }
