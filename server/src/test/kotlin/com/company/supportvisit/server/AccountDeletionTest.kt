@@ -117,4 +117,20 @@ class AccountDeletionTest {
         assertFalse(item.optBoolean("deleted"))
         assertEquals("Acme", item.getString("clientName"))
     }
+
+    @Test
+    fun `legacy rows without a creator are claimable only by their last writer and still purged`() {
+        val store = Store(File(dataDir, "c.db"))
+        val files = FileStore(dataDir, 1_000_000)
+        // Simulates a row stored before creators were tracked.
+        store.upsert(Store.Kind.VISITS, "t1", "old", JSONObject(visit("old", "tech@a.test")), "tech@a.test", createdBy = null)
+
+        val owner = store.ownershipOf(Store.Kind.VISITS, "t1", "old")!!
+        assertEquals(null, owner.createdBy)
+        assertEquals("tech@a.test", owner.updatedBy)
+
+        store.requestDeletion(Store.DeletionRequest("t1", "oid", "tech@a.test", false, 0, purgeAt = 1))
+        AccountPurge.run(store, files, now = 2)
+        assertTrue(store.changesSince(Store.Kind.VISITS, "t1", 0).single().data.getBoolean("deleted"))
+    }
 }

@@ -183,8 +183,13 @@ fun Application.module(config: Config, verify: (String) -> Caller) {
                     body.remove("serverUpdatedAt")
                     body.remove("deleted")
                     if (kind == Store.Kind.VISITS) {
-                        val creator = store.creatorOf(kind, c.tenantId, id)
-                        if (creator != null && creator != c.userId) {
+                        // Fail closed: only the creator may overwrite a visit. Rows from before
+                        // creators were tracked can only be claimed by the account that last wrote them.
+                        val owner = store.ownershipOf(kind, c.tenantId, id)
+                        val allowed = owner == null ||
+                            owner.createdBy == c.userId ||
+                            (owner.createdBy == null && owner.updatedBy.equals(c.email.ifBlank { c.userId }, ignoreCase = true))
+                        if (!allowed) {
                             call.respondJson(HttpStatusCode.Forbidden, JSONObject().put("error", "not_your_visit"))
                             return@put
                         }

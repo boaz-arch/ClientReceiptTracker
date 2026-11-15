@@ -110,7 +110,8 @@ class Store(dbFile: File) {
             """
             INSERT INTO ${kind.table} (tenant_id, id, data, updated_by, server_updated_at, created_by) VALUES (?, ?, ?, ?, ?, ?)
             ON CONFLICT (tenant_id, id) DO UPDATE SET
-                data = excluded.data, updated_by = excluded.updated_by, server_updated_at = excluded.server_updated_at
+                data = excluded.data, updated_by = excluded.updated_by, server_updated_at = excluded.server_updated_at,
+                created_by = COALESCE(created_by, excluded.created_by)
             """.trimIndent()
         ).use { ps ->
             ps.setString(1, tenantId)
@@ -124,12 +125,15 @@ class Store(dbFile: File) {
         return stamp
     }
 
-    /** The Microsoft user id that first stored the record, or null if it doesn't exist (or predates tracking). */
+    /** Ownership of an existing record: who created it (null for rows that predate tracking) and who last wrote it. */
+    data class Ownership(val createdBy: String?, val updatedBy: String)
+
+    /** Null when the record doesn't exist. */
     @Synchronized
-    fun creatorOf(kind: Kind, tenantId: String, id: String): String? =
-        connection.prepareStatement("SELECT created_by FROM ${kind.table} WHERE tenant_id = ? AND id = ?").use { ps ->
+    fun ownershipOf(kind: Kind, tenantId: String, id: String): Ownership? =
+        connection.prepareStatement("SELECT created_by, updated_by FROM ${kind.table} WHERE tenant_id = ? AND id = ?").use { ps ->
             ps.setString(1, tenantId); ps.setString(2, id)
-            ps.executeQuery().use { rs -> if (rs.next()) rs.getString(1) else null }
+            ps.executeQuery().use { rs -> if (rs.next()) Ownership(rs.getString(1), rs.getString(2)) else null }
         }
 
     @Synchronized
@@ -202,11 +206,12 @@ class Store(dbFile: File) {
      * visit was first stored (never by editable fields such as technicianEmail).
      */
     @Synchronized
-    fun visitIdsCreatedBy(tenantId: String, userId: String): List<String> =
+    fun visitIdsCreatedBy(tenantId: String, userId: String, email: String): List<String> =
         connection.prepareStatement(
-            "SELECT id FROM visits WHERE tenant_id = ? AND created_by = ? AND updated_by != ?"
+            "SELECT id FROM visits WHERE tenant_id = ? AND updated_by != ? AND " +
+                "(created_by = ? OR (created_by IS NULL AND lower(updated_by) = lower(?)))"
         ).use { ps ->
-            ps.setString(1, tenantId); ps.setString(2, userId); ps.setString(3, SYSTEM_DELETION)
+            ps.setString(1, tenantId); ps.setString(2, SYSTEM_DELETION); ps.setString(3, userId); ps.setString(4, email)
             ps.executeQuery().use { rs -> buildList { while (rs.next()) add(rs.getString(1)) } }
         }
 
