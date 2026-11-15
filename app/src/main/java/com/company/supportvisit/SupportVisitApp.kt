@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import com.company.supportvisit.data.AppDatabase
 import com.company.supportvisit.graph.MicrosoftAuthManager
+import com.company.supportvisit.repository.ClientRepository
 import com.company.supportvisit.repository.VisitRepository
 import com.company.supportvisit.settings.ThemeManager
 import com.company.supportvisit.sync.SyncScheduler
@@ -20,6 +21,8 @@ class SupportVisitApp : Application() {
     val database: AppDatabase by lazy { AppDatabase.build(this) }
 
     val visitRepository: VisitRepository by lazy { VisitRepository(this, database) }
+
+    val clientRepository: ClientRepository by lazy { ClientRepository(database.clientDao()) }
 
     override fun onCreate() {
         super.onCreate()

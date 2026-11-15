@@ -38,6 +38,10 @@ class SettingsActivity : AppCompatActivity() {
         binding.btnDarkMode.setOnClickListener { applyThemeMode(AppCompatDelegate.MODE_NIGHT_YES) }
         binding.btnSystemMode.setOnClickListener { applyThemeMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM) }
 
+        binding.btnCustomizeReport.setOnClickListener {
+            startActivity(Intent(this, ReportSettingsActivity::class.java))
+        }
+
         binding.btnExportCsv.setOnClickListener { exportCsv() }
 
         binding.btnConnectMicrosoft.setOnClickListener { connectMicrosoft() }

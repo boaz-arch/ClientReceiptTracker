@@ -14,6 +14,9 @@ import android.text.TextDirectionHeuristics
 import android.text.TextPaint
 import com.company.supportvisit.R
 import com.company.supportvisit.data.VisitEntity
+import com.company.supportvisit.data.partsTotal
+import com.company.supportvisit.settings.FormSettings
+import com.company.supportvisit.ui.labelRes
 import java.io.File
 
 object PdfReportGenerator {
@@ -34,7 +37,16 @@ object PdfReportGenerator {
         return "Visit_${visit.visitDate}_${client}_${visit.id.take(8)}.pdf"
     }
 
-    fun createReport(context: Context, visit: VisitEntity, signature: Bitmap, outputDir: File): File {
+    /** Photos in the PDF appendix are scaled to this long side; full-size copies are uploaded separately. */
+    private const val PDF_PHOTO_MAX_SIDE = 480
+
+    fun createReport(
+        context: Context,
+        visit: VisitEntity,
+        signature: Bitmap,
+        outputDir: File,
+        technicianSignature: Bitmap? = null
+    ): File {
         val titlePaint = textPaint(20f, bold = true)
         val labelPaint = textPaint(12f, bold = true)
         val bodyPaint = textPaint(12f)
@@ -52,15 +64,60 @@ object PdfReportGenerator {
         field(R.string.label_client, visit.clientName)
         field(R.string.label_date, DateUtils.formatForDisplay(visit.visitDate))
         field(R.string.label_time, context.getString(R.string.time_range, visit.startTime, visit.endTime))
+        if (FormSettings.isEnabled(context, FormSettings.Section.VISIT_TYPE)) {
+            field(R.string.label_visit_type, context.getString(visit.type.labelRes()))
+        }
         field(R.string.label_client_email, visit.clientEmail)
         visit.technicianEmail?.let { field(R.string.label_technician, it) }
 
         writer.space(6f)
         field(R.string.label_work_description, visit.workDescription)
 
+        if (visit.parts.isNotEmpty()) {
+            writer.space(4f)
+            writer.paragraph(context.getString(R.string.label_parts), labelPaint, spacingAfter = 4f)
+            visit.parts.forEach { part ->
+                writer.paragraph(
+                    context.getString(
+                        R.string.pdf_part_line,
+                        part.description,
+                        Money.quantity(part.quantity),
+                        Money.format(part.unitPrice),
+                        Money.format(part.total)
+                    ),
+                    bodyPaint,
+                    spacingAfter = 2f
+                )
+            }
+            writer.paragraph(
+                context.getString(R.string.parts_total, Money.format(visit.parts.partsTotal())),
+                labelPaint,
+                spacingAfter = 10f
+            )
+        }
+
         writer.space(10f)
         writer.paragraph(context.getString(R.string.label_client_signature), labelPaint, spacingAfter = 6f)
         writer.bitmap(signature, SIGNATURE_MAX_WIDTH, SIGNATURE_MAX_HEIGHT)
+
+        if (technicianSignature != null) {
+            writer.space(10f)
+            writer.paragraph(context.getString(R.string.label_technician_signature), labelPaint, spacingAfter = 6f)
+            writer.bitmap(technicianSignature, SIGNATURE_MAX_WIDTH, SIGNATURE_MAX_HEIGHT)
+        }
+
+        val photoPaths = visit.photos.mapNotNull { it.localPath }.filter { File(it).exists() }
+        if (photoPaths.isNotEmpty()) {
+            writer.pageBreak()
+            writer.paragraph(context.getString(R.string.pdf_photos_title), titlePaint, spacingAfter = 12f)
+            photoPaths.forEachIndexed { index, path ->
+                val photo = PhotoCompressor.loadScaled(path, PDF_PHOTO_MAX_SIDE) ?: return@forEachIndexed
+                writer.paragraph(context.getString(R.string.pdf_photo_caption, index + 1), labelPaint, spacingAfter = 4f)
+                writer.bitmap(photo, CONTENT_WIDTH.toFloat(), (PAGE_HEIGHT - 2 * MARGIN - FOOTER_HEIGHT) / 2 - 30f)
+                writer.space(12f)
+                photo.recycle()
+            }
+        }
 
         outputDir.mkdirs()
         val file = File(outputDir, fileNameFor(visit))
@@ -109,6 +166,10 @@ object PdfReportGenerator {
 
         fun space(height: Float) {
             y += height
+        }
+
+        fun pageBreak() {
+            newPage()
         }
 
         /** Draws wrapped text; long text continues on as many pages as needed. */

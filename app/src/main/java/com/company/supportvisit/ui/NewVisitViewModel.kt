@@ -2,26 +2,36 @@ package com.company.supportvisit.ui
 
 import android.app.Application
 import android.graphics.Bitmap
+import android.net.Uri
 import android.util.Log
 import androidx.annotation.StringRes
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.company.supportvisit.R
 import com.company.supportvisit.app
+import com.company.supportvisit.data.ClientEntity
 import com.company.supportvisit.data.DraftEntity
+import com.company.supportvisit.data.PartItem
+import com.company.supportvisit.data.VisitType
 import com.company.supportvisit.graph.MicrosoftAuthManager
 import com.company.supportvisit.repository.NewVisitInput
 import com.company.supportvisit.sync.SyncScheduler
 import com.company.supportvisit.utils.DateUtils
+import com.company.supportvisit.utils.PhotoCompressor
 import com.company.supportvisit.utils.ValidationUtils
 import com.company.supportvisit.utils.VisitValidation
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
 
 /** The text fields of the New Visit form. */
 data class VisitForm(
@@ -34,13 +44,19 @@ data class VisitForm(
 
 data class NewVisitUiState(
     val visitDate: String = DateUtils.todayIso(),
+    val clientId: String? = null,
+    val visitType: VisitType = VisitType.OTHER,
+    val photoPaths: List<String> = emptyList(),
+    val parts: List<PartItem> = emptyList(),
+    val isAddingPhotos: Boolean = false,
     val isSubmitting: Boolean = false,
     val isSubmitted: Boolean = false,
     @StringRes val message: Int? = null
 )
 
 /**
- * Owns submitting and draft auto-save, so neither restarts nor is lost when the screen rotates.
+ * Owns the New Visit form state, draft auto-save and submitting, so none of it restarts or is
+ * lost when the screen rotates.
  */
 class NewVisitViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -50,15 +66,25 @@ class NewVisitViewModel(application: Application) : AndroidViewModel(application
     private val _state = MutableStateFlow(NewVisitUiState())
     val state: StateFlow<NewVisitUiState> = _state.asStateFlow()
 
+    /** Clients for the searchable picker. */
+    val clients: StateFlow<List<ClientEntity>> = app.clientRepository.observeClients()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     private var form = VisitForm()
 
-    /** Path of the auto-saved draft signature, if the technician has signed. */
+    /** Path of the auto-saved client signature, if the client has signed. */
     var signaturePath: String? = null
+        private set
+
+    /** Path of the auto-saved technician signature (optional). */
+    var technicianSignaturePath: String? = null
         private set
 
     private var saveJob: Job? = null
     private var draftDirty = false
     private var draftLoaded = false
+
+    private val locked get() = _state.value.isSubmitting || _state.value.isSubmitted
 
     /** Loads the saved draft once per screen; returns null if there is none. */
     suspend fun loadDraft(): DraftEntity? {
@@ -67,20 +93,101 @@ class NewVisitViewModel(application: Application) : AndroidViewModel(application
         val draft = repository.getDraft() ?: return null
         form = VisitForm(draft.clientName, draft.clientEmail, draft.startTime, draft.endTime, draft.workDescription)
         signaturePath = draft.signaturePath
-        if (draft.visitDate.isNotBlank()) _state.update { it.copy(visitDate = draft.visitDate) }
+        technicianSignaturePath = draft.technicianSignaturePath
+        _state.update {
+            it.copy(
+                visitDate = draft.visitDate.ifBlank { it.visitDate },
+                clientId = draft.clientId,
+                visitType = VisitType.fromKey(draft.visitType),
+                photoPaths = draft.photoPaths.filter { path -> File(path).exists() },
+                parts = draft.parts
+            )
+        }
         return draft
     }
 
     fun onFormChanged(newForm: VisitForm) {
         if (newForm == form) return
+        // Typing a different name than the picked client's means it's no longer that client.
+        val clientId = _state.value.clientId
+        if (clientId != null && newForm.clientName != form.clientName) {
+            val picked = clients.value.firstOrNull { it.id == clientId }
+            if (picked == null || picked.name != newForm.clientName) _state.update { it.copy(clientId = null) }
+        }
         form = newForm
         scheduleDraftSave()
     }
 
-    fun onSignatureChanged(signature: Bitmap?) {
-        if (_state.value.isSubmitting || _state.value.isSubmitted) return
+    fun selectClient(client: ClientEntity) {
+        _state.update { it.copy(clientId = client.id) }
+        form = form.copy(clientName = client.name, clientEmail = client.email.ifBlank { form.clientEmail })
+        scheduleDraftSave()
+    }
+
+    fun setVisitType(type: VisitType) {
+        if (type == _state.value.visitType) return
+        _state.update { it.copy(visitType = type) }
+        scheduleDraftSave()
+    }
+
+    fun addPhotos(uris: List<Uri>) {
+        if (locked || uris.isEmpty()) return
+        val room = MAX_PHOTOS - _state.value.photoPaths.size
+        if (room <= 0) {
+            _state.update { it.copy(message = R.string.photo_limit_reached) }
+            return
+        }
+        _state.update { it.copy(isAddingPhotos = true) }
         viewModelScope.launch {
-            signaturePath = repository.saveDraftSignature(signature)
+            val added = withContext(Dispatchers.IO) {
+                uris.take(room).mapNotNull { uri ->
+                    try {
+                        PhotoCompressor.compress(getApplication(), uri, repository.draftPhotoDir)?.absolutePath
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Could not read a photo", e)
+                        null
+                    }
+                }
+            }
+            _state.update {
+                it.copy(
+                    photoPaths = it.photoPaths + added,
+                    isAddingPhotos = false,
+                    message = when {
+                        added.size < uris.take(room).size -> R.string.photo_read_failed
+                        uris.size > room -> R.string.photo_limit_reached
+                        else -> null
+                    }
+                )
+            }
+            scheduleDraftSave()
+        }
+    }
+
+    fun removePhoto(path: String) {
+        if (locked) return
+        _state.update { it.copy(photoPaths = it.photoPaths - path) }
+        viewModelScope.launch(Dispatchers.IO) { File(path).delete() }
+        scheduleDraftSave()
+    }
+
+    fun addPart(part: PartItem) {
+        if (locked) return
+        _state.update { it.copy(parts = it.parts + part) }
+        scheduleDraftSave()
+    }
+
+    fun removePart(index: Int) {
+        if (locked) return
+        _state.update { it.copy(parts = it.parts.filterIndexed { i, _ -> i != index }) }
+        scheduleDraftSave()
+    }
+
+    fun onSignatureChanged(signature: Bitmap?, technician: Boolean = false) {
+        if (locked) return
+        viewModelScope.launch {
+            val path = repository.saveDraftSignature(signature, technician)
+            if (technician) technicianSignaturePath = path else signaturePath = path
             scheduleDraftSave()
         }
     }
@@ -90,13 +197,19 @@ class NewVisitViewModel(application: Application) : AndroidViewModel(application
         draftDirty = false
         form = VisitForm()
         signaturePath = null
-        _state.update { it.copy(visitDate = DateUtils.todayIso()) }
+        technicianSignaturePath = null
+        _state.update { NewVisitUiState() }
         app.appScope.launch { repository.clearDraft() }
     }
 
-    fun submit(currentForm: VisitForm, signature: Bitmap?) {
+    fun submit(
+        currentForm: VisitForm,
+        signature: Bitmap?,
+        technicianSignature: Bitmap?,
+        sections: ReportSections
+    ) {
         val current = _state.value
-        if (current.isSubmitting || current.isSubmitted) return
+        if (locked || current.isAddingPhotos) return
 
         val validation = ValidationUtils.validateVisit(
             client = currentForm.clientName,
@@ -118,14 +231,20 @@ class NewVisitViewModel(application: Application) : AndroidViewModel(application
             try {
                 repository.createVisit(
                     input = NewVisitInput(
+                        clientId = current.clientId,
                         clientName = currentForm.clientName,
                         clientEmail = currentForm.clientEmail,
                         visitDate = current.visitDate,
                         startTime = currentForm.startTime,
                         endTime = currentForm.endTime,
-                        workDescription = currentForm.workDescription
+                        visitType = if (sections.visitType) current.visitType else VisitType.OTHER,
+                        workDescription = currentForm.workDescription,
+                        // Switched-off sections are left out even if an older draft has data in them.
+                        parts = if (sections.parts) current.parts else emptyList(),
+                        photoPaths = if (sections.photos) current.photoPaths else emptyList()
                     ),
                     signature = signature,
+                    technicianSignature = technicianSignature,
                     technicianEmail = MicrosoftAuthManager.accountEmail.value
                 )
                 SyncScheduler.enqueue(getApplication())
@@ -142,7 +261,7 @@ class NewVisitViewModel(application: Application) : AndroidViewModel(application
     }
 
     private fun scheduleDraftSave() {
-        if (_state.value.isSubmitting || _state.value.isSubmitted) return
+        if (locked) return
         draftDirty = true
         saveJob?.cancel()
         saveJob = viewModelScope.launch {
@@ -157,15 +276,23 @@ class NewVisitViewModel(application: Application) : AndroidViewModel(application
         repository.saveDraft(currentDraft())
     }
 
-    private fun currentDraft() = DraftEntity(
-        clientName = form.clientName,
-        clientEmail = form.clientEmail,
-        visitDate = _state.value.visitDate,
-        startTime = form.startTime,
-        endTime = form.endTime,
-        workDescription = form.workDescription,
-        signaturePath = signaturePath
-    )
+    private fun currentDraft(): DraftEntity {
+        val s = _state.value
+        return DraftEntity(
+            clientName = form.clientName,
+            clientEmail = form.clientEmail,
+            visitDate = s.visitDate,
+            startTime = form.startTime,
+            endTime = form.endTime,
+            workDescription = form.workDescription,
+            signaturePath = signaturePath,
+            clientId = s.clientId,
+            visitType = s.visitType.key,
+            technicianSignaturePath = technicianSignaturePath,
+            photoPaths = s.photoPaths,
+            parts = s.parts
+        )
+    }
 
     override fun onCleared() {
         // The screen is closing: write any pending change now instead of losing it.
@@ -185,5 +312,6 @@ class NewVisitViewModel(application: Application) : AndroidViewModel(application
     companion object {
         private const val TAG = "NewVisitViewModel"
         private const val DRAFT_SAVE_DELAY_MS = 500L
+        const val MAX_PHOTOS = 10
     }
 }

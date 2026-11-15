@@ -47,6 +47,23 @@
 
         <TextView
             style="@style/DetailLabel"
+            android:text="@string/label_visit_type" />
+
+        <TextView
+            android:id="@+id/tvType"
+            style="@style/DetailValue" />
+
+        <TextView
+            android:id="@+id/lblTechnician"
+            style="@style/DetailLabel"
+            android:text="@string/label_technician" />
+
+        <TextView
+            android:id="@+id/tvTechnician"
+            style="@style/DetailValue" />
+
+        <TextView
+            style="@style/DetailLabel"
             android:text="@string/label_client_email" />
 
         <TextView
@@ -60,6 +77,26 @@
         <TextView
             android:id="@+id/tvDescription"
             style="@style/DetailValue" />
+
+        <TextView
+            android:id="@+id/lblParts"
+            style="@style/DetailLabel"
+            android:text="@string/label_parts" />
+
+        <TextView
+            android:id="@+id/tvParts"
+            style="@style/DetailValue" />
+
+        <TextView
+            android:id="@+id/lblPhotos"
+            style="@style/DetailLabel"
+            android:text="@string/photos_header" />
+
+        <LinearLayout
+            android:id="@+id/photosContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
 
         <TextView
             style="@style/DetailLabel"

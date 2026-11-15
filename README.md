@@ -109,6 +109,16 @@ To build the app:
    (Microsoft Entra ID > App registrations > your app > Authentication > Android platform).
 3. The build fails with a clear message if the file is missing.
 
+> **Upgrading an old clone:** the file used to be committed. When you pull the commit that
+> stopped tracking it, git deletes your local copy. Restore it with
+> `git show f750465:app/src/main/res/raw/msal_config.json > app/src/main/res/raw/msal_config.json`
+> (or recreate it from the example).
+
+## Team server
+
+Visits, clients, PDFs and photos are shared through the Support Visit server in [`server/`](server/).
+See [docs/SERVER_SETUP.md](docs/SERVER_SETUP.md) for the Azure, server and reverse-proxy setup.
+
 ## User Workflow
 
   ### Create Visit

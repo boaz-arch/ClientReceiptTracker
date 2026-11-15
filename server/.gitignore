@@ -1,0 +1,6 @@
+# Server data and secrets
+deploy/.env
+deploy/data/
+build/
+.gradle/
+.kotlin/

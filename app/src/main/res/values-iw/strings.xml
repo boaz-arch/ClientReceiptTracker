@@ -36,8 +36,6 @@
     <!-- Past visits -->
     <string name="past_visit_reports">דוחות ביקורים קודמים</string>
     <string name="search_hint">חיפוש לפי לקוח, תאריך או תיאור</string>
-    <string name="sync_now">סנכרון עכשיו</string>
-    <string name="sync_started">מסנכרן…</string>
     <string name="no_visits">אין עדיין ביקורים</string>
     <string name="visit_date_time">%1$s • %2$s - %3$s</string>
     <string name="retry">ניסיון חוזר</string>
@@ -108,5 +106,78 @@
     <!-- Email -->
     <string name="email_subject">דוח ביקור תמיכה - %1$s</string>
     <string name="email_body">לקוח: %1$s\nתאריך: %2$s\nשעות: %3$s – %4$s\n\nתיאור העבודה:\n%5$s\n\nהדוח החתום מצורף.\n%6$s</string>
+
+
+    <!-- Phase 2: clients, visit types, photos, parts, team server -->
+    <string name="client_picker_helper">בחר מרשימת הלקוחות או הקלד שם חדש</string>
+    <string name="label_visit_type">סוג ביקור</string>
+    <string name="visit_type_installation">התקנה</string>
+    <string name="visit_type_repair">תיקון</string>
+    <string name="visit_type_maintenance">תחזוקה</string>
+    <string name="visit_type_remote">תמיכה מרחוק</string>
+    <string name="visit_type_other">אחר</string>
+    <string name="photos_header">תמונות</string>
+    <string name="photos_header_count">תמונות (%1$d/%2$d)</string>
+    <string name="take_photo">מצלמה</string>
+    <string name="pick_photos">גלריה</string>
+    <string name="photo_thumbnail">תמונה מצורפת</string>
+    <string name="remove_photo">הסרת תמונה</string>
+    <string name="photo_limit_reached">ניתן לצרף עד 10 תמונות</string>
+    <string name="photo_read_failed">חלק מהתמונות לא נקראו</string>
+    <string name="no_camera_app">לא נמצאה אפליקציית מצלמה</string>
+    <string name="label_parts">חלקים בשימוש</string>
+    <string name="add_part">הוספת חלק</string>
+    <string name="remove_part">הסרת חלק</string>
+    <string name="hint_part_description">תיאור</string>
+    <string name="hint_part_quantity">כמות</string>
+    <string name="hint_part_unit_price">מחיר ליחידה</string>
+    <string name="error_part_invalid">יש להזין תיאור, כמות גדולה מ-0 ומחיר תקין</string>
+    <string name="part_detail">%1$s × %2$s = %3$s</string>
+    <string name="part_line">%1$s (%2$s): %3$s</string>
+    <string name="parts_total">סה״כ חלקים: %1$s</string>
+    <string name="add">הוספה</string>
+    <string name="cancel">ביטול</string>
+    <string name="save">שמירה</string>
+    <string name="label_technician_signature">חתימת הטכנאי</string>
+    <string name="label_technician_signature_optional">חתימת הטכנאי (לא חובה)</string>
+    <string name="clients_title">לקוחות</string>
+    <string name="search_clients_hint">חיפוש לקוחות</string>
+    <string name="add_client">הוספת לקוח</string>
+    <string name="edit_client">עריכת לקוח</string>
+    <string name="no_clients">אין עדיין לקוחות</string>
+    <string name="hint_contact_person">איש קשר</string>
+    <string name="hint_email">אימייל</string>
+    <string name="hint_phone">טלפון</string>
+    <string name="hint_address">כתובת</string>
+    <string name="hint_hourly_rate">תעריף לשעה</string>
+    <string name="hint_notes">הערות</string>
+    <string name="error_client_name_required">יש להזין את שם הלקוח</string>
+    <string name="error_invalid_rate">יש להזין תעריף שעתי תקין</string>
+    <string name="client_saved">הלקוח נשמר</string>
+    <string name="pull_to_refresh_hint">משכו למטה כדי לסנכרן עם הצוות</string>
+    <string name="server_not_configured">הגדירו את כתובת השרת בהגדרות כדי לשתף ביקורים עם הצוות</string>
+    <string name="refresh_failed_offline">אין חיבור לשרת. מוצגים הביקורים השמורים בטלפון.</string>
+    <string name="refresh_failed">הסנכרון נכשל. נסו שוב מאוחר יותר.</string>
+    <string name="photos_waiting_upload">תמונות: %1$d (ממתינות להעלאה)</string>
+    <string name="open_photo">פתיחת תמונה %1$d</string>
+    <string name="open_file_failed">לא ניתן לפתוח את הקובץ. בדקו את החיבור.</string>
+    <string name="admin_consent_missing">הארגון שלכם עדיין לא אישר את האפליקציה. פנו למנהל Microsoft 365.</string>
+    <string name="pdf_part_line">%1$s: %2$s × %3$s = %4$s</string>
+    <string name="pdf_photos_title">תמונות</string>
+    <string name="pdf_photo_caption">תמונה %1$d</string>
+    <string name="email_report_too_large">הדוח עם התמונות גדול מכדי לצרף אותו. בקשו עותק מהטכנאי.</string>
+
+    <string name="report_settings">דוחות</string>
+    <string name="setting_technician_signature">חתימת טכנאי</string>
+
+    <string name="customize_report">התאמת הדוח</string>
+    <string name="customize_report_description">בחרו מה דוח הביקור כולל. חלקים שתכבו יוסתרו במסך ביקור חדש ולא יופיעו ב-PDF.</string>
+    <string name="report_option_visit_type">סוג ביקור</string>
+    <string name="report_option_visit_type_hint">התקנה, תיקון, תחזוקה, תמיכה מרחוק או אחר.</string>
+    <string name="report_option_photos">תמונות</string>
+    <string name="report_option_photos_hint">עד 10 תמונות, מצורפות ל-PDF ומועלות יחד איתו.</string>
+    <string name="report_option_parts">חלקים בשימוש</string>
+    <string name="report_option_parts_hint">חלקים וחומרים עם כמות ומחיר, וסה״כ.</string>
+    <string name="report_option_technician_signature_hint">משטח חתימה נוסף לטכנאי, ליד חתימת הלקוח.</string>
 
 </resources>

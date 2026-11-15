@@ -7,9 +7,12 @@ import androidx.room.withTransaction
 import com.company.supportvisit.data.AppDatabase
 import com.company.supportvisit.data.DraftEntity
 import com.company.supportvisit.data.LegacyVisitsMigrator
+import com.company.supportvisit.data.PartItem
 import com.company.supportvisit.data.SyncError
 import com.company.supportvisit.data.SyncStatus
 import com.company.supportvisit.data.VisitEntity
+import com.company.supportvisit.data.VisitPhoto
+import com.company.supportvisit.data.VisitType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.sync.Mutex
@@ -20,17 +23,22 @@ import java.util.UUID
 
 /** The form values for a new visit, as entered by the technician. */
 data class NewVisitInput(
+    val clientId: String?,
     val clientName: String,
     val clientEmail: String,
     val visitDate: String,
     val startTime: String,
     val endTime: String,
-    val workDescription: String
+    val visitType: VisitType,
+    val workDescription: String,
+    val parts: List<PartItem>,
+    /** Compressed photos from the draft folder; moved into the visit's own folder on submit. */
+    val photoPaths: List<String>
 )
 
 /**
- * Single source of truth for visits, backed by Room. Replaces the old in-memory VisitCache,
- * the visits.json VisitStorage and GraphRepository.
+ * Single source of truth for visits, backed by Room (SQLite). The server is synced in the
+ * background by the sync worker; screens only ever read from here.
  */
 class VisitRepository(
     private val context: Context,
@@ -45,8 +53,15 @@ class VisitRepository(
     @Volatile
     private var migrationChecked = false
 
-    private val signatureDir get() = File(context.filesDir, "signatures").apply { mkdirs() }
-    private val draftSignatureFile get() = File(File(context.filesDir, "drafts").apply { mkdirs() }, "signature.png")
+    private val filesDir get() = context.filesDir
+    private val draftDir get() = File(filesDir, "drafts").apply { mkdirs() }
+    private val draftSignatureFile get() = File(draftDir, "signature.png")
+    private val draftTechSignatureFile get() = File(draftDir, "technician_signature.png")
+
+    /** Folder for a draft's compressed photos. */
+    val draftPhotoDir: File get() = File(draftDir, "photos").apply { mkdirs() }
+
+    private fun visitDir(id: String) = File(File(filesDir, "visits"), id).apply { mkdirs() }
 
     // region Visits
 
@@ -54,31 +69,57 @@ class VisitRepository(
 
     fun observeVisit(id: String): Flow<VisitEntity?> = visitDao.observeById(id)
 
+    fun observeUnsentCount(): Flow<Int> = visitDao.observeUnsentCount()
+
     suspend fun getVisit(id: String): VisitEntity? = visitDao.getById(id)
 
     suspend fun getAllVisits(): List<VisitEntity> = visitDao.getAll()
 
     suspend fun getUnsyncedVisits(): List<VisitEntity> = visitDao.getUnsynced()
 
+    suspend fun getRemoteDirtyVisits(): List<VisitEntity> = visitDao.getRemoteDirty()
+
     /**
      * Saves a new visit locally (status PENDING) and clears the draft in one transaction.
      * Uploading and emailing happen later in the sync worker.
      */
-    suspend fun createVisit(input: NewVisitInput, signature: Bitmap, technicianEmail: String?): VisitEntity {
+    suspend fun createVisit(
+        input: NewVisitInput,
+        signature: Bitmap,
+        technicianSignature: Bitmap?,
+        technicianEmail: String?
+    ): VisitEntity {
         val id = UUID.randomUUID().toString()
-        val signatureFile = File(signatureDir, "$id.png")
-        withContext(Dispatchers.IO) { savePng(signature, signatureFile) }
+        val dir = visitDir(id)
+
+        val (signatureFile, techSignatureFile, photos) = withContext(Dispatchers.IO) {
+            val sig = File(dir, "signature.png").also { savePng(signature, it) }
+            val techSig = technicianSignature?.let { bmp -> File(dir, "technician_signature.png").also { savePng(bmp, it) } }
+            val movedPhotos = input.photoPaths.mapIndexedNotNull { i, path ->
+                val source = File(path)
+                if (!source.exists()) return@mapIndexedNotNull null
+                val target = File(dir, "photo-${i + 1}.jpg")
+                if (!source.renameTo(target)) source.copyTo(target, overwrite = true).also { source.delete() }
+                VisitPhoto(localPath = target.absolutePath)
+            }
+            Triple(sig, techSig, movedPhotos)
+        }
 
         val visit = VisitEntity(
             id = id,
+            clientId = input.clientId,
             clientName = input.clientName.trim(),
             clientEmail = input.clientEmail.trim(),
             visitDate = input.visitDate,
             startTime = input.startTime,
             endTime = input.endTime,
+            visitType = input.visitType.key,
             workDescription = input.workDescription.trim(),
+            parts = input.parts,
+            photos = photos,
             technicianEmail = technicianEmail,
             signaturePath = signatureFile.absolutePath,
+            technicianSignaturePath = techSignatureFile?.absolutePath,
             syncStatus = SyncStatus.PENDING
         )
 
@@ -88,15 +129,16 @@ class VisitRepository(
                 draftDao.clear()
             }
         } catch (e: Exception) {
-            signatureFile.delete()
+            withContext(Dispatchers.IO) { dir.deleteRecursively() }
             throw e
         }
-        withContext(Dispatchers.IO) { draftSignatureFile.delete() }
+        withContext(Dispatchers.IO) { deleteDraftFiles() }
         return visit
     }
 
+    /** Saves a change made by this device; it will be uploaded to the server. */
     suspend fun update(visit: VisitEntity) {
-        visitDao.update(visit.copy(updatedAt = System.currentTimeMillis()))
+        visitDao.update(visit.copy(updatedAt = System.currentTimeMillis(), remoteDirty = visit.ownedLocally))
     }
 
     suspend fun markFailed(visit: VisitEntity, error: SyncError) {
@@ -109,21 +151,30 @@ class VisitRepository(
         )
     }
 
-    /** Called once a visit is uploaded and emailed: local PDF and signature are no longer needed. */
+    /** Called once a visit is uploaded and emailed: the local files are no longer needed. */
     suspend fun markEmailed(visit: VisitEntity) {
-        withContext(Dispatchers.IO) {
-            visit.pdfPath?.let { File(it).delete() }
-            visit.signaturePath?.let { File(it).delete() }
-        }
+        withContext(Dispatchers.IO) { File(File(filesDir, "visits"), visit.id).deleteRecursively() }
+        visit.pdfPath?.let { File(it).delete() }
         update(
             visit.copy(
                 syncStatus = SyncStatus.EMAILED,
                 pdfPath = null,
                 signaturePath = null,
+                technicianSignaturePath = null,
+                photos = visit.photos.map { it.copy(localPath = null) },
                 failedAtStatus = null,
                 syncError = null
             )
         )
+    }
+
+    suspend fun markRemoteSynced(visit: VisitEntity) {
+        visitDao.markRemoteSynced(visit.id, visit.updatedAt)
+    }
+
+    /** Applies visits pulled from the server. */
+    suspend fun mergeRemote(remote: List<VisitEntity>) {
+        remote.forEach { r -> RemoteMerge.visit(visitDao.getById(r.id), r)?.let { visitDao.upsert(it) } }
     }
 
     /** Puts a FAILED visit back in the queue, resuming from the step that failed. */
@@ -133,7 +184,7 @@ class VisitRepository(
     }
 
     suspend fun retryAllFailed() {
-        visitDao.getFailed().forEach { resetFailed(it) }
+        visitDao.getFailed().filter { it.ownedLocally }.forEach { resetFailed(it) }
     }
 
     private suspend fun resetFailed(visit: VisitEntity) {
@@ -152,21 +203,28 @@ class VisitRepository(
         if (draft.isEmpty()) clearDraft() else draftDao.save(draft.copy(updatedAt = System.currentTimeMillis()))
     }
 
-    /** Saves (or with null, deletes) the draft signature image and returns its path. */
-    suspend fun saveDraftSignature(signature: Bitmap?): String? = withContext(Dispatchers.IO) {
-        val file = draftSignatureFile
-        if (signature == null) {
-            file.delete()
-            null
-        } else {
-            savePng(signature, file)
-            file.absolutePath
+    /** Saves (or with null, deletes) a draft signature image and returns its path. */
+    suspend fun saveDraftSignature(signature: Bitmap?, technician: Boolean = false): String? =
+        withContext(Dispatchers.IO) {
+            val file = if (technician) draftTechSignatureFile else draftSignatureFile
+            if (signature == null) {
+                file.delete()
+                null
+            } else {
+                savePng(signature, file)
+                file.absolutePath
+            }
         }
-    }
 
     suspend fun clearDraft() {
         draftDao.clear()
-        withContext(Dispatchers.IO) { draftSignatureFile.delete() }
+        withContext(Dispatchers.IO) { deleteDraftFiles() }
+    }
+
+    private fun deleteDraftFiles() {
+        draftSignatureFile.delete()
+        draftTechSignatureFile.delete()
+        draftPhotoDir.deleteRecursively()
     }
 
     // endregion
@@ -180,12 +238,12 @@ class VisitRepository(
         migrationLock.withLock {
             if (migrationChecked) return
             withContext(Dispatchers.IO) {
-                val legacy = File(context.filesDir, LegacyVisitsMigrator.LEGACY_FILE_NAME)
+                val legacy = File(filesDir, LegacyVisitsMigrator.LEGACY_FILE_NAME)
                 if (legacy.exists()) {
                     try {
                         val visits = LegacyVisitsMigrator.parse(legacy.readText())
                         visitDao.insertAllIgnoringExisting(visits)
-                        legacy.renameTo(File(context.filesDir, "${legacy.name}.migrated"))
+                        legacy.renameTo(File(filesDir, "${legacy.name}.migrated"))
                     } catch (e: Exception) {
                         // Keep the file so nothing is lost; try again on next launch.
                         Log.w(TAG, "Legacy visits migration failed", e)

@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="20dp"
+        android:paddingTop="32dp"
+        android:paddingEnd="20dp"
+        android:paddingBottom="40dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/customize_report"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="12dp"
+            android:text="@string/customize_report_description"
+            android:textAlignment="viewStart"
+            android:textColor="@color/text_secondary" />
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/switchVisitType"
+            style="@style/ReportSwitch"
+            android:text="@string/report_option_visit_type" />
+
+        <TextView
+            style="@style/ReportSwitchHint"
+            android:text="@string/report_option_visit_type_hint" />
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/switchPhotos"
+            style="@style/ReportSwitch"
+            android:text="@string/report_option_photos" />
+
+        <TextView
+            style="@style/ReportSwitchHint"
+            android:text="@string/report_option_photos_hint" />
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/switchParts"
+            style="@style/ReportSwitch"
+            android:text="@string/report_option_parts" />
+
+        <TextView
+            style="@style/ReportSwitchHint"
+            android:text="@string/report_option_parts_hint" />
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/switchTechnicianSignature"
+            style="@style/ReportSwitch"
+            android:text="@string/setting_technician_signature" />
+
+        <TextView
+            style="@style/ReportSwitchHint"
+            android:text="@string/report_option_technician_signature_hint" />
+
+    </LinearLayout>
+
+</ScrollView>
