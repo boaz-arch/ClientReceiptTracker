@@ -1,5 +1,6 @@
 package com.company.supportvisit
 
+import com.company.supportvisit.ui.applySystemBarInsets
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
@@ -35,6 +36,7 @@ class PastVisitsActivity : AppCompatActivity() {
 
         binding = ActivityPastVisitsBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        binding.root.applySystemBarInsets()
 
         binding.recyclerVisits.layoutManager = LinearLayoutManager(this)
         binding.recyclerVisits.adapter = adapter

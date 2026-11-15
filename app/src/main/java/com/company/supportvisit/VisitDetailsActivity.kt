@@ -1,5 +1,6 @@
 package com.company.supportvisit
 
+import com.company.supportvisit.ui.applySystemBarInsets
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
@@ -32,6 +33,7 @@ class VisitDetailsActivity : AppCompatActivity() {
 
         binding = ActivityVisitDetailsBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        binding.root.applySystemBarInsets()
 
         val visitId = intent.getStringExtra(EXTRA_VISIT_ID)
         if (visitId == null) {
