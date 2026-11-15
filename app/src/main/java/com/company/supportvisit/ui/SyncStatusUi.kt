@@ -5,6 +5,7 @@ import androidx.annotation.StringRes
 import com.company.supportvisit.R
 import com.company.supportvisit.data.SyncError
 import com.company.supportvisit.data.SyncStatus
+import com.company.supportvisit.data.VisitType
 
 @get:StringRes
 val SyncStatus.labelRes: Int
@@ -31,3 +32,12 @@ val SyncError.messageRes: Int
         SyncError.SERVER -> R.string.sync_error_server
         SyncError.UNKNOWN -> R.string.sync_error_unknown
     }
+
+@StringRes
+fun VisitType.labelRes(): Int = when (this) {
+    VisitType.INSTALLATION -> R.string.visit_type_installation
+    VisitType.REPAIR -> R.string.visit_type_repair
+    VisitType.MAINTENANCE -> R.string.visit_type_maintenance
+    VisitType.REMOTE -> R.string.visit_type_remote
+    VisitType.OTHER -> R.string.visit_type_other
+}
