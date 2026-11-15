@@ -38,6 +38,9 @@ class MainActivity : AppCompatActivity() {
         binding.btnPastVisits.setOnClickListener {
             startActivity(PastVisitsActivity.intent(this))
         }
+        binding.btnMonthlyReports.setOnClickListener {
+            startActivity(Intent(this, MonthlyReportActivity::class.java))
+        }
         binding.btnClients.setOnClickListener {
             startActivity(Intent(this, ClientsActivity::class.java))
         }

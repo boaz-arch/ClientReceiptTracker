@@ -67,6 +67,15 @@
                 app:cornerRadius="15dp"/>
 
             <Button
+                android:id="@+id/btnMonthlyReports"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:layout_marginTop="12dp"
+                android:text="@string/monthly_report_title"
+                app:cornerRadius="15dp"/>
+
+            <Button
                 android:id="@+id/btnClients"
                 android:layout_width="match_parent"
                 android:layout_height="56dp"
