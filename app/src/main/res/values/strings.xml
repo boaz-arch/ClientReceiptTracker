@@ -283,4 +283,27 @@
 
     <string name="setting_monthly_billing">Billing on monthly reports and invoices</string>
     <string name="setting_monthly_billing_hint">Show amounts and VAT in monthly reports and create draft invoices from them.</string>
+
+    <!-- Phase 4: dashboard -->
+    <string name="range_this_month">This month</string>
+    <string name="range_last_month">Last month</string>
+    <string name="range_quarter">This quarter</string>
+    <string name="range_custom">Custom…</string>
+    <string name="range_custom_value">%1$s – %2$s</string>
+    <string name="filter_all">All</string>
+    <string name="unknown">Unknown</string>
+    <string name="kpi_visits">Visits</string>
+    <string name="kpi_hours">Hours</string>
+    <string name="kpi_amount">Billable (before VAT)</string>
+    <string name="kpi_unsent">Waiting to send</string>
+    <string name="chart_hours_per_client">Hours per client (top 10)</string>
+    <string name="chart_weekly">Last 12 weeks</string>
+    <string name="chart_weekly_legend">● Visits   ● Hours</string>
+    <string name="chart_hours_per_technician">Hours per technician</string>
+    <string name="chart_retainers">Support packages this month</string>
+    <string name="chart_visit_types">Visits by type</string>
+    <string name="chart_no_data">No visits in this period</string>
+    <string name="retainer_short">%1$s / %2$s h</string>
+    <string name="type_legend_line">%1$s: %2$d (%3$d%%)</string>
+
 </resources>

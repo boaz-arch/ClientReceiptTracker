@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Vico chart styles. Colours come from the palette, so light/dark mode follow automatically. -->
+<resources>
+
+    <style name="ChartColumns">
+        <item name="layers">column</item>
+        <item name="showStartAxis">true</item>
+        <item name="showBottomAxis">true</item>
+        <item name="columnLayerStyle">@style/ChartColumnLayer</item>
+        <item name="axisStyle">@style/ChartAxis</item>
+        <item name="bottomAxisStyle">@style/ChartAxisBottom</item>
+    </style>
+
+    <style name="ChartLines">
+        <item name="layers">line</item>
+        <item name="showStartAxis">true</item>
+        <item name="showBottomAxis">true</item>
+        <item name="lineLayerStyle">@style/ChartLineLayer</item>
+        <item name="axisStyle">@style/ChartAxis</item>
+        <item name="bottomAxisStyle">@style/ChartAxisBottom</item>
+    </style>
+
+    <style name="ChartColumnLayer">
+        <item name="column1Style">@style/ChartColumn</item>
+    </style>
+
+    <style name="ChartColumn">
+        <item name="android:color">@color/md_primary</item>
+        <item name="thickness">16dp</item>
+        <item name="shapeStyle">@style/ChartColumnShape</item>
+    </style>
+
+    <style name="ChartColumnShape">
+        <item name="cornerSize">4dp</item>
+    </style>
+
+    <style name="ChartLineLayer">
+        <item name="line1Style">@style/ChartLineVisits</item>
+        <item name="line2Style">@style/ChartLineHours</item>
+    </style>
+
+    <style name="ChartLineVisits">
+        <item name="android:color">@color/md_primary</item>
+        <item name="thickness">2.5dp</item>
+    </style>
+
+    <style name="ChartLineHours">
+        <item name="android:color">@color/md_secondary</item>
+        <item name="thickness">2.5dp</item>
+    </style>
+
+    <style name="ChartAxis">
+        <item name="labelStyle">@style/ChartAxisLabel</item>
+        <item name="lineStyle">@style/ChartAxisLine</item>
+        <item name="tickStyle">@style/ChartAxisLine</item>
+        <item name="guidelineStyle">@style/ChartGuideline</item>
+    </style>
+
+    <style name="ChartAxisBottom" parent="ChartAxis">
+        <item name="labelRotationDegrees">-35</item>
+    </style>
+
+    <style name="ChartAxisLabel">
+        <item name="android:color">@color/text_secondary</item>
+        <item name="android:textSize">10sp</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:ellipsize">end</item>
+    </style>
+
+    <style name="ChartAxisLine">
+        <item name="android:color">@color/md_outline_variant</item>
+        <item name="thickness">1dp</item>
+    </style>
+
+    <style name="ChartGuideline">
+        <item name="android:color">@color/md_outline_variant</item>
+        <item name="thickness">0.5dp</item>
+    </style>
+
+</resources>
