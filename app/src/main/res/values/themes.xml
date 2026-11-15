@@ -63,4 +63,23 @@
 
     </style>
 
+
+    <style name="DetailLabel">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">16dp</item>
+        <item name="android:textAlignment">viewStart</item>
+        <item name="android:textColor">@color/text_secondary</item>
+        <item name="android:textSize">13sp</item>
+    </style>
+
+    <style name="DetailValue">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">2dp</item>
+        <item name="android:textAlignment">viewStart</item>
+        <item name="android:textIsSelectable">true</item>
+        <item name="android:textSize">16sp</item>
+    </style>
+
 </resources>

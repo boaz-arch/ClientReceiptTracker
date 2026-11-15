@@ -20,7 +20,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
-            android:text="Dashboard"
+            android:text="@string/dashboard_title"
             android:textSize="18sp"
             android:textStyle="bold"/>
 
@@ -40,7 +40,7 @@
                 android:id="@+id/tvUser"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/signed_in"
+                android:text="@string/loading_user"
                 android:textSize="24sp"
                 android:textStyle="bold"/>
 
@@ -76,7 +76,7 @@
                 android:layout_marginTop="28dp"
                 android:clickable="true"
                 android:focusable="true"
-                android:text="Settings"
+                android:text="@string/settings"
                 android:textSize="16sp"/>
 
         </LinearLayout>
@@ -86,7 +86,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="32dp"
             android:gravity="center"
-            android:text="Livnelavan LTD"
+            android:text="@string/company_footer"
             android:textColor="@color/text_muted"
             android:textSize="12sp"
             android:paddingBottom="40dp"/>

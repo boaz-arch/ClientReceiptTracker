@@ -1,5 +1,6 @@
 package com.company.supportvisit
 
+import com.company.supportvisit.ui.applySystemBarInsets
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
@@ -27,6 +28,7 @@ class LoginActivity : AppCompatActivity() {
             )
 
         setContentView(binding.root)
+        binding.root.applySystemBarInsets()
 
         binding.btnLogin.setOnClickListener {
 
@@ -59,7 +61,7 @@ class LoginActivity : AppCompatActivity() {
 
                 Toast.makeText(
                     this,
-                    "Invalid Username or Password",
+                    getString(R.string.invalid_credentials),
                     Toast.LENGTH_LONG
                 ).show()
             }

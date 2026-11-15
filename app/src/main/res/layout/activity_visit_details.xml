@@ -17,43 +17,82 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Visit Details"
+            android:text="@string/visit_details_title"
             android:textSize="24sp"
-            android:textStyle="bold"/>
+            android:textStyle="bold" />
 
         <TextView
-            android:id="@+id/tvDetails"
+            style="@style/DetailLabel"
+            android:text="@string/label_client" />
+
+        <TextView
+            android:id="@+id/tvClient"
+            style="@style/DetailValue" />
+
+        <TextView
+            style="@style/DetailLabel"
+            android:text="@string/label_date" />
+
+        <TextView
+            android:id="@+id/tvDate"
+            style="@style/DetailValue" />
+
+        <TextView
+            style="@style/DetailLabel"
+            android:text="@string/label_time" />
+
+        <TextView
+            android:id="@+id/tvTime"
+            style="@style/DetailValue" />
+
+        <TextView
+            style="@style/DetailLabel"
+            android:text="@string/label_client_email" />
+
+        <TextView
+            android:id="@+id/tvEmail"
+            style="@style/DetailValue" />
+
+        <TextView
+            style="@style/DetailLabel"
+            android:text="@string/label_work_description" />
+
+        <TextView
+            android:id="@+id/tvDescription"
+            style="@style/DetailValue" />
+
+        <TextView
+            style="@style/DetailLabel"
+            android:text="@string/label_status" />
+
+        <TextView
+            android:id="@+id/tvStatus"
+            style="@style/DetailValue" />
+
+        <Button
+            android:id="@+id/btnRetry"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:padding="16dp"
-            android:textSize="16sp"/>
+            android:layout_marginTop="16dp"
+            android:text="@string/retry"
+            android:visibility="gone" />
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="Signature"
-            android:textSize="18sp"
-            android:textStyle="bold"/>
-
-        <TextView
-            android:id="@+id/tvSignatureUrl"
+        <Button
+            android:id="@+id/btnOpenPdf"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:autoLink="web"
-            android:textColor="#1976D2"/>
+            android:text="@string/open_pdf_report" />
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="32dp"
             android:gravity="center"
-            android:text="Livnelavan LTD"
+            android:text="@string/company_footer"
             android:textColor="@color/text_muted"
-            android:textSize="12sp"
-            android:paddingBottom="40dp"/>
+            android:textSize="12sp" />
 
     </LinearLayout>
 

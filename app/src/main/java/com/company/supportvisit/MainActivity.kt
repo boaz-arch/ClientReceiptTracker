@@ -1,113 +1,58 @@
 package com.company.supportvisit
 
-import android.annotation.SuppressLint
+import com.company.supportvisit.ui.applySystemBarInsets
 import android.content.Intent
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.company.supportvisit.databinding.ActivityMainBinding
 import com.company.supportvisit.graph.AuthManager
-import com.company.supportvisit.utils.AppConfig
 import com.company.supportvisit.graph.MicrosoftAuthManager
+import com.company.supportvisit.utils.AppConfig
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var binding:
-            ActivityMainBinding
+    private lateinit var binding: ActivityMainBinding
 
-
-    @SuppressLint("SetTextI18n")
-    private fun refreshUserDisplay() {
-
-        MicrosoftAuthManager.refreshAccount(this) {
-
-            runOnUiThread {
-
-                if (MicrosoftAuthManager.isConnected()) {
-
-                    val name =
-                        MicrosoftAuthManager
-                            .getEmail()
-                            .substringBefore("@")
-
-                    binding.tvUser.text =
-                        "Signed in as $name"
-
-                } else {
-
-                    binding.tvUser.text =
-                        "Signed in as Guest"
-                }
-            }
-        }
-    }
-
-    @SuppressLint("SetTextI18n")
-    override fun onCreate(
-        savedInstanceState: Bundle?
-    ) {
-
+    override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        binding =
-            ActivityMainBinding.inflate(
-                layoutInflater
-            )
-
-        setContentView(binding.root)
-
-        if (
-            AppConfig.LOGIN_ENABLED &&
-            !AuthManager.isLoggedIn()
-        ) {
-
-            startActivity(
-                Intent(
-                    this,
-                    LoginActivity::class.java
-                )
-            )
-
+        if (AppConfig.LOGIN_ENABLED && !AuthManager.isLoggedIn()) {
+            startActivity(Intent(this, LoginActivity::class.java))
             finish()
-
             return
         }
 
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+        binding.root.applySystemBarInsets()
+
+        binding.tvUser.setText(R.string.loading_user)
 
         binding.btnNewVisit.setOnClickListener {
-
-            startActivity(
-                Intent(
-                    this,
-                    NewVisitActivity::class.java
-                )
-            )
+            startActivity(Intent(this, NewVisitActivity::class.java))
         }
-
         binding.btnPastVisits.setOnClickListener {
-
-            startActivity(
-                Intent(
-                    this,
-                    PastVisitsActivity::class.java
-                )
-            )
+            startActivity(PastVisitsActivity.intent(this))
         }
-
         binding.btnSettings.setOnClickListener {
-
-            startActivity(
-                Intent(
-                    this,
-                    SettingsActivity::class.java
-                )
-            )
+            startActivity(Intent(this, SettingsActivity::class.java))
         }
-    }
 
-    override fun onResume() {
-
-        super.onResume()
-
-        refreshUserDisplay()
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                MicrosoftAuthManager.refreshAccount()
+                MicrosoftAuthManager.accountEmail.collect { email ->
+                    binding.tvUser.text = if (email.isNullOrBlank()) {
+                        getString(R.string.signed_in_guest)
+                    } else {
+                        getString(R.string.signed_in_as, email.substringBefore("@"))
+                    }
+                }
+            }
+        }
     }
 }

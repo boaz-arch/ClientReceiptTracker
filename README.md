@@ -99,6 +99,16 @@ The application enables users to:
   ```
   
 
+## Microsoft sign-in setup
+
+`app/src/main/res/raw/msal_config.json` holds your Azure app registration IDs, so it is **not** committed.
+To build the app:
+
+1. Copy `msal_config.example.json` (repo root) to `app/src/main/res/raw/msal_config.json`.
+2. Fill in `client_id`, `tenant_id` and `redirect_uri` from your app registration in the Azure portal
+   (Microsoft Entra ID > App registrations > your app > Authentication > Android platform).
+3. The build fails with a clear message if the file is missing.
+
 ## User Workflow
 
   ### Create Visit

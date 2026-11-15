@@ -1,302 +1,181 @@
 package com.company.supportvisit
 
-import android.annotation.SuppressLint
+import com.company.supportvisit.ui.applySystemBarInsets
 import android.app.TimePickerDialog
+import android.graphics.BitmapFactory
 import android.os.Bundle
+import android.view.View
 import android.widget.Toast
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.widget.doAfterTextChanged
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.company.supportvisit.databinding.ActivityNewVisitBinding
-import com.company.supportvisit.graph.MailService
-import com.company.supportvisit.graph.OneDriveService
-import com.company.supportvisit.model.VisitRequest
-import com.company.supportvisit.repository.GraphRepository
-import com.company.supportvisit.repository.VisitCache
-import com.company.supportvisit.repository.VisitStorage
+import com.company.supportvisit.ui.NewVisitViewModel
+import com.company.supportvisit.ui.VisitForm
 import com.company.supportvisit.utils.DateUtils
-import com.company.supportvisit.utils.PdfReportGenerator
-import com.company.supportvisit.utils.ResultState
-import com.company.supportvisit.utils.ValidationUtils
+import com.github.gcacace.signaturepad.views.SignaturePad
+import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.time.LocalTime
-import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 class NewVisitActivity : AppCompatActivity() {
 
-    private lateinit var binding:
-            ActivityNewVisitBinding
+    private lateinit var binding: ActivityNewVisitBinding
 
-    override fun onCreate(
-        savedInstanceState: Bundle?
-    ) {
+    private val viewModel: NewVisitViewModel by viewModels()
 
+    /** True while we fill the form programmatically, so it isn't treated as user edits. */
+    private var restoring = false
+
+    override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        binding =
-            ActivityNewVisitBinding.inflate(
-                layoutInflater
-            )
-
+        binding = ActivityNewVisitBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
-        binding.tvDate.text =
-            DateUtils.currentDate()
+        binding.root.applySystemBarInsets()
 
         setupTimePickers()
+        setupAutoSave()
 
-        binding.btnClearSignature
-            .setOnClickListener {
+        binding.btnClearSignature.setOnClickListener { binding.signaturePad.clear() }
+        binding.btnSubmit.setOnClickListener {
+            viewModel.submit(currentForm(), signatureOrNull())
+        }
 
-                binding.signaturePad.clear()
+        restoreDraft(isFreshStart = savedInstanceState == null)
+
+        observeState()
+    }
+
+    private fun observeState() {
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.state.collect { state ->
+                    binding.tvDate.text = DateUtils.formatForDisplay(state.visitDate)
+
+                    val busy = state.isSubmitting || state.isSubmitted
+                    binding.btnSubmit.isEnabled = !busy
+                    binding.progressBar.visibility = if (state.isSubmitting) View.VISIBLE else View.GONE
+
+                    state.message?.let {
+                        Toast.makeText(this@NewVisitActivity, it, Toast.LENGTH_LONG).show()
+                        viewModel.messageShown()
+                    }
+                    if (state.isSubmitted) finish()
+                }
+            }
+        }
+    }
+
+    /**
+     * Text fields restore themselves after rotation or process death. The signature pad does not
+     * (its saved state is too large for Android, so it's disabled in the layout), so the signature
+     * always comes back from the auto-saved draft file.
+     */
+    private fun restoreDraft(isFreshStart: Boolean) {
+        lifecycleScope.launch {
+            val draft = viewModel.loadDraft()
+            if (isFreshStart && draft != null) {
+                restoring = true
+                binding.etClientName.setText(draft.clientName)
+                binding.etClientEmail.setText(draft.clientEmail)
+                binding.etStartTime.setText(draft.startTime)
+                binding.etEndTime.setText(draft.endTime)
+                binding.etDescription.setText(draft.workDescription)
+                restoring = false
+
+                Snackbar.make(binding.root, R.string.draft_restored, DRAFT_SNACKBAR_MS)
+                    .setAction(R.string.discard_draft) { discardDraft() }
+                    .show()
+            }
+            if (binding.signaturePad.isEmpty) loadSignature(viewModel.signaturePath)
+        }
+    }
+
+    private fun discardDraft() {
+        viewModel.discardDraft()
+        restoring = true
+        listOf(
+            binding.etClientName, binding.etClientEmail, binding.etStartTime,
+            binding.etEndTime, binding.etDescription
+        ).forEach { it.text = null }
+        binding.signaturePad.clear()
+        restoring = false
+    }
+
+    private fun loadSignature(path: String?) {
+        if (path == null) return
+        lifecycleScope.launch {
+            val bitmap = withContext(Dispatchers.IO) { BitmapFactory.decodeFile(path) } ?: return@launch
+            restoring = true
+            binding.signaturePad.signatureBitmap = bitmap
+            restoring = false
+        }
+    }
+
+    private fun setupAutoSave() {
+        listOf(
+            binding.etClientName, binding.etClientEmail, binding.etStartTime,
+            binding.etEndTime, binding.etDescription
+        ).forEach { field ->
+            field.doAfterTextChanged { if (!restoring) viewModel.onFormChanged(currentForm()) }
+        }
+
+        binding.signaturePad.setOnSignedListener(object : SignaturePad.OnSignedListener {
+            override fun onStartSigning() = Unit
+
+            override fun onSigned() {
+                if (!restoring) viewModel.onSignatureChanged(binding.signaturePad.signatureBitmap)
             }
 
-        binding.btnSubmit.setOnClickListener {
-
-            submitVisit()
-        }
+            override fun onClear() {
+                if (!restoring) viewModel.onSignatureChanged(null)
+            }
+        })
     }
 
     private fun setupTimePickers() {
-
         binding.etStartTime.setOnClickListener {
-
-            showTimePicker {
-
-                binding.etStartTime.setText(it)
-            }
+            showTimePicker(binding.etStartTime.text.toString()) { binding.etStartTime.setText(it) }
         }
-
         binding.etEndTime.setOnClickListener {
-
-            showTimePicker {
-
-                binding.etEndTime.setText(it)
-            }
+            showTimePicker(binding.etEndTime.text.toString()) { binding.etEndTime.setText(it) }
         }
     }
 
-    @SuppressLint("DefaultLocale")
-    private fun showTimePicker(
-        onTimeSelected: (String) -> Unit
-    ) {
-
-        val dialog =
-            TimePickerDialog(
-                this,
-                { _, hour, minute ->
-
-                    val time =
-                        String.format(
-                            "%02d:%02d",
-                            hour,
-                            minute
-                        )
-
-                    onTimeSelected(time)
-
-                },
-                9,
-                0,
-                true
-            )
-
-        dialog.show()
+    private fun showTimePicker(current: String, onTimeSelected: (String) -> Unit) {
+        val parts = current.split(":").mapNotNull { it.toIntOrNull() }
+        val hour = parts.getOrNull(0) ?: DEFAULT_HOUR
+        val minute = parts.getOrNull(1) ?: 0
+        TimePickerDialog(
+            this,
+            { _, h, m -> onTimeSelected(String.format(Locale.US, "%02d:%02d", h, m)) },
+            hour,
+            minute,
+            true
+        ).show()
     }
 
-    private fun submitVisit() {
+    private fun currentForm() = VisitForm(
+        clientName = binding.etClientName.text.toString(),
+        clientEmail = binding.etClientEmail.text.toString(),
+        startTime = binding.etStartTime.text.toString(),
+        endTime = binding.etEndTime.text.toString(),
+        workDescription = binding.etDescription.text.toString()
+    )
 
-        val startTime =
-            binding.etStartTime.text
-                .toString()
+    private fun signatureOrNull() =
+        if (binding.signaturePad.isEmpty) null else binding.signaturePad.signatureBitmap
 
-        val endTime =
-            binding.etEndTime.text
-                .toString()
+    companion object {
+        private const val DEFAULT_HOUR = 9
 
-        if (
-            !ValidationUtils.isValidVisit(
-                binding.etClientName.text.toString(),
-                binding.etClientEmail.text.toString(),
-                startTime,
-                endTime
-            )
-        ) {
-
-            Toast.makeText(
-                this,
-                "Please complete all fields",
-                Toast.LENGTH_LONG
-            ).show()
-
-            return
-        }
-
-        if (
-            !isValidTimeRange(
-                startTime,
-                endTime
-            )
-        ) {
-
-            Toast.makeText(
-                this,
-                "End time must be after start time",
-                Toast.LENGTH_LONG
-            ).show()
-
-            return
-        }
-
-        if (
-            binding.signaturePad.isEmpty
-        ) {
-
-            Toast.makeText(
-                this,
-                "Please provide a signature",
-                Toast.LENGTH_LONG
-            ).show()
-
-            return
-        }
-
-        val bitmap =
-            binding.signaturePad.signatureBitmap
-
-        val visit =
-            VisitRequest(
-
-                clientName =
-                    binding.etClientName.text.toString(),
-
-                visitDate =
-                    binding.tvDate.text.toString(),
-
-                startTime =
-                    startTime,
-
-                endTime =
-                    endTime,
-
-                workDescription =
-                    binding.etDescription.text.toString(),
-
-                clientEmail =
-                    binding.etClientEmail.text.toString()
-            )
-
-        val pdfFile =
-            PdfReportGenerator.createReport(
-                this,
-                visit,
-                bitmap
-            )
-
-        lifecycleScope.launch {
-
-            val result =
-                withContext(
-                    Dispatchers.IO
-                ) {
-
-                    try {
-
-                        val pdfLink =
-                            OneDriveService.uploadFile(
-                                pdfFile
-                            )
-
-                        val saveResult =
-                            GraphRepository.submitVisit(
-                                visit,
-                                pdfFile,
-                                pdfLink
-                            )
-
-                        if (
-                            saveResult is ResultState.Success
-                        ) {
-
-                            MailService.sendVisitMail(
-                                visit,
-                                pdfFile
-                            )
-                        }
-
-                        saveResult
-
-                    } catch (e: Exception) {
-
-                        ResultState.Error(
-                            e.message
-                                ?: "Unknown Error"
-                        )
-                    }
-                }
-
-            when (result) {
-
-                is ResultState.Success -> {
-
-                    VisitStorage.saveVisits(
-                        this@NewVisitActivity,
-                        VisitCache.visits
-                    )
-
-                    Toast.makeText(
-                        this@NewVisitActivity,
-                        "Visit Submitted Successfully",
-                        Toast.LENGTH_LONG
-                    ).show()
-
-                    finish()
-                }
-
-                is ResultState.Error -> {
-
-                    Toast.makeText(
-                        this@NewVisitActivity,
-                        result.message,
-                        Toast.LENGTH_LONG
-                    ).show()
-                }
-            }
-        }
-    }
-
-    private fun isValidTimeRange(
-        start: String,
-        end: String
-    ): Boolean {
-
-        return try {
-
-            val formatter =
-                DateTimeFormatter.ofPattern(
-                    "HH:mm"
-                )
-
-            val startTime =
-                LocalTime.parse(
-                    start,
-                    formatter
-                )
-
-            val endTime =
-                LocalTime.parse(
-                    end,
-                    formatter
-                )
-
-            endTime.isAfter(
-                startTime
-            )
-
-        } catch (e: Exception) {
-
-            false
-        }
+        /** Long enough for a technician to notice the Discard option. */
+        private const val DRAFT_SNACKBAR_MS = 10_000
     }
 }

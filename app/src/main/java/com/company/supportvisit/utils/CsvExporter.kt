@@ -1,64 +1,35 @@
 package com.company.supportvisit.utils
 
-import android.content.Context
-import com.company.supportvisit.model.Visit
+import com.company.supportvisit.data.VisitEntity
 import java.io.File
 
 object CsvExporter {
 
-    fun exportVisits(
-        context: Context,
-        visits: List<Visit>
-    ): File {
+    private val UTF8_BOM = 0xFEFF.toChar().toString()
 
-        val file =
-            File(
-                context.filesDir,
-                "SupportVisits.csv"
-            )
+    private val HEADER = listOf(
+        "Client", "Date", "Start Time", "End Time", "Email", "Description", "PDF Link", "Sync Status"
+    )
 
-        val csv =
-            StringBuilder()
+    /** RFC 4180: wrap every field in quotes and double any embedded quotes. */
+    fun escape(value: String?): String = "\"" + (value ?: "").replace("\"", "\"\"") + "\""
 
-        csv.append(
-            "Client,Date,Start Time,End Time,Email,Description,PDF Link\n"
-        )
-
-        visits.forEach { visit ->
-
-            csv.append(
-                "\"${visit.clientName}\","
-            )
-
-            csv.append(
-                "\"${visit.visitDate}\","
-            )
-
-            csv.append(
-                "\"${visit.startTime}\","
-            )
-
-            csv.append(
-                "\"${visit.endTime}\","
-            )
-
-            csv.append(
-                "\"${visit.clientEmail}\","
-            )
-
-            csv.append(
-                "\"${visit.workDescription}\","
-            )
-
-            csv.append(
-                "\"${visit.pdfLink}\"\n"
-            )
+    fun toCsv(visits: List<VisitEntity>): String = buildString {
+        append(HEADER.joinToString(",") { escape(it) }).append("\r\n")
+        visits.forEach { v ->
+            append(
+                listOf(
+                    v.clientName, v.visitDate, v.startTime, v.endTime, v.clientEmail,
+                    v.workDescription, v.pdfLink, v.syncStatus.name
+                ).joinToString(",") { escape(it) }
+            ).append("\r\n")
         }
+    }
 
-        file.writeText(
-            csv.toString()
-        )
-
+    fun writeTo(file: File, visits: List<VisitEntity>): File {
+        file.parentFile?.mkdirs()
+        // UTF-8 BOM so Excel opens Hebrew text correctly.
+        file.writeText(UTF8_BOM + toCsv(visits), Charsets.UTF_8)
         return file
     }
 }

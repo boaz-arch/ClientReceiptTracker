@@ -1,5 +1,6 @@
 package com.company.supportvisit
 
+import com.company.supportvisit.ui.applySystemBarInsets
 import android.os.Bundle
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -23,6 +24,7 @@ class ChangeLoginActivity : AppCompatActivity() {
             )
 
         setContentView(binding.root)
+        binding.root.applySystemBarInsets()
 
         binding.btnSave.setOnClickListener {
 
@@ -41,7 +43,7 @@ class ChangeLoginActivity : AppCompatActivity() {
 
                 Toast.makeText(
                     this,
-                    "Complete all fields",
+                    getString(R.string.complete_all_fields),
                     Toast.LENGTH_LONG
                 ).show()
 
@@ -56,7 +58,7 @@ class ChangeLoginActivity : AppCompatActivity() {
 
             Toast.makeText(
                 this,
-                "Login Updated",
+                getString(R.string.login_updated),
                 Toast.LENGTH_LONG
             ).show()
 

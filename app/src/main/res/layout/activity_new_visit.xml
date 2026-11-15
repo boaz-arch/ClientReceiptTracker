@@ -20,7 +20,7 @@
             android:id="@+id/tvFormTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="New Support Visit Report"
+            android:text="@string/new_visit_title"
             android:textSize="22sp"
             android:textStyle="bold"
             android:textColor="@color/primary_dark"
@@ -29,7 +29,7 @@
         <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Client Name">
+            android:hint="@string/hint_client_name">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/etClientName"
@@ -42,7 +42,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Visit Date"
+            android:text="@string/label_visit_date"
             android:textColor="@color/text_secondary"
             android:layout_marginTop="16dp"/>
 
@@ -67,7 +67,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:layout_marginEnd="8dp"
-                android:hint="Start Time">
+                android:hint="@string/hint_start_time">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/etStartTime"
@@ -83,7 +83,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:layout_marginStart="8dp"
-                android:hint="End Time">
+                android:hint="@string/hint_end_time">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/etEndTime"
@@ -100,7 +100,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:hint="Work Description">
+            android:hint="@string/hint_work_description">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/etDescription"
@@ -116,7 +116,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:hint="Client Email Address">
+            android:hint="@string/hint_client_email">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/etClientEmail"
@@ -129,7 +129,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Authorization Signature"
+            android:text="@string/label_authorization_signature"
             android:textColor="@color/text_secondary"
             android:layout_marginTop="20dp"/>
 
@@ -141,14 +141,15 @@
 
             <FrameLayout
                 android:layout_width="match_parent"
-                android:layout_height="150dp"
+                android:layout_height="200dp"
                 android:layout_marginTop="6dp"
                 android:background="@color/signature_bg">
 
                 <com.github.gcacace.signaturepad.views.SignaturePad
                     android:id="@+id/signaturePad"
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent"/>
+                    android:layout_height="match_parent"
+                    android:saveEnabled="false"/>
 
             </FrameLayout>
 
@@ -158,7 +159,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="end"
-                android:text="Clear Signature"/>
+                android:text="@string/clear_signature"/>
 
         </LinearLayout>
 
@@ -168,7 +169,7 @@
             android:layout_height="52dp"
             android:layout_marginTop="16dp"
             android:backgroundTint="@color/primary"
-            android:text="Submit and Send"
+            android:text="@string/submit_and_send"
             android:textColor="@color/white"
             android:textSize="16sp"/>
 
@@ -185,7 +186,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="32dp"
             android:gravity="center"
-            android:text="Livnelavan LTD"
+            android:text="@string/company_footer"
             android:textColor="@color/text_muted"
             android:textSize="12sp"
             android:paddingBottom="40dp"/>

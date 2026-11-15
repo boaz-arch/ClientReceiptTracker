@@ -15,4 +15,8 @@
     <color name="text_body">#424242</color>
 
     <color name="requirement_met">#2E7D32</color>
+
+    <color name="status_pending">#EF6C00</color>
+    <color name="status_done">#388E3C</color>
+    <color name="status_failed">#E53935</color>
 </resources>

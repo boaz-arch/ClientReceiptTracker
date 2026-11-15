@@ -1,72 +1,35 @@
 package com.company.supportvisit.graph
 
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.RequestBody.Companion.asRequestBody
 import org.json.JSONObject
 import java.io.File
 
 object OneDriveService {
 
-    fun uploadFile(
-        file: File
-    ): String {
+    private const val FOLDER = "SupportVisits/PDFReports"
 
-        val token =
-            MicrosoftAuthManager.getToken()
+    /**
+     * Uploads (or overwrites) a file in the signed-in user's OneDrive and returns its web URL.
+     * The file name contains the visit id, so retrying an upload is idempotent.
+     * A simple upload supports files up to 4 MB, plenty for a visit report.
+     */
+    fun uploadFile(token: String, file: File): String {
+        val url = GraphHttp.BASE_URL.toHttpUrl().newBuilder()
+            .addPathSegments("me/drive")
+            .addPathSegment("root:")
+            .addPathSegments(FOLDER)
+            .addPathSegment(file.name + ":")
+            .addPathSegment("content")
+            .build()
 
-        if (token.isBlank()) {
+        val request = Request.Builder()
+            .url(url)
+            .put(file.asRequestBody("application/pdf".toMediaType()))
+            .build()
 
-            throw Exception(
-                "Microsoft account not connected"
-            )
-        }
-
-        val body =
-            file.readBytes().toRequestBody(
-                "application/octet-stream"
-                    .toMediaType()
-            )
-
-        val request =
-            Request.Builder()
-
-                .url(
-                    "https://graph.microsoft.com/v1.0/me/drive/root:/SupportVisits/PDFReports/${file.name}:/content"
-                )
-
-                .put(body)
-
-                .addHeader(
-                    "Authorization",
-                    "Bearer $token"
-                )
-
-                .build()
-
-        val response =
-            GraphClient.client
-                .newCall(request)
-                .execute()
-
-        val responseBody =
-            response.body?.string()
-                ?: ""
-
-        if (!response.isSuccessful) {
-
-            throw Exception(
-                responseBody
-            )
-        }
-
-        val json =
-            JSONObject(
-                responseBody
-            )
-
-        return json.optString(
-            "webUrl"
-        )
+        return JSONObject(GraphHttp.execute(request, token)).optString("webUrl")
     }
 }

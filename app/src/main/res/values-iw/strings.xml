@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">ניהול ביקורי תמיכה</string>
+
+    <!-- Home -->
+    <string name="dashboard_title">לוח בקרה</string>
+    <string name="loading_user">טוען משתמש…</string>
+    <string name="signed_in_as">מחובר בתור %1$s</string>
+    <string name="signed_in_guest">מחובר כאורח</string>
+    <string name="what_would_you_like_to_do">מה תרצה לעשות?</string>
+    <string name="add_new_visit_report">הוספת דוח ביקור חדש</string>
+    <string name="view_my_past_visits">הצגת הביקורים שלי</string>
+    <string name="settings">הגדרות</string>
+
+    <!-- New visit -->
+    <string name="new_visit_title">דוח ביקור תמיכה חדש</string>
+    <string name="hint_client_name">שם הלקוח</string>
+    <string name="label_visit_date">תאריך הביקור</string>
+    <string name="hint_start_time">שעת התחלה</string>
+    <string name="hint_end_time">שעת סיום</string>
+    <string name="hint_work_description">תיאור העבודה</string>
+    <string name="hint_client_email">כתובת האימייל של הלקוח</string>
+    <string name="label_authorization_signature">חתימת אישור</string>
+    <string name="clear_signature">ניקוי חתימה</string>
+    <string name="submit_and_send">שמירה ושליחה</string>
+    <string name="error_missing_fields">יש למלא את כל השדות</string>
+    <string name="error_invalid_email">יש להזין כתובת אימייל תקינה</string>
+    <string name="error_end_before_start">שעת הסיום חייבת להיות אחרי שעת ההתחלה</string>
+    <string name="error_missing_signature">נדרשת חתימה</string>
+    <string name="error_save_failed">לא ניתן לשמור את הביקור. נסה שוב.</string>
+    <string name="visit_saved">הביקור נשמר. הדוח יישלח ברגע שתהיה מחובר לאינטרנט.</string>
+    <string name="draft_restored">ביקור שלא הושלם שוחזר</string>
+    <string name="discard_draft">מחיקה</string>
+
+    <!-- Past visits -->
+    <string name="past_visit_reports">דוחות ביקורים קודמים</string>
+    <string name="search_hint">חיפוש לפי לקוח, תאריך או תיאור</string>
+    <string name="sync_now">סנכרון עכשיו</string>
+    <string name="sync_started">מסנכרן…</string>
+    <string name="no_visits">אין עדיין ביקורים</string>
+    <string name="visit_date_time">%1$s • %2$s - %3$s</string>
+    <string name="retry">ניסיון חוזר</string>
+    <string name="retry_queued">שולח שוב…</string>
+
+    <!-- Sync status -->
+    <string name="status_pending">ממתין לשליחה</string>
+    <string name="status_pdf_uploaded">הועלה, שולח אימייל</string>
+    <string name="status_emailed">נשלח</string>
+    <string name="status_failed">נכשל</string>
+    <string name="status_with_error">%1$s: %2$s</string>
+    <string name="sync_error_sign_in">יש להתחבר ל-Microsoft כדי לשלוח את הביקור</string>
+    <string name="sync_error_network">אין חיבור ל-Microsoft 365</string>
+    <string name="sync_error_server">Microsoft 365 דחה את הבקשה</string>
+    <string name="sync_error_unknown">לא ניתן היה להכין את הדוח</string>
+
+    <!-- Visit details -->
+    <string name="visit_details_title">פרטי הביקור</string>
+    <string name="label_client">לקוח</string>
+    <string name="label_date">תאריך</string>
+    <string name="label_time">שעות</string>
+    <string name="time_range">%1$s – %2$s</string>
+    <string name="label_client_email">אימייל הלקוח</string>
+    <string name="label_technician">טכנאי</string>
+    <string name="label_work_description">תיאור העבודה</string>
+    <string name="label_status">סטטוס</string>
+    <string name="open_pdf_report">פתיחת דוח PDF</string>
+    <string name="pdf_not_available">קובץ ה-PDF עדיין לא הועלה</string>
+    <string name="no_app_to_open">לא נמצאה אפליקציה לפתיחת הקישור</string>
+    <string name="visit_not_found">הביקור לא נמצא</string>
+
+    <!-- Settings -->
+    <string name="mode_settings">מצב תצוגה</string>
+    <string name="light_mode">מצב בהיר</string>
+    <string name="dark_mode">מצב כהה</string>
+    <string name="system_mode">לפי המערכת</string>
+    <string name="export_data">ייצוא נתונים</string>
+    <string name="export_csv">ייצוא CSV</string>
+    <string name="share_csv">שיתוף CSV</string>
+    <string name="export_failed">לא ניתן לייצא את הביקורים</string>
+    <string name="login_settings">הגדרות התחברות</string>
+    <string name="connect_microsoft_account">חיבור חשבון Microsoft</string>
+    <string name="disconnect_microsoft_account">ניתוק חשבון Microsoft</string>
+    <string name="connected_as">מחובר: %1$s</string>
+    <string name="microsoft_disconnected">חשבון Microsoft נותק</string>
+    <string name="sign_in_cancelled">ההתחברות בוטלה</string>
+    <string name="sign_in_failed">ההתחברות ל-Microsoft נכשלה. בדוק את החיבור ונסה שוב.</string>
+    <string name="sign_out_failed">לא ניתן לנתק את חשבון Microsoft</string>
+    <string name="change_login_info">שינוי פרטי התחברות</string>
+    <string name="logout">התנתקות</string>
+
+    <!-- Local login -->
+    <string name="hint_username">שם משתמש</string>
+    <string name="hint_password">סיסמה</string>
+    <string name="login">התחברות</string>
+    <string name="invalid_credentials">שם משתמש או סיסמה שגויים</string>
+    <string name="hint_new_username">שם משתמש חדש</string>
+    <string name="hint_new_password">סיסמה חדשה</string>
+    <string name="save_changes">שמירת שינויים</string>
+    <string name="complete_all_fields">יש למלא את כל השדות</string>
+    <string name="login_updated">פרטי ההתחברות עודכנו</string>
+
+    <!-- PDF report -->
+    <string name="pdf_title">דוח ביקור תמיכה</string>
+    <string name="label_client_signature">חתימת הלקוח</string>
+    <string name="pdf_footer">%1$s · עמוד %2$d</string>
+
+    <!-- Email -->
+    <string name="email_subject">דוח ביקור תמיכה - %1$s</string>
+    <string name="email_body">לקוח: %1$s\nתאריך: %2$s\nשעות: %3$s – %4$s\n\nתיאור העבודה:\n%5$s\n\nהדוח החתום מצורף.\n%6$s</string>
+
+</resources>
