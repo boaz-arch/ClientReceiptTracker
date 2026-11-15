@@ -249,44 +249,6 @@
             style="@style/FormSectionHeader"
             android:text="@string/billing_section" />
 
-        <LinearLayout
-            android:id="@+id/billingRow"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:baselineAligned="false"
-            android:orientation="horizontal">
-
-            <com.google.android.material.textfield.TextInputLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
-                android:layout_weight="1"
-                android:hint="@string/hint_break_minutes">
-
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/etBreakMinutes"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:inputType="number" />
-
-            </com.google.android.material.textfield.TextInputLayout>
-
-            <com.google.android.material.textfield.TextInputLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:layout_weight="1"
-                android:hint="@string/hint_billable_override">
-
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/etBillableOverride"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:inputType="number" />
-
-            </com.google.android.material.textfield.TextInputLayout>
-
-        </LinearLayout>
 
         <TextView
             android:id="@+id/tvBillingSummary"

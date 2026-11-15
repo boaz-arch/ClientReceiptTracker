@@ -18,6 +18,7 @@ import com.company.supportvisit.data.PartItem
 import com.company.supportvisit.data.VisitType
 import com.company.supportvisit.graph.MicrosoftAuthManager
 import com.company.supportvisit.repository.NewVisitInput
+import com.company.supportvisit.settings.BillingSettings
 import com.company.supportvisit.sync.SyncScheduler
 import com.company.supportvisit.utils.DateUtils
 import com.company.supportvisit.utils.PhotoCompressor
@@ -43,15 +44,8 @@ data class VisitForm(
     val clientEmail: String = "",
     val startTime: String = "",
     val endTime: String = "",
-    val workDescription: String = "",
-    /** Break in minutes (blank = none). */
-    val breakMinutes: String = "",
-    /** Billable minutes override (blank = use duration minus break). */
-    val billableOverride: String = ""
-) {
-    val breakMinutesValue: Int get() = breakMinutes.trim().toIntOrNull()?.coerceAtLeast(0) ?: 0
-    val billableOverrideValue: Int? get() = billableOverride.trim().toIntOrNull()?.coerceAtLeast(0)
-}
+    val workDescription: String = ""
+)
 
 data class NewVisitUiState(
     val visitDate: String = DateUtils.todayIso(),
@@ -106,11 +100,7 @@ class NewVisitViewModel(application: Application) : AndroidViewModel(application
         if (draftLoaded) return null
         draftLoaded = true
         val draft = repository.getDraft() ?: return null
-        form = VisitForm(
-            draft.clientName, draft.clientEmail, draft.startTime, draft.endTime, draft.workDescription,
-            breakMinutes = draft.breakMinutes.takeIf { it > 0 }?.toString().orEmpty(),
-            billableOverride = draft.billableMinutesOverride?.toString().orEmpty()
-        )
+        form = VisitForm(draft.clientName, draft.clientEmail, draft.startTime, draft.endTime, draft.workDescription)
         signaturePath = draft.signaturePath
         technicianSignaturePath = draft.technicianSignaturePath
         _state.update {
@@ -273,9 +263,9 @@ class NewVisitViewModel(application: Application) : AndroidViewModel(application
                         // Switched-off sections are left out even if an older draft has data in them.
                         parts = if (sections.parts) current.parts else emptyList(),
                         photoPaths = if (sections.photos) current.photoPaths else emptyList(),
-                        breakMinutes = if (sections.billing) currentForm.breakMinutesValue else 0,
-                        billableMinutesOverride = if (sections.billing) currentForm.billableOverrideValue else null,
+                        // Billed from the start and end time at the client's rate, or the default rate.
                         hourlyRate = current.client?.hourlyRate
+                            ?: BillingSettings.defaultHourlyRate(getApplication())
                     ),
                     signature = signature,
                     technicianSignature = technicianSignature,
@@ -324,9 +314,7 @@ class NewVisitViewModel(application: Application) : AndroidViewModel(application
             visitType = s.visitType.key,
             technicianSignaturePath = technicianSignaturePath,
             photoPaths = s.photoPaths,
-            parts = s.parts,
-            breakMinutes = form.breakMinutesValue,
-            billableMinutesOverride = form.billableOverrideValue
+            parts = s.parts
         )
     }
 

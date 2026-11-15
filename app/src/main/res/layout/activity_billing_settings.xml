@@ -20,131 +20,163 @@
             android:textSize="22sp"
             android:textStyle="bold" />
 
-        <com.google.android.material.textfield.TextInputLayout
-            style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:hint="@string/label_currency">
-
-            <com.google.android.material.textfield.MaterialAutoCompleteTextView
-                android:id="@+id/actCurrency"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="none" />
-
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <com.google.android.material.textfield.TextInputLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:hint="@string/label_vat_percent">
-
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/etVat"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="numberDecimal" />
-
-        </com.google.android.material.textfield.TextInputLayout>
-
         <com.google.android.material.switchmaterial.SwitchMaterial
-            android:id="@+id/switchShowPrices"
+            android:id="@+id/switchEnableBilling"
             style="@style/ReportSwitch"
-            android:text="@string/setting_show_prices" />
+            android:text="@string/setting_enable_billing" />
 
         <TextView
             style="@style/ReportSwitchHint"
-            android:text="@string/setting_show_prices_hint" />
-
-        <TextView
-            style="@style/SettingsSectionHeader"
-            android:text="@string/invoices_header" />
-
-        <com.google.android.material.textfield.TextInputLayout
-            style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="@string/label_invoice_provider">
-
-            <com.google.android.material.textfield.MaterialAutoCompleteTextView
-                android:id="@+id/actProvider"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="none" />
-
-        </com.google.android.material.textfield.TextInputLayout>
+            android:text="@string/setting_enable_billing_hint" />
 
         <LinearLayout
-            android:id="@+id/greenInvoiceGroup"
+            android:id="@+id/billingOptions"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:visibility="gone">
-
+            android:orientation="vertical">
+    
+            <com.google.android.material.textfield.TextInputLayout
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:hint="@string/label_currency">
+    
+                <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                    android:id="@+id/actCurrency"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="none" />
+    
+            </com.google.android.material.textfield.TextInputLayout>
+    
             <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:hint="@string/label_api_key_id">
-
+                android:hint="@string/label_default_rate"
+                app:helperText="@string/default_rate_helper">
+    
                 <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/etApiKeyId"
+                    android:id="@+id/etDefaultRate"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="text" />
-
+                    android:inputType="numberDecimal" />
+    
             </com.google.android.material.textfield.TextInputLayout>
-
+    
             <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:hint="@string/label_api_secret"
-                app:endIconMode="password_toggle"
-                app:helperText="@string/api_secret_helper">
-
+                android:hint="@string/label_vat_percent">
+    
                 <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/etApiSecret"
+                    android:id="@+id/etVat"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="textPassword" />
-
+                    android:inputType="numberDecimal" />
+    
             </com.google.android.material.textfield.TextInputLayout>
-
+    
             <com.google.android.material.switchmaterial.SwitchMaterial
-                android:id="@+id/switchSandbox"
+                android:id="@+id/switchShowPrices"
                 style="@style/ReportSwitch"
-                android:text="@string/setting_sandbox" />
-
-            <Button
-                android:id="@+id/btnTestInvoice"
-                style="@style/Widget.Material3.Button.TonalButton"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:text="@string/save_and_test" />
-
+                android:text="@string/setting_show_prices" />
+    
             <TextView
-                android:id="@+id/tvInvoiceStatus"
+                style="@style/ReportSwitchHint"
+                android:text="@string/setting_show_prices_hint" />
+    
+            <TextView
+                style="@style/SettingsSectionHeader"
+                android:text="@string/invoices_header" />
+    
+            <com.google.android.material.textfield.TextInputLayout
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:hint="@string/label_invoice_provider">
+    
+                <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                    android:id="@+id/actProvider"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="none" />
+    
+            </com.google.android.material.textfield.TextInputLayout>
+    
+            <LinearLayout
+                android:id="@+id/greenInvoiceGroup"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+    
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:hint="@string/label_api_key_id">
+    
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etApiKeyId"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="text" />
+    
+                </com.google.android.material.textfield.TextInputLayout>
+    
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:hint="@string/label_api_secret"
+                    app:endIconMode="password_toggle"
+                    app:helperText="@string/api_secret_helper">
+    
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etApiSecret"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="textPassword" />
+    
+                </com.google.android.material.textfield.TextInputLayout>
+    
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/switchSandbox"
+                    style="@style/ReportSwitch"
+                    android:text="@string/setting_sandbox" />
+    
+                <Button
+                    android:id="@+id/btnTestInvoice"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="@string/save_and_test" />
+    
+                <TextView
+                    android:id="@+id/tvInvoiceStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:textAlignment="viewStart"
+                    android:textColor="@color/text_secondary" />
+    
+            </LinearLayout>
+    
+            <TextView
+                android:id="@+id/tvProviderStub"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/invoice_provider_coming_soon"
                 android:textAlignment="viewStart"
-                android:textColor="@color/text_secondary" />
+                android:textColor="@color/text_secondary"
+                android:visibility="gone" />
 
         </LinearLayout>
-
-        <TextView
-            android:id="@+id/tvProviderStub"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/invoice_provider_coming_soon"
-            android:textAlignment="viewStart"
-            android:textColor="@color/text_secondary"
-            android:visibility="gone" />
 
     </LinearLayout>
 

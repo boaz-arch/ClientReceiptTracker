@@ -22,6 +22,7 @@ import com.company.supportvisit.databinding.ActivityMonthlyReportBinding
 import com.company.supportvisit.graph.MailService
 import com.company.supportvisit.graph.MicrosoftAuthManager
 import com.company.supportvisit.settings.BillingSettings
+import com.company.supportvisit.settings.FormSettings
 import com.company.supportvisit.ui.SignInHelper
 import com.company.supportvisit.ui.applySystemBarInsets
 import com.company.supportvisit.utils.Money
@@ -42,6 +43,9 @@ class MonthlyReportActivity : AppCompatActivity() {
     private var report: MonthlyReport? = null
 
     private val exportDir by lazy { File(filesDir, "exports") }
+
+    /** Billing is optional; without it reports show hours and parts but no amounts. */
+    private val billingOn by lazy { FormSettings.isEnabled(this, FormSettings.Section.BILLING) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -103,15 +107,17 @@ class MonthlyReportActivity : AppCompatActivity() {
         binding.tvSummary.text = if (r.isEmpty) {
             getString(R.string.monthly_report_no_visits)
         } else {
-            listOf(
-                getString(R.string.report_visits_count, r.lines.size),
-                getString(R.string.report_total_hours, Billing.formatMinutes(r.billableMinutes)),
+            val money = if (!billingOn) emptyList() else listOf(
                 getString(R.string.pdf_labor, Money.format(ctx, r.laborAmount)),
                 getString(R.string.pdf_parts_amount, Money.format(ctx, r.partsAmount)),
                 getString(R.string.pdf_subtotal, Money.format(ctx, r.subtotal)),
                 getString(R.string.pdf_vat, Money.quantity(r.vatPercent), Money.format(ctx, r.vat)),
                 getString(R.string.pdf_total_with_vat, Money.format(ctx, r.total))
-            ).joinToString("\n")
+            )
+            (listOf(
+                getString(R.string.report_visits_count, r.lines.size),
+                getString(R.string.report_total_hours, Billing.formatMinutes(r.billableMinutes))
+            ) + money).joinToString("\n")
         }
         val usage = r.retainer
         binding.tvRetainer.visibility = if (usage == null) View.GONE else View.VISIBLE
@@ -137,6 +143,7 @@ class MonthlyReportActivity : AppCompatActivity() {
         val hasData = !r.isEmpty
         listOf(binding.btnSharePdf, binding.btnShareCsv, binding.btnEmailClient, binding.btnCreateInvoice)
             .forEach { it.isEnabled = hasData }
+        binding.btnCreateInvoice.visibility = if (billingOn) View.VISIBLE else View.GONE
     }
 
     private fun withReport(action: (MonthlyReport) -> Unit) {
@@ -149,7 +156,7 @@ class MonthlyReportActivity : AppCompatActivity() {
     }
 
     private fun pdf(r: MonthlyReport): File =
-        MonthlyReportExport.writePdf(this, r, exportDir, BillingSettings.showPricesOnPdf(this))
+        MonthlyReportExport.writePdf(this, r, exportDir, billingOn && BillingSettings.showPricesOnPdf(this))
 
     private fun share(file: File, type: String) {
         val uri = FileProvider.getUriForFile(this, "$packageName.provider", file)

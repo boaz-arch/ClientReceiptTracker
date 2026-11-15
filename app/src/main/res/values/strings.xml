@@ -152,7 +152,7 @@
     <string name="hint_email">Email</string>
     <string name="hint_phone">Phone</string>
     <string name="hint_address">Address</string>
-    <string name="hint_hourly_rate">Hourly rate</string>
+    <string name="hint_hourly_rate">Hourly rate (optional, overrides the default)</string>
     <string name="hint_notes">Notes</string>
     <string name="error_client_name_required">Enter the client name</string>
     <string name="error_invalid_rate">Enter a valid hourly rate</string>
@@ -186,12 +186,10 @@
 
     <!-- Phase 3: billing, support packages, monthly reports, invoices -->
     <string name="billing_section">Time &amp; billing</string>
-    <string name="hint_break_minutes">Break (minutes)</string>
-    <string name="hint_billable_override">Billable minutes (override)</string>
     <string name="billing_enter_times">Enter start and end time to see the billable time</string>
     <string name="billing_summary">Billable %1$s h × %2$s = %3$s</string>
-    <string name="billing_summary_no_rate">Billable %1$s h (no hourly rate for this client)</string>
-    <string name="report_option_billing_hint">Break, billable-time override and the amount; shown in the PDF.</string>
+    <string name="billing_summary_no_rate">Time: %1$s h (set an hourly rate in Settings > Billing)</string>
+    <string name="report_option_billing_hint">Time from start to end × hourly rate, and the amount; shown in the PDF.</string>
     <string name="retainer_usage">Support package: %1$s of %2$s h used this month</string>
     <string name="retainer_usage_warning">Support package: %1$s of %2$s h used this month (over 80%%)</string>
     <string name="retainer_usage_over">Support package exceeded: %1$s of %2$s h used this month</string>
@@ -262,4 +260,8 @@
     <string name="invoice_description">Monthly report %1$s</string>
     <string name="invoice_remarks">%1$s hours, %2$d visits</string>
 
+    <string name="label_default_rate">Default hourly rate</string>
+    <string name="default_rate_helper">Used for every visit. A client\'s own rate, if set, takes precedence.</string>
+    <string name="setting_enable_billing">Enable billing</string>
+    <string name="setting_enable_billing_hint">Calculate the amount of each visit from its start and end time and an hourly rate, and show prices in reports. Off by default.</string>
 </resources>

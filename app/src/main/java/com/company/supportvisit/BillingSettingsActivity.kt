@@ -9,6 +9,7 @@ import androidx.lifecycle.lifecycleScope
 import com.company.supportvisit.billing.invoice.InvoiceProvider
 import com.company.supportvisit.databinding.ActivityBillingSettingsBinding
 import com.company.supportvisit.settings.BillingSettings
+import com.company.supportvisit.settings.FormSettings
 import com.company.supportvisit.settings.InvoiceProviderId
 import com.company.supportvisit.settings.SecretStore
 import com.company.supportvisit.ui.applySystemBarInsets
@@ -27,11 +28,27 @@ class BillingSettingsActivity : AppCompatActivity() {
         setContentView(binding.root)
         binding.root.applySystemBarInsets()
 
+        // Master switch: billing is optional and off by default.
+        fun showOptions(on: Boolean) {
+            binding.billingOptions.visibility = if (on) View.VISIBLE else View.GONE
+        }
+        val enabled = FormSettings.isEnabled(this, FormSettings.Section.BILLING)
+        binding.switchEnableBilling.isChecked = enabled
+        showOptions(enabled)
+        binding.switchEnableBilling.setOnCheckedChangeListener { _, on ->
+            FormSettings.setEnabled(this, FormSettings.Section.BILLING, on)
+            showOptions(on)
+        }
+
         // Currency
         val currencies = BillingSettings.CURRENCIES
         binding.actCurrency.setAdapter(ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, currencies))
         binding.actCurrency.setText(BillingSettings.currency(this), false)
         binding.actCurrency.setOnItemClickListener { _, _, i, _ -> BillingSettings.setCurrency(this, currencies[i]) }
+
+        binding.etDefaultRate.setText(
+            BillingSettings.defaultHourlyRate(this)?.let { if (it % 1.0 == 0.0) it.toLong().toString() else it.toString() }
+        )
 
         // VAT (saved when leaving the screen)
         binding.etVat.setText(BillingSettings.vatPercent(this).let { if (it % 1.0 == 0.0) it.toLong().toString() else it.toString() })
@@ -60,6 +77,11 @@ class BillingSettingsActivity : AppCompatActivity() {
 
     override fun onPause() {
         super.onPause()
+        val rateText = binding.etDefaultRate.text.toString().trim()
+        when {
+            rateText.isEmpty() -> BillingSettings.setDefaultHourlyRate(this, null)
+            else -> rateText.toDoubleOrNull()?.takeIf { it >= 0 }?.let { BillingSettings.setDefaultHourlyRate(this, it) }
+        }
         binding.etVat.text.toString().trim().toDoubleOrNull()
             ?.takeIf { it in 0.0..100.0 }
             ?.let { BillingSettings.setVatPercent(this, it) }

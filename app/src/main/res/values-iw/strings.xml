@@ -149,7 +149,7 @@
     <string name="hint_email">אימייל</string>
     <string name="hint_phone">טלפון</string>
     <string name="hint_address">כתובת</string>
-    <string name="hint_hourly_rate">תעריף לשעה</string>
+    <string name="hint_hourly_rate">תעריף לשעה (לא חובה, גובר על ברירת המחדל)</string>
     <string name="hint_notes">הערות</string>
     <string name="error_client_name_required">יש להזין את שם הלקוח</string>
     <string name="error_invalid_rate">יש להזין תעריף שעתי תקין</string>
@@ -183,12 +183,10 @@
 
     <!-- Phase 3: billing, support packages, monthly reports, invoices -->
     <string name="billing_section">זמן וחיוב</string>
-    <string name="hint_break_minutes">הפסקה (דקות)</string>
-    <string name="hint_billable_override">דקות לחיוב (עקיפה)</string>
     <string name="billing_enter_times">הזינו שעת התחלה וסיום כדי לראות את זמן החיוב</string>
     <string name="billing_summary">לחיוב %1$s ש׳ × %2$s = %3$s</string>
-    <string name="billing_summary_no_rate">לחיוב %1$s ש׳ (אין תעריף שעתי ללקוח)</string>
-    <string name="report_option_billing_hint">הפסקה, עקיפת זמן החיוב והסכום; מופיעים ב-PDF.</string>
+    <string name="billing_summary_no_rate">זמן: %1$s ש׳ (הגדירו תעריף שעתי בהגדרות > חיוב)</string>
+    <string name="report_option_billing_hint">הזמן משעת ההתחלה עד הסיום × התעריף השעתי, והסכום; מופיע ב-PDF.</string>
     <string name="retainer_usage">בנק שעות: נוצלו %1$s מתוך %2$s ש׳ החודש</string>
     <string name="retainer_usage_warning">בנק שעות: נוצלו %1$s מתוך %2$s ש׳ החודש (מעל 80%%)</string>
     <string name="retainer_usage_over">חריגה מבנק השעות: נוצלו %1$s מתוך %2$s ש׳ החודש</string>
@@ -259,4 +257,8 @@
     <string name="invoice_description">דוח חודשי %1$s</string>
     <string name="invoice_remarks">%1$s שעות, %2$d ביקורים</string>
 
+    <string name="label_default_rate">תעריף שעתי ברירת מחדל</string>
+    <string name="default_rate_helper">משמש לכל ביקור. תעריף ייעודי של לקוח, אם הוגדר, גובר עליו.</string>
+    <string name="setting_enable_billing">הפעלת חיוב</string>
+    <string name="setting_enable_billing_hint">חישוב הסכום של כל ביקור לפי שעת ההתחלה והסיום ותעריף שעתי, והצגת מחירים בדוחות. כבוי כברירת מחדל.</string>
 </resources>

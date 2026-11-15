@@ -79,7 +79,8 @@ object PdfReportGenerator {
         if (visit.parts.isNotEmpty()) {
             writer.space(4f)
             writer.paragraph(context.getString(R.string.label_parts), labelPaint, spacingAfter = 4f)
-            val partPrices = BillingSettings.showPricesOnPdf(context)
+            val partPrices = FormSettings.isEnabled(context, FormSettings.Section.BILLING) &&
+                BillingSettings.showPricesOnPdf(context)
             visit.parts.forEach { part ->
                 if (!partPrices) {
                     writer.paragraph(

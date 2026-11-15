@@ -22,6 +22,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.company.supportvisit.adapter.PhotoAdapter
 import com.company.supportvisit.billing.Billing
 import com.company.supportvisit.billing.RetainerLevel
+import com.company.supportvisit.settings.BillingSettings
 import com.company.supportvisit.data.ClientEntity
 import com.company.supportvisit.data.PartItem
 import com.company.supportvisit.data.VisitType
@@ -110,7 +111,7 @@ class NewVisitActivity : AppCompatActivity() {
         show(sections.visitType, binding.tilVisitType)
         show(sections.photos, binding.tvPhotosHeader, binding.photoButtonsRow)
         show(sections.parts, binding.tvPartsHeader, binding.partsContainer, binding.partsActionsRow)
-        show(sections.billing, binding.tvBillingHeader, binding.billingRow, binding.tvBillingSummary)
+        show(sections.billing, binding.tvBillingHeader, binding.tvBillingSummary)
         show(
             sections.technicianSignature,
             binding.tvTechnicianSignatureHeader, binding.technicianSignatureFrame, binding.btnClearTechnicianSignature
@@ -166,16 +167,16 @@ class NewVisitActivity : AppCompatActivity() {
         if (state.isSubmitted) finish()
     }
 
-    /** Live "billable time × rate + parts" line, updated as the form changes. */
+    /** Live "time × hourly rate (+ parts)" line from the start and end time, updated as the form changes. */
     private fun renderBilling(state: NewVisitUiState = viewModel.state.value) {
         if (!sections.billing) return
         val form = currentForm()
+        val rate = state.client?.hourlyRate ?: BillingSettings.defaultHourlyRate(this)
         val bill = Billing.bill(
-            form.startTime, form.endTime, form.breakMinutesValue, form.billableOverrideValue,
-            state.client?.hourlyRate, if (sections.parts) state.parts else emptyList()
+            form.startTime, form.endTime, 0, null, rate, if (sections.parts) state.parts else emptyList()
         )
         binding.tvBillingSummary.text = when {
-            bill.durationMinutes == 0 && form.billableOverrideValue == null -> getString(R.string.billing_enter_times)
+            bill.durationMinutes == 0 -> getString(R.string.billing_enter_times)
             bill.hourlyRate == null -> getString(R.string.billing_summary_no_rate, Billing.formatMinutes(bill.billableMinutes))
             else -> getString(
                 R.string.billing_summary,
@@ -264,8 +265,6 @@ class NewVisitActivity : AppCompatActivity() {
                 binding.etStartTime.setText(draft.startTime)
                 binding.etEndTime.setText(draft.endTime)
                 binding.etDescription.setText(draft.workDescription)
-                binding.etBreakMinutes.setText(draft.breakMinutes.takeIf { it > 0 }?.toString().orEmpty())
-                binding.etBillableOverride.setText(draft.billableMinutesOverride?.toString().orEmpty())
                 restoring = false
 
                 Snackbar.make(binding.root, R.string.draft_restored, DRAFT_SNACKBAR_MS)
@@ -284,8 +283,7 @@ class NewVisitActivity : AppCompatActivity() {
         restoring = true
         binding.etClientName.setText("", false)
         listOf(
-            binding.etClientEmail, binding.etStartTime, binding.etEndTime, binding.etDescription,
-            binding.etBreakMinutes, binding.etBillableOverride
+            binding.etClientEmail, binding.etStartTime, binding.etEndTime, binding.etDescription
         ).forEach { it.text = null }
         binding.signaturePad.clear()
         binding.technicianSignaturePad.clear()
@@ -339,7 +337,7 @@ class NewVisitActivity : AppCompatActivity() {
     private fun setupAutoSave() {
         listOf(
             binding.etClientName, binding.etClientEmail, binding.etStartTime,
-            binding.etEndTime, binding.etDescription, binding.etBreakMinutes, binding.etBillableOverride
+            binding.etEndTime, binding.etDescription
         ).forEach { field ->
             field.doAfterTextChanged {
                 if (!restoring) viewModel.onFormChanged(currentForm())
@@ -389,9 +387,7 @@ class NewVisitActivity : AppCompatActivity() {
         clientEmail = binding.etClientEmail.text.toString(),
         startTime = binding.etStartTime.text.toString(),
         endTime = binding.etEndTime.text.toString(),
-        workDescription = binding.etDescription.text.toString(),
-        breakMinutes = binding.etBreakMinutes.text.toString(),
-        billableOverride = binding.etBillableOverride.text.toString()
+        workDescription = binding.etDescription.text.toString()
     )
 
     private fun SignaturePad.bitmapOrNull() = if (isEmpty) null else signatureBitmap
