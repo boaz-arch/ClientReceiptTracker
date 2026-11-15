@@ -1,5 +1,6 @@
 package com.company.supportvisit.data
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -14,11 +15,23 @@ data class DraftEntity(
     val endTime: String = "",
     val workDescription: String = "",
     val signaturePath: String? = null,
-    val updatedAt: Long = System.currentTimeMillis()
+    val updatedAt: Long = System.currentTimeMillis(),
+
+    // --- Added in database version 2 ---
+    val clientId: String? = null,
+    @ColumnInfo(defaultValue = "Other")
+    val visitType: String = VisitType.OTHER.key,
+    val technicianSignaturePath: String? = null,
+    /** Local paths of compressed photos. */
+    @ColumnInfo(defaultValue = "[]")
+    val photoPaths: List<String> = emptyList(),
+    @ColumnInfo(defaultValue = "[]")
+    val parts: List<PartItem> = emptyList()
 ) {
     fun isEmpty(): Boolean =
         clientName.isBlank() && clientEmail.isBlank() && startTime.isBlank() &&
-            endTime.isBlank() && workDescription.isBlank() && signaturePath == null
+            endTime.isBlank() && workDescription.isBlank() && signaturePath == null &&
+            technicianSignaturePath == null && photoPaths.isEmpty() && parts.isEmpty()
 
     companion object {
         const val SINGLE_DRAFT_ID = 1
