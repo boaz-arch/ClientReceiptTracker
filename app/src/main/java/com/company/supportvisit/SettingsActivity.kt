@@ -46,6 +46,9 @@ class SettingsActivity : AppCompatActivity() {
             if (checked && mode != null && mode != ThemeManager.savedMode(this)) applyThemeMode(mode)
         }
 
+        binding.btnBillingSettings.setOnClickListener {
+            startActivity(Intent(this, BillingSettingsActivity::class.java))
+        }
         binding.btnCustomizeReport.setOnClickListener {
             startActivity(Intent(this, ReportSettingsActivity::class.java))
         }
