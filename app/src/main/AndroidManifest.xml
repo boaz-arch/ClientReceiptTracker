@@ -2,12 +2,13 @@
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <uses-permission
-        android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
+        android:name=".SupportVisitApp"
         android:allowBackup="true"
-        android:label="Support Visit Manager"
+        android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/Theme.SupportVisit">
 
@@ -24,66 +25,48 @@
         </provider>
 
         <activity
-
-            android:name=".LoginActivity"
-            android:exported="false" />
-        <activity
             android:name=".MainActivity"
             android:exported="true">
 
             <intent-filter>
-
-                <action
-                    android:name="android.intent.action.MAIN" />
-
-                <category
-                    android:name="android.intent.category.LAUNCHER" />
-
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
         </activity>
 
         <activity
-            android:name=".ChangeLoginActivity" />
+            android:name=".LoginActivity"
+            android:exported="false" />
 
+        <activity android:name=".ChangeLoginActivity" />
 
-        <activity
-            android:name=".NewVisitActivity" />
+        <activity android:name=".NewVisitActivity" />
 
-        <activity
-            android:name=".PastVisitsActivity" />
+        <activity android:name=".PastVisitsActivity" />
 
-        <activity
-            android:name=".VisitDetailsActivity" />
+        <activity android:name=".VisitDetailsActivity" />
 
-        <activity
-            android:name=".SettingsActivity" />
+        <activity android:name=".SettingsActivity" />
 
-
+        <!-- The path is the app's signature hash, read from msal_config.json at build time. -->
         <activity
             android:name="com.microsoft.identity.client.BrowserTabActivity"
             android:exported="true">
 
             <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
 
-                <action
-                    android:name="android.intent.action.VIEW" />
-
-                <category
-                    android:name="android.intent.category.DEFAULT" />
-
-                <category
-                    android:name="android.intent.category.BROWSABLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
 
                 <data
                     android:scheme="msauth"
-                    android:host="com.company.supportvisit"
-                    android:path="/e1JWiOtcwpK9Dil55k5G4sg75xA=" />
-
+                    android:host="${applicationId}"
+                    android:path="/${msalSignatureHash}" />
             </intent-filter>
 
         </activity>
-
 
     </application>
 
