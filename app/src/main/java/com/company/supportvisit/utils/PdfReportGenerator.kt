@@ -2,161 +2,170 @@ package com.company.supportvisit.utils
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.RectF
+import android.graphics.Typeface
 import android.graphics.pdf.PdfDocument
-import com.company.supportvisit.model.VisitRequest
+import android.text.Layout
+import android.text.StaticLayout
+import android.text.TextDirectionHeuristics
+import android.text.TextPaint
+import com.company.supportvisit.R
+import com.company.supportvisit.data.VisitEntity
 import java.io.File
-import java.io.FileOutputStream
-import androidx.core.graphics.scale
 
 object PdfReportGenerator {
 
-    fun createReport(
-        context: Context,
-        visit: VisitRequest,
-        signatureBitmap: Bitmap
-    ): File {
+    // A4 at 72 dpi.
+    private const val PAGE_WIDTH = 595
+    private const val PAGE_HEIGHT = 842
+    private const val MARGIN = 40f
+    private const val FOOTER_HEIGHT = 40f
+    private const val CONTENT_WIDTH = (PAGE_WIDTH - 2 * MARGIN).toInt()
 
-        val document = PdfDocument()
+    private const val SIGNATURE_MAX_WIDTH = 300f
+    private const val SIGNATURE_MAX_HEIGHT = 120f
 
-        val pageInfo =
-            PdfDocument.PageInfo.Builder(
-                595,
-                842,
-                1
-            ).create()
+    /** File name contains the visit id so re-uploads overwrite instead of duplicating. */
+    fun fileNameFor(visit: VisitEntity): String {
+        val client = visit.clientName.replace(Regex("[^\\p{L}\\p{N}]+"), "_").trim('_').take(40)
+        return "Visit_${visit.visitDate}_${client}_${visit.id.take(8)}.pdf"
+    }
 
-        val page =
-            document.startPage(pageInfo)
+    fun createReport(context: Context, visit: VisitEntity, signature: Bitmap, outputDir: File): File {
+        val titlePaint = textPaint(20f, bold = true)
+        val labelPaint = textPaint(12f, bold = true)
+        val bodyPaint = textPaint(12f)
+        val footerPaint = textPaint(9f).apply { color = Color.DKGRAY }
 
-        val canvas =
-            page.canvas
+        val writer = PageWriter(context, footerPaint)
 
-        val paint =
-            android.graphics.Paint()
+        writer.paragraph(context.getString(R.string.pdf_title), titlePaint, spacingAfter = 18f)
 
-        paint.textSize = 18f
-
-        var y = 60
-
-        canvas.drawText(
-            "Support Visit Report",
-            40f,
-            y.toFloat(),
-            paint
-        )
-
-        y += 50
-
-        canvas.drawText(
-            "Client: ${visit.clientName}",
-            40f,
-            y.toFloat(),
-            paint
-        )
-
-        y += 30
-
-        canvas.drawText(
-            "Date: ${visit.visitDate}",
-            40f,
-            y.toFloat(),
-            paint
-        )
-
-        y += 30
-
-        canvas.drawText(
-            "Start Time: ${visit.startTime}",
-            40f,
-            y.toFloat(),
-            paint
-        )
-
-        y += 30
-
-        canvas.drawText(
-            "End Time: ${visit.endTime}",
-            40f,
-            y.toFloat(),
-            paint
-        )
-
-        y += 30
-
-        canvas.drawText(
-            "Email: ${visit.clientEmail}",
-            40f,
-            y.toFloat(),
-            paint
-        )
-
-        y += 50
-
-        canvas.drawText(
-            "Work Description:",
-            40f,
-            y.toFloat(),
-            paint
-        )
-
-        y += 35
-
-        paint.textSize = 14f
-
-        canvas.drawText(
-            visit.workDescription,
-            40f,
-            y.toFloat(),
-            paint
-        )
-
-        y += 120
-
-        paint.textSize = 18f
-
-        canvas.drawText(
-            "Authorization Signature",
-            40f,
-            y.toFloat(),
-            paint
-        )
-
-        y += 20
-
-        val scaledSignature =
-            signatureBitmap.scale(300, 120)
-
-        canvas.drawBitmap(
-            scaledSignature,
-            40f,
-            y.toFloat(),
-            null
-        )
-
-        y += 180
-
-        canvas.drawText(
-            "Livnelavan LTD",
-            40f,
-            y.toFloat(),
-            paint
-        )
-
-        document.finishPage(page)
-
-        val file =
-            File(
-                context.filesDir,
-                "Visit_${System.currentTimeMillis()}.pdf"
-            )
-
-        FileOutputStream(file).use {
-
-            document.writeTo(it)
+        fun field(labelRes: Int, value: String) {
+            writer.paragraph(context.getString(labelRes), labelPaint, spacingAfter = 2f)
+            writer.paragraph(value.ifBlank { "-" }, bodyPaint, spacingAfter = 10f)
         }
 
-        document.close()
+        field(R.string.label_client, visit.clientName)
+        field(R.string.label_date, DateUtils.formatForDisplay(visit.visitDate))
+        field(R.string.label_time, context.getString(R.string.time_range, visit.startTime, visit.endTime))
+        field(R.string.label_client_email, visit.clientEmail)
+        visit.technicianEmail?.let { field(R.string.label_technician, it) }
 
+        writer.space(6f)
+        field(R.string.label_work_description, visit.workDescription)
+
+        writer.space(10f)
+        writer.paragraph(context.getString(R.string.label_client_signature), labelPaint, spacingAfter = 6f)
+        writer.bitmap(signature, SIGNATURE_MAX_WIDTH, SIGNATURE_MAX_HEIGHT)
+
+        outputDir.mkdirs()
+        val file = File(outputDir, fileNameFor(visit))
+        writer.finish(file)
         return file
+    }
+
+    private fun textPaint(size: Float, bold: Boolean = false) = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+        textSize = size
+        color = Color.BLACK
+        if (bold) typeface = Typeface.DEFAULT_BOLD
+    }
+
+    /** Lays content out top to bottom, starting a new page whenever the next piece doesn't fit. */
+    private class PageWriter(private val context: Context, private val footerPaint: TextPaint) {
+
+        private val document = PdfDocument()
+        private var page: PdfDocument.Page? = null
+        private var pageNumber = 0
+        private var y = MARGIN
+
+        private val bottom get() = PAGE_HEIGHT - MARGIN - FOOTER_HEIGHT
+
+        private val canvas: Canvas
+            get() = (page ?: newPage()).canvas
+
+        private fun newPage(): PdfDocument.Page {
+            page?.let { finishPage(it) }
+            pageNumber++
+            val info = PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, pageNumber).create()
+            return document.startPage(info).also {
+                page = it
+                y = MARGIN
+            }
+        }
+
+        private fun finishPage(p: PdfDocument.Page) {
+            val footer = context.getString(R.string.pdf_footer, context.getString(R.string.company_footer), pageNumber)
+            val layout = layout(footer, footerPaint, Layout.Alignment.ALIGN_CENTER)
+            p.canvas.save()
+            p.canvas.translate(MARGIN, PAGE_HEIGHT - MARGIN - layout.height)
+            layout.draw(p.canvas)
+            p.canvas.restore()
+            document.finishPage(p)
+        }
+
+        fun space(height: Float) {
+            y += height
+        }
+
+        /** Draws wrapped text; long text continues on as many pages as needed. */
+        fun paragraph(text: String, paint: TextPaint, spacingAfter: Float = 0f) {
+            val layout = layout(text, paint, Layout.Alignment.ALIGN_NORMAL)
+            var line = 0
+            while (line < layout.lineCount) {
+                if (page == null || y + lineHeight(layout, line) > bottom) newPage()
+
+                // Take as many lines as fit in the space left on this page.
+                val startTop = layout.getLineTop(line)
+                var end = line
+                while (end < layout.lineCount && y + (layout.getLineBottom(end) - startTop) <= bottom) end++
+                if (end == line) end = line + 1 // a single line taller than a page: draw it anyway
+
+                val endBottom = layout.getLineBottom(end - 1)
+                canvas.save()
+                canvas.translate(MARGIN, y - startTop)
+                canvas.clipRect(0f, startTop.toFloat(), CONTENT_WIDTH.toFloat(), endBottom.toFloat())
+                layout.draw(canvas)
+                canvas.restore()
+
+                y += endBottom - startTop
+                line = end
+            }
+            y += spacingAfter
+        }
+
+        fun bitmap(bitmap: Bitmap, maxWidth: Float, maxHeight: Float) {
+            val scale = minOf(maxWidth / bitmap.width, maxHeight / bitmap.height, 1f)
+            val w = bitmap.width * scale
+            val h = bitmap.height * scale
+            if (page == null || y + h > bottom) newPage()
+            val start = if (isRtl()) PAGE_WIDTH - MARGIN - w else MARGIN
+            canvas.drawBitmap(bitmap, null, RectF(start, y, start + w, y + h), Paint(Paint.FILTER_BITMAP_FLAG))
+            y += h
+        }
+
+        fun finish(file: File) {
+            page?.let { finishPage(it) } ?: run { newPage(); finishPage(page!!) }
+            file.outputStream().use { document.writeTo(it) }
+            document.close()
+        }
+
+        private fun lineHeight(layout: StaticLayout, line: Int) =
+            layout.getLineBottom(line) - layout.getLineTop(line)
+
+        private fun isRtl() =
+            context.resources.configuration.layoutDirection == android.view.View.LAYOUT_DIRECTION_RTL
+
+        private fun layout(text: String, paint: TextPaint, alignment: Layout.Alignment): StaticLayout =
+            StaticLayout.Builder.obtain(text, 0, text.length, paint, CONTENT_WIDTH)
+                .setAlignment(alignment)
+                // Each paragraph takes its direction from its first strong character,
+                // so Hebrew and English text both render correctly.
+                .setTextDirection(TextDirectionHeuristics.FIRSTSTRONG_LTR)
+                .setLineSpacing(2f, 1f)
+                .build()
     }
 }
