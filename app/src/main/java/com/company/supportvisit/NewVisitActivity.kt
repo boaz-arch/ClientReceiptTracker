@@ -20,6 +20,8 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.company.supportvisit.adapter.PhotoAdapter
+import com.company.supportvisit.billing.Billing
+import com.company.supportvisit.billing.RetainerLevel
 import com.company.supportvisit.data.ClientEntity
 import com.company.supportvisit.data.PartItem
 import com.company.supportvisit.data.VisitType
@@ -108,6 +110,7 @@ class NewVisitActivity : AppCompatActivity() {
         show(sections.visitType, binding.tilVisitType)
         show(sections.photos, binding.tvPhotosHeader, binding.photoButtonsRow)
         show(sections.parts, binding.tvPartsHeader, binding.partsContainer, binding.partsActionsRow)
+        show(sections.billing, binding.tvBillingHeader, binding.billingRow, binding.tvBillingSummary)
         show(
             sections.technicianSignature,
             binding.tvTechnicianSignatureHeader, binding.technicianSignatureFrame, binding.btnClearTechnicianSignature
@@ -149,6 +152,8 @@ class NewVisitActivity : AppCompatActivity() {
         binding.btnPickPhotos.isEnabled = canAddPhotos
 
         renderParts(state.parts)
+        renderBilling(state)
+        renderRetainer(state)
 
         val busy = state.isSubmitting || state.isSubmitted
         binding.btnSubmit.isEnabled = !busy && !state.isAddingPhotos
@@ -161,18 +166,63 @@ class NewVisitActivity : AppCompatActivity() {
         if (state.isSubmitted) finish()
     }
 
+    /** Live "billable time × rate + parts" line, updated as the form changes. */
+    private fun renderBilling(state: NewVisitUiState = viewModel.state.value) {
+        if (!sections.billing) return
+        val form = currentForm()
+        val bill = Billing.bill(
+            form.startTime, form.endTime, form.breakMinutesValue, form.billableOverrideValue,
+            state.client?.hourlyRate, if (sections.parts) state.parts else emptyList()
+        )
+        binding.tvBillingSummary.text = when {
+            bill.durationMinutes == 0 && form.billableOverrideValue == null -> getString(R.string.billing_enter_times)
+            bill.hourlyRate == null -> getString(R.string.billing_summary_no_rate, Billing.formatMinutes(bill.billableMinutes))
+            else -> getString(
+                R.string.billing_summary,
+                Billing.formatMinutes(bill.billableMinutes),
+                Money.format(this, bill.hourlyRate),
+                Money.format(this, bill.total)
+            )
+        }
+    }
+
+    /** "Support package: 7.5 of 10 h used this month", coloured at 80% and 100%. */
+    private fun renderRetainer(state: NewVisitUiState) {
+        val usage = state.retainer
+        binding.tvRetainer.visibility = if (usage == null) View.GONE else View.VISIBLE
+        if (usage == null) return
+        binding.tvRetainer.text = getString(
+            when (usage.level) {
+                RetainerLevel.OK -> R.string.retainer_usage
+                RetainerLevel.WARNING -> R.string.retainer_usage_warning
+                RetainerLevel.OVER -> R.string.retainer_usage_over
+            },
+            Money.hours(usage.usedHours),
+            Money.hours(usage.allowanceHours)
+        )
+        binding.tvRetainer.setTextColor(
+            getColor(
+                when (usage.level) {
+                    RetainerLevel.OK -> R.color.text_secondary
+                    RetainerLevel.WARNING -> R.color.status_pending
+                    RetainerLevel.OVER -> R.color.status_failed
+                }
+            )
+        )
+    }
+
     private fun renderParts(parts: List<PartItem>) {
         binding.partsContainer.removeAllViews()
         parts.forEachIndexed { index, part ->
             val row = ItemPartBinding.inflate(LayoutInflater.from(this), binding.partsContainer, true)
             row.tvPartDescription.text = part.description
             row.tvPartDetail.text = getString(
-                R.string.part_detail, Money.quantity(part.quantity), Money.format(part.unitPrice), Money.format(part.total)
+                R.string.part_detail, Money.quantity(part.quantity), Money.format(this, part.unitPrice), Money.format(this, part.total)
             )
             row.btnRemovePart.setOnClickListener { viewModel.removePart(index) }
         }
         binding.tvPartsTotal.text =
-            if (parts.isEmpty()) "" else getString(R.string.parts_total, Money.format(parts.partsTotal()))
+            if (parts.isEmpty()) "" else getString(R.string.parts_total, Money.format(this, parts.partsTotal()))
     }
 
     private fun showAddPartDialog() {
@@ -214,6 +264,8 @@ class NewVisitActivity : AppCompatActivity() {
                 binding.etStartTime.setText(draft.startTime)
                 binding.etEndTime.setText(draft.endTime)
                 binding.etDescription.setText(draft.workDescription)
+                binding.etBreakMinutes.setText(draft.breakMinutes.takeIf { it > 0 }?.toString().orEmpty())
+                binding.etBillableOverride.setText(draft.billableMinutesOverride?.toString().orEmpty())
                 restoring = false
 
                 Snackbar.make(binding.root, R.string.draft_restored, DRAFT_SNACKBAR_MS)
@@ -231,8 +283,10 @@ class NewVisitActivity : AppCompatActivity() {
         viewModel.discardDraft()
         restoring = true
         binding.etClientName.setText("", false)
-        listOf(binding.etClientEmail, binding.etStartTime, binding.etEndTime, binding.etDescription)
-            .forEach { it.text = null }
+        listOf(
+            binding.etClientEmail, binding.etStartTime, binding.etEndTime, binding.etDescription,
+            binding.etBreakMinutes, binding.etBillableOverride
+        ).forEach { it.text = null }
         binding.signaturePad.clear()
         binding.technicianSignaturePad.clear()
         restoring = false
@@ -285,9 +339,12 @@ class NewVisitActivity : AppCompatActivity() {
     private fun setupAutoSave() {
         listOf(
             binding.etClientName, binding.etClientEmail, binding.etStartTime,
-            binding.etEndTime, binding.etDescription
+            binding.etEndTime, binding.etDescription, binding.etBreakMinutes, binding.etBillableOverride
         ).forEach { field ->
-            field.doAfterTextChanged { if (!restoring) viewModel.onFormChanged(currentForm()) }
+            field.doAfterTextChanged {
+                if (!restoring) viewModel.onFormChanged(currentForm())
+                renderBilling()
+            }
         }
 
         fun SignaturePad.autoSave(technician: Boolean) = setOnSignedListener(object : SignaturePad.OnSignedListener {
@@ -332,7 +389,9 @@ class NewVisitActivity : AppCompatActivity() {
         clientEmail = binding.etClientEmail.text.toString(),
         startTime = binding.etStartTime.text.toString(),
         endTime = binding.etEndTime.text.toString(),
-        workDescription = binding.etDescription.text.toString()
+        workDescription = binding.etDescription.text.toString(),
+        breakMinutes = binding.etBreakMinutes.text.toString(),
+        billableOverride = binding.etBillableOverride.text.toString()
     )
 
     private fun SignaturePad.bitmapOrNull() = if (isEmpty) null else signatureBitmap

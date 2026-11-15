@@ -9,6 +9,9 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.company.supportvisit.R
 import com.company.supportvisit.app
+import com.company.supportvisit.billing.RetainerCalculator
+import com.company.supportvisit.billing.RetainerUsage
+import com.company.supportvisit.billing.isoRange
 import com.company.supportvisit.data.ClientEntity
 import com.company.supportvisit.data.DraftEntity
 import com.company.supportvisit.data.PartItem
@@ -32,6 +35,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.time.YearMonth
 
 /** The text fields of the New Visit form. */
 data class VisitForm(
@@ -39,8 +43,15 @@ data class VisitForm(
     val clientEmail: String = "",
     val startTime: String = "",
     val endTime: String = "",
-    val workDescription: String = ""
-)
+    val workDescription: String = "",
+    /** Break in minutes (blank = none). */
+    val breakMinutes: String = "",
+    /** Billable minutes override (blank = use duration minus break). */
+    val billableOverride: String = ""
+) {
+    val breakMinutesValue: Int get() = breakMinutes.trim().toIntOrNull()?.coerceAtLeast(0) ?: 0
+    val billableOverrideValue: Int? get() = billableOverride.trim().toIntOrNull()?.coerceAtLeast(0)
+}
 
 data class NewVisitUiState(
     val visitDate: String = DateUtils.todayIso(),
@@ -48,6 +59,10 @@ data class NewVisitUiState(
     val visitType: VisitType = VisitType.OTHER,
     val photoPaths: List<String> = emptyList(),
     val parts: List<PartItem> = emptyList(),
+    /** The picked client (for hourly rate and support package), if any. */
+    val client: ClientEntity? = null,
+    /** This month's support package usage for the picked client, if it has a package. */
+    val retainer: RetainerUsage? = null,
     val isAddingPhotos: Boolean = false,
     val isSubmitting: Boolean = false,
     val isSubmitted: Boolean = false,
@@ -91,7 +106,11 @@ class NewVisitViewModel(application: Application) : AndroidViewModel(application
         if (draftLoaded) return null
         draftLoaded = true
         val draft = repository.getDraft() ?: return null
-        form = VisitForm(draft.clientName, draft.clientEmail, draft.startTime, draft.endTime, draft.workDescription)
+        form = VisitForm(
+            draft.clientName, draft.clientEmail, draft.startTime, draft.endTime, draft.workDescription,
+            breakMinutes = draft.breakMinutes.takeIf { it > 0 }?.toString().orEmpty(),
+            billableOverride = draft.billableMinutesOverride?.toString().orEmpty()
+        )
         signaturePath = draft.signaturePath
         technicianSignaturePath = draft.technicianSignaturePath
         _state.update {
@@ -103,7 +122,16 @@ class NewVisitViewModel(application: Application) : AndroidViewModel(application
                 parts = draft.parts
             )
         }
+        draft.clientId?.let { id -> app.clientRepository.getClient(id)?.let { loadClientInfo(it) } }
         return draft
+    }
+
+    /** Remembers the picked client and works out this month's package usage for it. */
+    private suspend fun loadClientInfo(client: ClientEntity) {
+        val month = YearMonth.now()
+        val (from, to) = month.isoRange()
+        val visits = repository.getVisitsInRange(from, to, client.id)
+        _state.update { it.copy(client = client, retainer = RetainerCalculator.usage(client, visits, month)) }
     }
 
     fun onFormChanged(newForm: VisitForm) {
@@ -112,7 +140,9 @@ class NewVisitViewModel(application: Application) : AndroidViewModel(application
         val clientId = _state.value.clientId
         if (clientId != null && newForm.clientName != form.clientName) {
             val picked = clients.value.firstOrNull { it.id == clientId }
-            if (picked == null || picked.name != newForm.clientName) _state.update { it.copy(clientId = null) }
+            if (picked == null || picked.name != newForm.clientName) {
+                _state.update { it.copy(clientId = null, client = null, retainer = null) }
+            }
         }
         form = newForm
         scheduleDraftSave()
@@ -120,6 +150,7 @@ class NewVisitViewModel(application: Application) : AndroidViewModel(application
 
     fun selectClient(client: ClientEntity) {
         _state.update { it.copy(clientId = client.id) }
+        viewModelScope.launch { loadClientInfo(client) }
         form = form.copy(clientName = client.name, clientEmail = client.email.ifBlank { form.clientEmail })
         scheduleDraftSave()
     }
@@ -241,7 +272,10 @@ class NewVisitViewModel(application: Application) : AndroidViewModel(application
                         workDescription = currentForm.workDescription,
                         // Switched-off sections are left out even if an older draft has data in them.
                         parts = if (sections.parts) current.parts else emptyList(),
-                        photoPaths = if (sections.photos) current.photoPaths else emptyList()
+                        photoPaths = if (sections.photos) current.photoPaths else emptyList(),
+                        breakMinutes = if (sections.billing) currentForm.breakMinutesValue else 0,
+                        billableMinutesOverride = if (sections.billing) currentForm.billableOverrideValue else null,
+                        hourlyRate = current.client?.hourlyRate
                     ),
                     signature = signature,
                     technicianSignature = technicianSignature,
@@ -290,7 +324,9 @@ class NewVisitViewModel(application: Application) : AndroidViewModel(application
             visitType = s.visitType.key,
             technicianSignaturePath = technicianSignaturePath,
             photoPaths = s.photoPaths,
-            parts = s.parts
+            parts = s.parts,
+            breakMinutes = form.breakMinutesValue,
+            billableMinutesOverride = form.billableOverrideValue
         )
     }
 

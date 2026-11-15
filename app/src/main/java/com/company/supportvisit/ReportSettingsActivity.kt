@@ -23,6 +23,7 @@ class ReportSettingsActivity : AppCompatActivity() {
         bind(binding.switchVisitType, Section.VISIT_TYPE)
         bind(binding.switchPhotos, Section.PHOTOS)
         bind(binding.switchParts, Section.PARTS)
+        bind(binding.switchBilling, Section.BILLING)
         bind(binding.switchTechnicianSignature, Section.TECHNICIAN_SIGNATURE)
     }
 

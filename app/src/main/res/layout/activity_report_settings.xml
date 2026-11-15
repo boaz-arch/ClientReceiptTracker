@@ -56,6 +56,15 @@
             android:text="@string/report_option_parts_hint" />
 
         <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/switchBilling"
+            style="@style/ReportSwitch"
+            android:text="@string/billing_section" />
+
+        <TextView
+            style="@style/ReportSwitchHint"
+            android:text="@string/report_option_billing_hint" />
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
             android:id="@+id/switchTechnicianSignature"
             style="@style/ReportSwitch"
             android:text="@string/setting_technician_signature" />

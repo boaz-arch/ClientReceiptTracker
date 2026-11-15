@@ -6,7 +6,12 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import com.company.supportvisit.billing.RetainerCalculator
+import com.company.supportvisit.billing.RetainerLevel
+import com.company.supportvisit.billing.isoRange
 import com.company.supportvisit.data.ClientEntity
+import com.company.supportvisit.utils.Money
+import java.time.YearMonth
 import com.company.supportvisit.databinding.ActivityClientEditBinding
 import com.company.supportvisit.sync.SyncScheduler
 import com.company.supportvisit.ui.applySystemBarInsets
@@ -48,6 +53,37 @@ class ClientEditActivity : AppCompatActivity() {
         binding.etAddress.setText(c.address)
         binding.etHourlyRate.setText(c.hourlyRate?.let { if (it % 1.0 == 0.0) it.toLong().toString() else it.toString() })
         binding.etNotes.setText(c.notes)
+        binding.etMonthlyHours.setText(c.monthlyHoursAllowance?.let { if (it % 1.0 == 0.0) it.toLong().toString() else it.toString() })
+        showUsage(c)
+    }
+
+    /** This month's support package usage, coloured at 80% and 100%. */
+    private fun showUsage(client: ClientEntity) {
+        lifecycleScope.launch {
+            val month = YearMonth.now()
+            val (from, to) = month.isoRange()
+            val usage = RetainerCalculator.usage(client, app.visitRepository.getVisitsInRange(from, to, client.id), month)
+                ?: return@launch
+            binding.tvRetainer.visibility = android.view.View.VISIBLE
+            binding.tvRetainer.text = getString(
+                when (usage.level) {
+                    RetainerLevel.OK -> R.string.retainer_usage
+                    RetainerLevel.WARNING -> R.string.retainer_usage_warning
+                    RetainerLevel.OVER -> R.string.retainer_usage_over
+                },
+                Money.hours(usage.usedHours),
+                Money.hours(usage.allowanceHours)
+            )
+            binding.tvRetainer.setTextColor(
+                getColor(
+                    when (usage.level) {
+                        RetainerLevel.OK -> R.color.text_secondary
+                        RetainerLevel.WARNING -> R.color.status_pending
+                        RetainerLevel.OVER -> R.color.status_failed
+                    }
+                )
+            )
+        }
     }
 
     private fun save() {
@@ -55,11 +91,14 @@ class ClientEditActivity : AppCompatActivity() {
         val email = binding.etEmail.text.toString().trim()
         val rateText = binding.etHourlyRate.text.toString().trim()
         val rate = rateText.toDoubleOrNull()
+        val hoursText = binding.etMonthlyHours.text.toString().trim()
+        val monthlyHours = hoursText.toDoubleOrNull()
 
         when {
             name.isEmpty() -> return toast(R.string.error_client_name_required)
             email.isNotEmpty() && !ValidationUtils.isValidEmail(email) -> return toast(R.string.error_invalid_email)
             rateText.isNotEmpty() && (rate == null || rate < 0) -> return toast(R.string.error_invalid_rate)
+            hoursText.isNotEmpty() && (monthlyHours == null || monthlyHours <= 0) -> return toast(R.string.error_invalid_hours)
         }
 
         val client = (existing ?: ClientEntity(id = "", name = name)).copy(
@@ -69,6 +108,7 @@ class ClientEditActivity : AppCompatActivity() {
             phone = binding.etPhone.text.toString().trim(),
             address = binding.etAddress.text.toString().trim(),
             hourlyRate = rate,
+            monthlyHoursAllowance = monthlyHours,
             notes = binding.etNotes.text.toString().trim()
         )
 

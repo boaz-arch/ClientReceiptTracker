@@ -44,6 +44,19 @@
         </com.google.android.material.textfield.TextInputLayout>
 
         <TextView
+            android:id="@+id/tvRetainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:background="@drawable/bg_search_field"
+            android:paddingStart="12dp"
+            android:paddingTop="8dp"
+            android:paddingEnd="12dp"
+            android:paddingBottom="8dp"
+            android:textAlignment="viewStart"
+            android:visibility="gone" />
+
+        <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
@@ -229,6 +242,59 @@
                 android:textStyle="bold" />
 
         </LinearLayout>
+
+        <!-- Time & billing (optional section, see Settings > Customize report) -->
+        <TextView
+            android:id="@+id/tvBillingHeader"
+            style="@style/FormSectionHeader"
+            android:text="@string/billing_section" />
+
+        <LinearLayout
+            android:id="@+id/billingRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:baselineAligned="false"
+            android:orientation="horizontal">
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:layout_weight="1"
+                android:hint="@string/hint_break_minutes">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etBreakMinutes"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="number" />
+
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:hint="@string/hint_billable_override">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etBillableOverride"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="number" />
+
+            </com.google.android.material.textfield.TextInputLayout>
+
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tvBillingSummary"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:textAlignment="viewStart"
+            android:textStyle="bold" />
 
         <!-- Client signature (required) -->
         <TextView
