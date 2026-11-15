@@ -1,5 +1,6 @@
 package com.company.supportvisit
 
+import com.company.supportvisit.ui.applySystemBarInsets
 import android.app.TimePickerDialog
 import android.graphics.BitmapFactory
 import android.os.Bundle
@@ -36,6 +37,7 @@ class NewVisitActivity : AppCompatActivity() {
 
         binding = ActivityNewVisitBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        binding.root.applySystemBarInsets()
 
         setupTimePickers()
         setupAutoSave()
@@ -45,16 +47,9 @@ class NewVisitActivity : AppCompatActivity() {
             viewModel.submit(currentForm(), signatureOrNull())
         }
 
-        // On a fresh start, offer the saved draft. After rotation the views restore themselves.
-        if (savedInstanceState == null) restoreDraft()
+        restoreDraft(isFreshStart = savedInstanceState == null)
 
         observeState()
-    }
-
-    override fun onPostCreate(savedInstanceState: Bundle?) {
-        super.onPostCreate(savedInstanceState)
-        // After rotation, put the signature back if the pad didn't keep it.
-        if (savedInstanceState != null && binding.signaturePad.isEmpty) loadSignature(viewModel.signaturePath)
     }
 
     private fun observeState() {
@@ -77,21 +72,28 @@ class NewVisitActivity : AppCompatActivity() {
         }
     }
 
-    private fun restoreDraft() {
+    /**
+     * Text fields restore themselves after rotation or process death. The signature pad does not
+     * (its saved state is too large for Android, so it's disabled in the layout), so the signature
+     * always comes back from the auto-saved draft file.
+     */
+    private fun restoreDraft(isFreshStart: Boolean) {
         lifecycleScope.launch {
-            val draft = viewModel.loadDraft() ?: return@launch
-            restoring = true
-            binding.etClientName.setText(draft.clientName)
-            binding.etClientEmail.setText(draft.clientEmail)
-            binding.etStartTime.setText(draft.startTime)
-            binding.etEndTime.setText(draft.endTime)
-            binding.etDescription.setText(draft.workDescription)
-            restoring = false
-            loadSignature(draft.signaturePath)
+            val draft = viewModel.loadDraft()
+            if (isFreshStart && draft != null) {
+                restoring = true
+                binding.etClientName.setText(draft.clientName)
+                binding.etClientEmail.setText(draft.clientEmail)
+                binding.etStartTime.setText(draft.startTime)
+                binding.etEndTime.setText(draft.endTime)
+                binding.etDescription.setText(draft.workDescription)
+                restoring = false
 
-            Snackbar.make(binding.root, R.string.draft_restored, Snackbar.LENGTH_LONG)
-                .setAction(R.string.discard_draft) { discardDraft() }
-                .show()
+                Snackbar.make(binding.root, R.string.draft_restored, DRAFT_SNACKBAR_MS)
+                    .setAction(R.string.discard_draft) { discardDraft() }
+                    .show()
+            }
+            if (binding.signaturePad.isEmpty) loadSignature(viewModel.signaturePath)
         }
     }
 
@@ -172,5 +174,8 @@ class NewVisitActivity : AppCompatActivity() {
 
     companion object {
         private const val DEFAULT_HOUR = 9
+
+        /** Long enough for a technician to notice the Discard option. */
+        private const val DRAFT_SNACKBAR_MS = 10_000
     }
 }
