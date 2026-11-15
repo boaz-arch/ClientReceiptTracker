@@ -1,108 +1,107 @@
 package com.company.supportvisit
 
-import android.annotation.SuppressLint
+import android.content.ActivityNotFoundException
+import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
+import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.company.supportvisit.databinding.ActivityVisitDetailsBinding
 import androidx.core.net.toUri
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import com.company.supportvisit.data.SyncStatus
+import com.company.supportvisit.data.VisitEntity
+import com.company.supportvisit.databinding.ActivityVisitDetailsBinding
+import com.company.supportvisit.sync.SyncScheduler
+import com.company.supportvisit.ui.SignInHelper
+import com.company.supportvisit.ui.labelRes
+import com.company.supportvisit.ui.messageRes
+import com.company.supportvisit.utils.DateUtils
+import kotlinx.coroutines.launch
 
 class VisitDetailsActivity : AppCompatActivity() {
 
-    private lateinit var binding:
-            ActivityVisitDetailsBinding
+    private lateinit var binding: ActivityVisitDetailsBinding
 
-    @SuppressLint("SetTextI18n")
-    override fun onCreate(
-        savedInstanceState: Bundle?
-    ) {
+    private val repository by lazy { app.visitRepository }
 
+    override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        binding =
-            ActivityVisitDetailsBinding.inflate(
-                layoutInflater
-            )
-
+        binding = ActivityVisitDetailsBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        val pdfLink =
-            intent.getStringExtra(
-                "pdfLink"
-            ) ?: ""
+        val visitId = intent.getStringExtra(EXTRA_VISIT_ID)
+        if (visitId == null) {
+            finish()
+            return
+        }
 
-        val client =
-            intent.getStringExtra(
-                "client"
-            ) ?: ""
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                repository.observeVisit(visitId).collect { visit ->
+                    if (visit == null) {
+                        Toast.makeText(this@VisitDetailsActivity, R.string.visit_not_found, Toast.LENGTH_LONG).show()
+                        finish()
+                    } else {
+                        bind(visit)
+                    }
+                }
+            }
+        }
+    }
 
-        val description =
-            intent.getStringExtra(
-                "description"
-            ) ?: ""
+    private fun bind(visit: VisitEntity) {
+        with(binding) {
+            tvClient.text = visit.clientName
+            tvDate.text = DateUtils.formatForDisplay(visit.visitDate)
+            tvTime.text = getString(R.string.time_range, visit.startTime, visit.endTime)
+            tvEmail.text = visit.clientEmail
+            tvDescription.text = visit.workDescription
 
-        val date =
-            intent.getStringExtra(
-                "date"
-            ) ?: ""
-
-        val startTime =
-            intent.getStringExtra(
-                "startTime"
-            ) ?: ""
-
-        val endTime =
-            intent.getStringExtra(
-                "endTime"
-            ) ?: ""
-
-        val email =
-            intent.getStringExtra(
-                "email"
-            ) ?: ""
-
-        binding.tvDetails.text =
-            """
-            Client: $client
-            
-            Date: $date
-            
-            Start Time: $startTime
-            
-            End Time: $endTime
-            
-            Email: $email
-            
-            Work Description:
-            
-            $description
-            """.trimIndent()
-
-        binding.tvSignatureUrl.text =
-            "Open PDF Report"
-
-        binding.tvSignatureUrl.setOnClickListener {
-
-            if (pdfLink.isBlank()) {
-
-                Toast.makeText(
-                    this,
-                    "PDF link not found",
-                    Toast.LENGTH_LONG
-                ).show()
-
-                return@setOnClickListener
+            val error = visit.syncError?.takeIf { visit.syncStatus == SyncStatus.FAILED }
+            tvStatus.text = if (error != null) {
+                getString(R.string.status_with_error, getString(visit.syncStatus.labelRes), getString(error.messageRes))
+            } else {
+                getString(visit.syncStatus.labelRes)
             }
 
-            startActivity(
+            btnRetry.visibility = if (visit.syncStatus == SyncStatus.FAILED) View.VISIBLE else View.GONE
+            btnRetry.setOnClickListener { retry(visit.id) }
 
-                Intent(
-                    Intent.ACTION_VIEW,
-                    pdfLink.toUri()
-                )
-            )
+            btnOpenPdf.isEnabled = !visit.pdfLink.isNullOrBlank()
+            btnOpenPdf.setOnClickListener { openPdf(visit.pdfLink) }
         }
+    }
+
+    private fun retry(id: String) {
+        lifecycleScope.launch {
+            if (SignInHelper.ensureSignedIn(this@VisitDetailsActivity)) {
+                repository.retry(id)
+                SyncScheduler.enqueue(this@VisitDetailsActivity)
+                Toast.makeText(this@VisitDetailsActivity, R.string.retry_queued, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun openPdf(link: String?) {
+        if (link.isNullOrBlank()) {
+            Toast.makeText(this, R.string.pdf_not_available, Toast.LENGTH_LONG).show()
+            return
+        }
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, link.toUri()))
+        } catch (e: ActivityNotFoundException) {
+            Toast.makeText(this, R.string.no_app_to_open, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    companion object {
+        private const val EXTRA_VISIT_ID = "visit_id"
+
+        fun intent(context: Context, visitId: String) =
+            Intent(context, VisitDetailsActivity::class.java).putExtra(EXTRA_VISIT_ID, visitId)
     }
 }

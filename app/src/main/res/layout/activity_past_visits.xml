@@ -8,14 +8,14 @@
     android:paddingStart="20dp"
     android:paddingEnd="20dp"
     android:paddingTop="32dp"
-    android:paddingBottom="40dp">
+    android:paddingBottom="16dp">
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/past_visit_reports"
         android:textSize="24sp"
-        android:textStyle="bold"/>
+        android:textStyle="bold" />
 
     <EditText
         android:id="@+id/etSearch"
@@ -23,31 +23,44 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:background="@color/dashboard_card"
-        android:hint="Search by client, date, or description"
-        android:padding="12dp"/>
+        android:hint="@string/search_hint"
+        android:importantForAutofill="no"
+        android:inputType="text"
+        android:padding="12dp"
+        android:textAlignment="viewStart" />
 
     <Button
         android:id="@+id/btnRefresh"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
-        android:text="@string/refresh"/>
+        android:text="@string/sync_now" />
+
+    <TextView
+        android:id="@+id/tvEmpty"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="32dp"
+        android:gravity="center"
+        android:text="@string/no_visits"
+        android:textColor="@color/text_secondary"
+        android:visibility="gone" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerVisits"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_marginTop="16dp"
-        android:layout_weight="1"/>
+        android:layout_weight="1"
+        android:clipToPadding="false" />
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="32dp"
+        android:layout_marginTop="8dp"
         android:gravity="center"
-        android:text="Livnelavan LTD"
+        android:text="@string/company_footer"
         android:textColor="@color/text_muted"
-        android:textSize="12sp"
-        android:paddingBottom="40dp"/>
+        android:textSize="12sp" />
 
 </LinearLayout>
