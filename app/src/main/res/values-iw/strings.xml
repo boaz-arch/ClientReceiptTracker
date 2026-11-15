@@ -280,4 +280,27 @@
 
     <string name="setting_monthly_billing">חיוב בדוחות חודשיים ובחשבוניות</string>
     <string name="setting_monthly_billing_hint">הצגת סכומים ומע״מ בדוחות החודשיים ויצירת טיוטות חשבונית מהם.</string>
+
+    <!-- Phase 4: dashboard -->
+    <string name="range_this_month">החודש</string>
+    <string name="range_last_month">החודש הקודם</string>
+    <string name="range_quarter">הרבעון</string>
+    <string name="range_custom">טווח מותאם…</string>
+    <string name="range_custom_value">%1$s – %2$s</string>
+    <string name="filter_all">הכול</string>
+    <string name="unknown">לא ידוע</string>
+    <string name="kpi_visits">ביקורים</string>
+    <string name="kpi_hours">שעות</string>
+    <string name="kpi_amount">לחיוב (לפני מע״מ)</string>
+    <string name="kpi_unsent">ממתינים לשליחה</string>
+    <string name="chart_hours_per_client">שעות לפי לקוח (10 המובילים)</string>
+    <string name="chart_weekly">12 השבועות האחרונים</string>
+    <string name="chart_weekly_legend">● ביקורים   ● שעות</string>
+    <string name="chart_hours_per_technician">שעות לפי טכנאי</string>
+    <string name="chart_retainers">בנקי שעות החודש</string>
+    <string name="chart_visit_types">ביקורים לפי סוג</string>
+    <string name="chart_no_data">אין ביקורים בתקופה זו</string>
+    <string name="retainer_short">%1$s / %2$s ש׳</string>
+    <string name="type_legend_line">%1$s: %2$d (%3$d%%)</string>
+
 </resources>
