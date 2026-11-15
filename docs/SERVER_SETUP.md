@@ -74,6 +74,25 @@ It runs the server tests, builds the server, copies it over SSH and runs
 `docker compose up -d --build`, then checks `/health`. Re-run it for every update; the data
 in `deploy/data/` is kept.
 
+### Alternative: pm2 (no Docker)
+
+On hosts that run their apps with pm2:
+
+```bash
+server/deploy/deploy-pm2.sh user@your-server
+```
+
+It installs into `~/SupportVisit/` (`server/`, a private Java 17 runtime in `jre/`, `data/`,
+`.env`, `ecosystem.config.js`, `start.sh`), registers the `supportvisit` pm2 process
+(`pm2 save` keeps it across reboots), keeps the previous build in
+`~/supportvisit-previous-server/` for rollback, and adds a nightly encrypted backup to cron
+(`scripts/backup.sh` → `~/supportvisit-backups/`, key in `~/.supportvisit_backup_key`:
+keep a copy of that key somewhere safe). The first run creates `.env` with a random
+`LINK_SECRET` and stops so you can fill in the other values.
+
+Useful commands: `pm2 logs supportvisit`, `pm2 restart supportvisit`.
+Rollback: `cp -a ~/supportvisit-previous-server/server ~/SupportVisit/ && pm2 restart supportvisit`.
+
 ### Reverse proxy (Apache example)
 
 Inside the `<VirtualHost *:443>` of the site, **above** any `ProxyPass /` line:

@@ -14,6 +14,27 @@ data class Record(val id: String, val data: JSONObject, val serverUpdatedAt: Lon
  */
 class Store(dbFile: File) {
 
+    companion object {
+        /** Consistent copy of the live database (safe while the server runs). */
+        fun backup(source: File, target: File) {
+            target.parentFile?.mkdirs()
+            target.delete()
+            DriverManager.getConnection("jdbc:sqlite:${source.absolutePath}").use { c ->
+                c.prepareStatement("VACUUM INTO ?").use { it.setString(1, target.absolutePath); it.execute() }
+            }
+        }
+
+        /** True when SQLite's integrity check passes. */
+        fun check(file: File): Boolean {
+            if (!file.exists()) return false
+            return DriverManager.getConnection("jdbc:sqlite:${file.absolutePath}").use { c ->
+                c.createStatement().use { st ->
+                    st.executeQuery("PRAGMA integrity_check").use { rs -> rs.next() && rs.getString(1) == "ok" }
+                }
+            }
+        }
+    }
+
     enum class Kind(val table: String) { VISITS("visits"), CLIENTS("clients") }
 
     private val connection: Connection

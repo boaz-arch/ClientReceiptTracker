@@ -29,9 +29,26 @@ import java.io.File
 
 private val log = LoggerFactory.getLogger("supportvisit")
 
-fun main() {
+fun main(args: Array<String>) {
+    // Maintenance commands used by deploy/pm2/backup.sh.
+    when (args.firstOrNull()) {
+        "backup" -> {
+            val dataDir = File(System.getenv("DATA_DIR") ?: "/data")
+            Store.backup(File(dataDir, "supportvisit.db"), File(args.getOrNull(1) ?: error("usage: backup <file>")))
+            return
+        }
+        "check" -> {
+            val ok = Store.check(File(args.getOrNull(1) ?: error("usage: check <file>")))
+            println(if (ok) "ok" else "FAILED")
+            if (!ok) kotlin.system.exitProcess(1)
+            return
+        }
+    }
+
     val config = Config.fromEnv()
-    embeddedServer(Netty, port = config.port, host = "0.0.0.0") {
+    // Only reachable through the reverse proxy unless HOST says otherwise (Docker sets 0.0.0.0).
+    val host = System.getenv("HOST")?.takeIf { it.isNotBlank() } ?: "127.0.0.1"
+    embeddedServer(Netty, port = config.port, host = host) {
         module(config, EntraTokenVerifier(config)::verify)
     }.start(wait = true)
 }
