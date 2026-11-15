@@ -53,6 +53,8 @@
 
         <activity android:name=".ClientEditActivity" />
 
+        <activity android:name=".ReportSettingsActivity" />
+
         <!-- The path is the app's signature hash, read from msal_config.json at build time. -->
         <activity
             android:name="com.microsoft.identity.client.BrowserTabActivity"

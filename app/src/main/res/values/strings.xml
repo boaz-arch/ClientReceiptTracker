@@ -164,15 +164,6 @@
     <string name="photos_waiting_upload">Photos: %1$d (waiting to upload)</string>
     <string name="open_photo">Open photo %1$d</string>
     <string name="open_file_failed">Could not open the file. Check your connection.</string>
-    <string name="server_settings">Team server</string>
-    <string name="hint_server_url">Server address (https://…)</string>
-    <string name="save_and_test_server">Save and test connection</string>
-    <string name="server_url_must_be_https">The server address must start with https://</string>
-    <string name="server_testing">Testing…</string>
-    <string name="server_connected_as">Connected to the server as %1$s</string>
-    <string name="server_consent_missing">An administrator must approve the app for your organization first (see the setup guide).</string>
-    <string name="server_unauthorized">The server did not accept this account</string>
-    <string name="server_unreachable">Could not reach the server</string>
     <string name="admin_consent_missing">Your organization has not approved this app yet. Ask your Microsoft 365 administrator.</string>
     <string name="pdf_part_line">%1$s: %2$s × %3$s = %4$s</string>
     <string name="pdf_photos_title">Photos</string>
@@ -180,6 +171,16 @@
     <string name="email_report_too_large">The report with photos is too large to attach. Ask your technician for a copy.</string>
 
     <string name="report_settings">Reports</string>
-    <string name="setting_technician_signature">Ask for the technician\'s signature on reports</string>
+    <string name="setting_technician_signature">Technician signature</string>
+
+    <string name="customize_report">Customize report</string>
+    <string name="customize_report_description">Choose what the visit report asks for. Sections you switch off are hidden on the New Visit screen and left out of the PDF.</string>
+    <string name="report_option_visit_type">Visit type</string>
+    <string name="report_option_visit_type_hint">Installation, repair, maintenance, remote support or other.</string>
+    <string name="report_option_photos">Photos</string>
+    <string name="report_option_photos_hint">Up to 10 photos, added to the PDF and uploaded with it.</string>
+    <string name="report_option_parts">Parts used</string>
+    <string name="report_option_parts_hint">Parts and materials with quantity and price, and their total.</string>
+    <string name="report_option_technician_signature_hint">A second signature pad for the technician, next to the client signature.</string>
 
 </resources>

@@ -15,6 +15,7 @@ import android.text.TextPaint
 import com.company.supportvisit.R
 import com.company.supportvisit.data.VisitEntity
 import com.company.supportvisit.data.partsTotal
+import com.company.supportvisit.settings.FormSettings
 import com.company.supportvisit.ui.labelRes
 import java.io.File
 
@@ -63,7 +64,9 @@ object PdfReportGenerator {
         field(R.string.label_client, visit.clientName)
         field(R.string.label_date, DateUtils.formatForDisplay(visit.visitDate))
         field(R.string.label_time, context.getString(R.string.time_range, visit.startTime, visit.endTime))
-        field(R.string.label_visit_type, context.getString(visit.type.labelRes()))
+        if (FormSettings.isEnabled(context, FormSettings.Section.VISIT_TYPE)) {
+            field(R.string.label_visit_type, context.getString(visit.type.labelRes()))
+        }
         field(R.string.label_client_email, visit.clientEmail)
         visit.technicianEmail?.let { field(R.string.label_technician, it) }
 

@@ -90,9 +90,8 @@ curl https://apps.example.com/supportvisit/health     # → ok
 
 ## 3. The app
 
-The default server address comes from `SUPPORT_SERVER_URL` in `local.properties` (or the
-environment in CI). Users can change it in **Settings → Team server → Save and test
-connection**, which also confirms that sign-in and consent work.
+The server address is built into the app from `SUPPORT_SERVER_URL` in `local.properties`
+(or the environment in CI). It is not shown in the app and users can't change it.
 
 If no server is configured, the app still works: reports are uploaded to the technician's
 OneDrive and emailed as before, but nothing is shared with the team.

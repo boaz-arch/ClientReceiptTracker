@@ -62,6 +62,7 @@
             android:textStyle="bold" />
 
         <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilVisitType"
             style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -148,13 +149,14 @@
 
         </com.google.android.material.textfield.TextInputLayout>
 
-        <!-- Photos -->
+        <!-- Photos (optional section, see Settings > Customize report) -->
         <TextView
             android:id="@+id/tvPhotosHeader"
             style="@style/FormSectionHeader"
             android:text="@string/photos_header" />
 
         <LinearLayout
+            android:id="@+id/photoButtonsRow"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
@@ -192,8 +194,9 @@
             android:layout_marginTop="8dp"
             android:orientation="horizontal" />
 
-        <!-- Parts used -->
+        <!-- Parts used (optional section, see Settings > Customize report) -->
         <TextView
+            android:id="@+id/tvPartsHeader"
             style="@style/FormSectionHeader"
             android:text="@string/label_parts" />
 
@@ -204,6 +207,7 @@
             android:orientation="vertical" />
 
         <LinearLayout
+            android:id="@+id/partsActionsRow"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
@@ -253,7 +257,7 @@
             android:layout_gravity="end"
             android:text="@string/clear_signature" />
 
-        <!-- Technician signature (optional; shown only when enabled in Settings) -->
+        <!-- Technician signature (off unless enabled in Settings > Customize report) -->
         <TextView
             android:id="@+id/tvTechnicianSignatureHeader"
             style="@style/FormSectionHeader"

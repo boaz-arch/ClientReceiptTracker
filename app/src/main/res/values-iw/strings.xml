@@ -161,15 +161,6 @@
     <string name="photos_waiting_upload">תמונות: %1$d (ממתינות להעלאה)</string>
     <string name="open_photo">פתיחת תמונה %1$d</string>
     <string name="open_file_failed">לא ניתן לפתוח את הקובץ. בדקו את החיבור.</string>
-    <string name="server_settings">שרת הצוות</string>
-    <string name="hint_server_url">כתובת השרת (https://…)</string>
-    <string name="save_and_test_server">שמירה ובדיקת חיבור</string>
-    <string name="server_url_must_be_https">כתובת השרת חייבת להתחיל ב-https://</string>
-    <string name="server_testing">בודק…</string>
-    <string name="server_connected_as">מחובר לשרת בתור %1$s</string>
-    <string name="server_consent_missing">מנהל מערכת צריך לאשר את האפליקציה עבור הארגון שלכם (ראו את מדריך ההתקנה).</string>
-    <string name="server_unauthorized">השרת לא אישר את החשבון הזה</string>
-    <string name="server_unreachable">אין חיבור לשרת</string>
     <string name="admin_consent_missing">הארגון שלכם עדיין לא אישר את האפליקציה. פנו למנהל Microsoft 365.</string>
     <string name="pdf_part_line">%1$s: %2$s × %3$s = %4$s</string>
     <string name="pdf_photos_title">תמונות</string>
@@ -177,6 +168,16 @@
     <string name="email_report_too_large">הדוח עם התמונות גדול מכדי לצרף אותו. בקשו עותק מהטכנאי.</string>
 
     <string name="report_settings">דוחות</string>
-    <string name="setting_technician_signature">בקשת חתימת טכנאי בדוחות</string>
+    <string name="setting_technician_signature">חתימת טכנאי</string>
+
+    <string name="customize_report">התאמת הדוח</string>
+    <string name="customize_report_description">בחרו מה דוח הביקור כולל. חלקים שתכבו יוסתרו במסך ביקור חדש ולא יופיעו ב-PDF.</string>
+    <string name="report_option_visit_type">סוג ביקור</string>
+    <string name="report_option_visit_type_hint">התקנה, תיקון, תחזוקה, תמיכה מרחוק או אחר.</string>
+    <string name="report_option_photos">תמונות</string>
+    <string name="report_option_photos_hint">עד 10 תמונות, מצורפות ל-PDF ומועלות יחד איתו.</string>
+    <string name="report_option_parts">חלקים בשימוש</string>
+    <string name="report_option_parts_hint">חלקים וחומרים עם כמות ומחיר, וסה״כ.</string>
+    <string name="report_option_technician_signature_hint">משטח חתימה נוסף לטכנאי, ליד חתימת הלקוח.</string>
 
 </resources>

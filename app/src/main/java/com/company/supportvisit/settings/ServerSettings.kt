@@ -4,30 +4,19 @@ import android.content.Context
 import androidx.core.content.edit
 import com.company.supportvisit.BuildConfig
 
-/** Where the Support Visit server is, and how far this device has synced from it. */
+/**
+ * Where the Support Visit server is, and how far this device has synced from it.
+ * The address is built into the app (SUPPORT_SERVER_URL at build time); users never see it.
+ */
 object ServerSettings {
 
     private const val PREFS = "server"
-    private const val KEY_URL = "url"
     private const val KEY_VISITS_CURSOR = "visits_cursor"
     private const val KEY_CLIENTS_CURSOR = "clients_cursor"
 
-    /** Server base URL (no trailing slash), or null when not configured. */
-    fun serverUrl(context: Context): String? =
-        prefs(context).getString(KEY_URL, null)
-            ?.takeIf { it.isNotBlank() }
-            ?: BuildConfig.DEFAULT_SERVER_URL.takeIf { it.isNotBlank() }
-                ?.trimEnd('/')
-
-    fun setServerUrl(context: Context, url: String) {
-        val normalized = url.trim().trimEnd('/')
-        prefs(context).edit {
-            putString(KEY_URL, normalized)
-            // A different server means a fresh full download.
-            remove(KEY_VISITS_CURSOR)
-            remove(KEY_CLIENTS_CURSOR)
-        }
-    }
+    /** Server base URL (no trailing slash), or null when the build has none. */
+    fun serverUrl(@Suppress("UNUSED_PARAMETER") context: Context): String? =
+        BuildConfig.DEFAULT_SERVER_URL.trim().trimEnd('/').takeIf { it.isNotBlank() }
 
     fun visitsCursor(context: Context): Long = prefs(context).getLong(KEY_VISITS_CURSOR, 0L)
 

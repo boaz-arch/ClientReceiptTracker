@@ -12,12 +12,7 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.lifecycleScope
 import com.company.supportvisit.databinding.ActivitySettingsBinding
 import com.company.supportvisit.graph.AuthManager
-import com.company.supportvisit.graph.GraphException
 import com.company.supportvisit.graph.MicrosoftAuthManager
-import com.company.supportvisit.graph.isConsentMissing
-import com.company.supportvisit.remote.ServerApi
-import com.company.supportvisit.settings.FormSettings
-import com.company.supportvisit.settings.ServerSettings
 import com.company.supportvisit.settings.ThemeManager
 import com.company.supportvisit.sync.SyncScheduler
 import com.company.supportvisit.ui.SignInHelper
@@ -43,15 +38,11 @@ class SettingsActivity : AppCompatActivity() {
         binding.btnDarkMode.setOnClickListener { applyThemeMode(AppCompatDelegate.MODE_NIGHT_YES) }
         binding.btnSystemMode.setOnClickListener { applyThemeMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM) }
 
-        binding.switchTechnicianSignature.isChecked = FormSettings.technicianSignatureEnabled(this)
-        binding.switchTechnicianSignature.setOnCheckedChangeListener { _, checked ->
-            FormSettings.setTechnicianSignatureEnabled(this, checked)
+        binding.btnCustomizeReport.setOnClickListener {
+            startActivity(Intent(this, ReportSettingsActivity::class.java))
         }
 
         binding.btnExportCsv.setOnClickListener { exportCsv() }
-
-        binding.etServerUrl.setText(ServerSettings.serverUrl(this).orEmpty())
-        binding.btnTestServer.setOnClickListener { saveAndTestServer() }
 
         binding.btnConnectMicrosoft.setOnClickListener { connectMicrosoft() }
         binding.btnDisconnectMicrosoft.setOnClickListener { disconnectMicrosoft() }
@@ -92,41 +83,6 @@ class SettingsActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 Log.w(TAG, "CSV export failed", e)
                 Toast.makeText(this@SettingsActivity, R.string.export_failed, Toast.LENGTH_LONG).show()
-            }
-        }
-    }
-
-    /** Saves the server URL and checks that this account can reach it. */
-    private fun saveAndTestServer() {
-        val url = binding.etServerUrl.text.toString().trim().trimEnd('/')
-        if (!url.startsWith("https://")) {
-            binding.tvServerStatus.setText(R.string.server_url_must_be_https)
-            return
-        }
-        if (url != ServerSettings.serverUrl(this)) ServerSettings.setServerUrl(this, url)
-        binding.tvServerStatus.setText(R.string.server_testing)
-        binding.btnTestServer.isEnabled = false
-        lifecycleScope.launch {
-            try {
-                if (!SignInHelper.ensureSignedIn(this@SettingsActivity)) {
-                    binding.tvServerStatus.setText(R.string.sync_error_sign_in)
-                    return@launch
-                }
-                val api = ServerApi(url, MicrosoftAuthManager.getApiToken(this@SettingsActivity))
-                val me = withContext(Dispatchers.IO) { api.me() }
-                binding.tvServerStatus.text = getString(R.string.server_connected_as, me.email)
-                SyncScheduler.enqueue(this@SettingsActivity)
-            } catch (e: Exception) {
-                Log.w(TAG, "Server test failed", e)
-                binding.tvServerStatus.setText(
-                    when {
-                        e.isConsentMissing() -> R.string.server_consent_missing
-                        e is GraphException && e.code == 401 -> R.string.server_unauthorized
-                        else -> R.string.server_unreachable
-                    }
-                )
-            } finally {
-                binding.btnTestServer.isEnabled = true
             }
         }
     }

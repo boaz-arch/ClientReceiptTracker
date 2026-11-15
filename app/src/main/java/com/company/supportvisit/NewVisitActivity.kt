@@ -27,7 +27,7 @@ import com.company.supportvisit.data.partsTotal
 import com.company.supportvisit.databinding.ActivityNewVisitBinding
 import com.company.supportvisit.databinding.DialogPartBinding
 import com.company.supportvisit.databinding.ItemPartBinding
-import com.company.supportvisit.settings.FormSettings
+import com.company.supportvisit.ui.ReportSections
 import com.company.supportvisit.ui.NewVisitUiState
 import com.company.supportvisit.ui.NewVisitViewModel
 import com.company.supportvisit.ui.VisitForm
@@ -83,21 +83,35 @@ class NewVisitActivity : AppCompatActivity() {
         binding.btnAddPart.setOnClickListener { showAddPartDialog() }
         binding.btnClearSignature.setOnClickListener { binding.signaturePad.clear() }
         binding.btnClearTechnicianSignature.setOnClickListener { binding.technicianSignaturePad.clear() }
-        val technicianSignature = FormSettings.technicianSignatureEnabled(this)
-        listOf(binding.tvTechnicianSignatureHeader, binding.technicianSignatureFrame, binding.btnClearTechnicianSignature)
-            .forEach { it.visibility = if (technicianSignature) View.VISIBLE else View.GONE }
+        applyReportSections()
 
         binding.btnSubmit.setOnClickListener {
             viewModel.submit(
                 currentForm(),
                 binding.signaturePad.bitmapOrNull(),
-                binding.technicianSignaturePad.bitmapOrNull().takeIf { technicianSignature }
+                binding.technicianSignaturePad.bitmapOrNull().takeIf { sections.technicianSignature },
+                sections
             )
         }
 
         restoreDraft(isFreshStart = savedInstanceState == null)
 
         observeState()
+    }
+
+    /** Which optional report sections are on (Settings > Customize report). */
+    private val sections by lazy { ReportSections.from(this) }
+
+    /** Hides the sections that are switched off. Photos stay visible if a draft already has some. */
+    private fun applyReportSections() {
+        fun show(on: Boolean, vararg views: View) = views.forEach { it.visibility = if (on) View.VISIBLE else View.GONE }
+        show(sections.visitType, binding.tilVisitType)
+        show(sections.photos, binding.tvPhotosHeader, binding.photoButtonsRow)
+        show(sections.parts, binding.tvPartsHeader, binding.partsContainer, binding.partsActionsRow)
+        show(
+            sections.technicianSignature,
+            binding.tvTechnicianSignatureHeader, binding.technicianSignatureFrame, binding.btnClearTechnicianSignature
+        )
     }
 
     private fun observeState() {
@@ -126,7 +140,7 @@ class NewVisitActivity : AppCompatActivity() {
         if (binding.actVisitType.text.toString() != typeLabel) binding.actVisitType.setText(typeLabel, false)
 
         photoAdapter.submitList(state.photoPaths)
-        binding.rvPhotos.visibility = if (state.photoPaths.isEmpty()) View.GONE else View.VISIBLE
+        binding.rvPhotos.visibility = if (state.photoPaths.isEmpty() || !sections.photos) View.GONE else View.VISIBLE
         binding.tvPhotosHeader.text =
             getString(R.string.photos_header_count, state.photoPaths.size, NewVisitViewModel.MAX_PHOTOS)
         binding.photoProgress.visibility = if (state.isAddingPhotos) View.VISIBLE else View.GONE

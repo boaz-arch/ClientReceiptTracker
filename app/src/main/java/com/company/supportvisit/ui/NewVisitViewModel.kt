@@ -202,7 +202,12 @@ class NewVisitViewModel(application: Application) : AndroidViewModel(application
         app.appScope.launch { repository.clearDraft() }
     }
 
-    fun submit(currentForm: VisitForm, signature: Bitmap?, technicianSignature: Bitmap?) {
+    fun submit(
+        currentForm: VisitForm,
+        signature: Bitmap?,
+        technicianSignature: Bitmap?,
+        sections: ReportSections
+    ) {
         val current = _state.value
         if (locked || current.isAddingPhotos) return
 
@@ -232,10 +237,11 @@ class NewVisitViewModel(application: Application) : AndroidViewModel(application
                         visitDate = current.visitDate,
                         startTime = currentForm.startTime,
                         endTime = currentForm.endTime,
-                        visitType = current.visitType,
+                        visitType = if (sections.visitType) current.visitType else VisitType.OTHER,
                         workDescription = currentForm.workDescription,
-                        parts = current.parts,
-                        photoPaths = current.photoPaths
+                        // Switched-off sections are left out even if an older draft has data in them.
+                        parts = if (sections.parts) current.parts else emptyList(),
+                        photoPaths = if (sections.photos) current.photoPaths else emptyList()
                     ),
                     signature = signature,
                     technicianSignature = technicianSignature,
