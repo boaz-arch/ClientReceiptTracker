@@ -119,7 +119,21 @@ class MainActivity : AppCompatActivity() {
         binding.chartTechnicians.useLabels { technicianLabels }
         binding.chartClients.modelProducer = clientsProducer
         binding.chartWeeks.modelProducer = weeksProducer
+        colorLegendDots()
         binding.chartTechnicians.modelProducer = techniciansProducer
+    }
+
+    /** Colours the two "●" in the weekly legend like the lines they stand for. */
+    private fun colorLegendDots() {
+        val text = android.text.SpannableString(getString(R.string.chart_weekly_legend))
+        val dots = Regex("●").findAll(text).map { it.range.first }.toList()
+        listOf(R.color.md_primary, R.color.md_secondary).zip(dots).forEach { (color, at) ->
+            text.setSpan(
+                android.text.style.ForegroundColorSpan(getColor(color)), at, at + 1,
+                android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+        }
+        binding.tvWeeksLegend.text = text
     }
 
     /** Shows category names under the columns instead of numbers. */
