@@ -1,0 +1,14 @@
+# Run on the server from this folder:  docker compose up -d --build
+#
+# The API listens only on the server itself (127.0.0.1:8090). Apache terminates HTTPS and
+# forwards https://<host>/supportvisit/ to it (see SERVER_SETUP.md).
+
+services:
+  api:
+    build: ..
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./data:/data
+    ports:
+      - "127.0.0.1:8090:8090"
