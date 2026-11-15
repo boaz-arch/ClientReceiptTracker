@@ -49,6 +49,10 @@
 
         <activity android:name=".SettingsActivity" />
 
+        <activity android:name=".ClientsActivity" />
+
+        <activity android:name=".ClientEditActivity" />
+
         <!-- The path is the app's signature hash, read from msal_config.json at build time. -->
         <activity
             android:name="com.microsoft.identity.client.BrowserTabActivity"
