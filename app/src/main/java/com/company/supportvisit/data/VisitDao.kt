@@ -64,6 +64,9 @@ interface VisitDao {
     @Update
     suspend fun update(visit: VisitEntity)
 
+    @Query("DELETE FROM visits WHERE id = :id")
+    suspend fun deleteById(id: String)
+
     /** Clears the dirty flag after an upload, unless the visit changed meanwhile. */
     @Query("UPDATE visits SET remoteDirty = 0 WHERE id = :id AND updatedAt = :pushedUpdatedAt")
     suspend fun markRemoteSynced(id: String, pushedUpdatedAt: Long)

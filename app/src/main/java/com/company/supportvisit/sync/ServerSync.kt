@@ -36,7 +36,7 @@ object ServerSync {
             var clientCursor = ServerSettings.clientsCursor(context)
             do {
                 val page = api.clientChanges(clientCursor)
-                clients.mergeRemote(page.items.mapNotNull(RecordMapper::jsonToClient))
+                clients.mergeRemote(page.items.filterNot { it.optBoolean("deleted") }.mapNotNull(RecordMapper::jsonToClient))
                 clientCursor = page.cursor
                 ServerSettings.setClientsCursor(context, clientCursor)
             } while (page.hasMore)
@@ -44,7 +44,9 @@ object ServerSync {
             var visitCursor = ServerSettings.visitsCursor(context)
             do {
                 val page = api.visitChanges(visitCursor)
-                visits.mergeRemote(page.items.mapNotNull(RecordMapper::jsonToVisit))
+                // Deleted on the server (account deletion): remove the local copy too.
+                page.items.filter { it.optBoolean("deleted") }.forEach { visits.deleteLocal(it.getString("id")) }
+                visits.mergeRemote(page.items.filterNot { it.optBoolean("deleted") }.mapNotNull(RecordMapper::jsonToVisit))
                 visitCursor = page.cursor
                 ServerSettings.setVisitsCursor(context, visitCursor)
             } while (page.hasMore)

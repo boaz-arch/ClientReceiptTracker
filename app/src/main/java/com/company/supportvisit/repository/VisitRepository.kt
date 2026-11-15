@@ -184,6 +184,12 @@ class VisitRepository(
         visitDao.markRemoteSynced(visit.id, visit.updatedAt)
     }
 
+    /** Removes a visit the server deleted (e.g. its technician deleted their account). */
+    suspend fun deleteLocal(id: String) {
+        visitDao.deleteById(id)
+        withContext(Dispatchers.IO) { File(File(filesDir, "visits"), id).deleteRecursively() }
+    }
+
     /** Applies visits pulled from the server. */
     suspend fun mergeRemote(remote: List<VisitEntity>) {
         remote.forEach { r -> RemoteMerge.visit(visitDao.getById(r.id), r)?.let { visitDao.upsert(it) } }
