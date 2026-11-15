@@ -184,8 +184,13 @@ class VisitRepository(
         visitDao.markRemoteSynced(visit.id, visit.updatedAt)
     }
 
-    /** Removes a visit the server deleted (e.g. its technician deleted their account). */
+    /**
+     * Removes a visit the server deleted (its technician deleted their account). A visit this
+     * phone is still sending, or has unsent changes to, is never deleted.
+     */
     suspend fun deleteLocal(id: String) {
+        val local = visitDao.getById(id) ?: return
+        if (local.ownedLocally && (local.remoteDirty || local.syncStatus != SyncStatus.EMAILED)) return
         visitDao.deleteById(id)
         withContext(Dispatchers.IO) { File(File(filesDir, "visits"), id).deleteRecursively() }
     }

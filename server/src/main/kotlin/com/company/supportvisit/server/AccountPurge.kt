@@ -12,8 +12,8 @@ object AccountPurge {
         val due = store.dueDeletions(now)
         due.forEach { request ->
             var removed = 0
-            if (!request.keepShared && request.email.isNotBlank()) {
-                store.visitIdsRecordedBy(request.tenantId, request.email).forEach { visitId ->
+            if (!request.keepShared) {
+                store.visitIdsCreatedBy(request.tenantId, request.userId).forEach { visitId ->
                     files.deleteVisit(request.tenantId, visitId)
                     store.tombstone(Store.Kind.VISITS, request.tenantId, visitId)
                     removed++

@@ -6,7 +6,11 @@ import java.sql.Connection
 import java.sql.DriverManager
 
 /** A stored record: the app's JSON plus the server's change timestamp. */
-data class Record(val id: String, val data: JSONObject, val serverUpdatedAt: Long)
+/** A stored record: the app's JSON, the server's change timestamp and who last wrote it. */
+data class Record(val id: String, val data: JSONObject, val serverUpdatedAt: Long, val updatedBy: String = "") {
+    /** True only for tombstones written by the server itself (never by a phone). */
+    val isServerTombstone: Boolean get() = updatedBy == Store.SYSTEM_DELETION && data.optBoolean("deleted")
+}
 
 /**
  * SQLite storage. Every row belongs to one tenant (company); queries always filter by tenant,
@@ -15,6 +19,8 @@ data class Record(val id: String, val data: JSONObject, val serverUpdatedAt: Lon
 class Store(dbFile: File) {
 
     companion object {
+        const val SYSTEM_DELETION = "system:deletion"
+
         /** Consistent copy of the live database (safe while the server runs). */
         fun backup(source: File, target: File) {
             target.parentFile?.mkdirs()
@@ -61,6 +67,13 @@ class Store(dbFile: File) {
                     )
                     """.trimIndent()
                 )
+                // Who first stored the record (Microsoft user id). Set once, never updated.
+                val hasCreator = st.executeQuery("PRAGMA table_info(${kind.table})").use { rs ->
+                    var found = false
+                    while (rs.next()) if (rs.getString("name") == "created_by") found = true
+                    found
+                }
+                if (!hasCreator) st.execute("ALTER TABLE ${kind.table} ADD COLUMN created_by TEXT")
                 st.execute(
                     "CREATE INDEX IF NOT EXISTS idx_${kind.table}_changes ON ${kind.table} (tenant_id, server_updated_at)"
                 )
@@ -91,11 +104,11 @@ class Store(dbFile: File) {
     }
 
     @Synchronized
-    fun upsert(kind: Kind, tenantId: String, id: String, data: JSONObject, updatedBy: String): Long {
+    fun upsert(kind: Kind, tenantId: String, id: String, data: JSONObject, updatedBy: String, createdBy: String? = null): Long {
         val stamp = nextStamp()
         connection.prepareStatement(
             """
-            INSERT INTO ${kind.table} (tenant_id, id, data, updated_by, server_updated_at) VALUES (?, ?, ?, ?, ?)
+            INSERT INTO ${kind.table} (tenant_id, id, data, updated_by, server_updated_at, created_by) VALUES (?, ?, ?, ?, ?, ?)
             ON CONFLICT (tenant_id, id) DO UPDATE SET
                 data = excluded.data, updated_by = excluded.updated_by, server_updated_at = excluded.server_updated_at
             """.trimIndent()
@@ -105,15 +118,24 @@ class Store(dbFile: File) {
             ps.setString(3, data.toString())
             ps.setString(4, updatedBy)
             ps.setLong(5, stamp)
+            ps.setString(6, createdBy)
             ps.executeUpdate()
         }
         return stamp
     }
 
+    /** The Microsoft user id that first stored the record, or null if it doesn't exist (or predates tracking). */
+    @Synchronized
+    fun creatorOf(kind: Kind, tenantId: String, id: String): String? =
+        connection.prepareStatement("SELECT created_by FROM ${kind.table} WHERE tenant_id = ? AND id = ?").use { ps ->
+            ps.setString(1, tenantId); ps.setString(2, id)
+            ps.executeQuery().use { rs -> if (rs.next()) rs.getString(1) else null }
+        }
+
     @Synchronized
     fun changesSince(kind: Kind, tenantId: String, since: Long, limit: Int = 500): List<Record> =
         connection.prepareStatement(
-            "SELECT id, data, server_updated_at FROM ${kind.table} " +
+            "SELECT id, data, server_updated_at, updated_by FROM ${kind.table} " +
                 "WHERE tenant_id = ? AND server_updated_at > ? ORDER BY server_updated_at LIMIT ?"
         ).use { ps ->
             ps.setString(1, tenantId)
@@ -121,7 +143,7 @@ class Store(dbFile: File) {
             ps.setInt(3, limit)
             ps.executeQuery().use { rs ->
                 buildList {
-                    while (rs.next()) add(Record(rs.getString(1), JSONObject(rs.getString(2)), rs.getLong(3)))
+                    while (rs.next()) add(Record(rs.getString(1), JSONObject(rs.getString(2)), rs.getLong(3), rs.getString(4)))
                 }
             }
         }
@@ -176,17 +198,15 @@ class Store(dbFile: File) {
         }
 
     /**
-     * Ids of the visits a user recorded: technicianEmail on the visit, or (for visits without one)
-     * the account that last wrote it.
+     * Ids of the visits a user created, by the immutable creator id the server recorded when each
+     * visit was first stored (never by editable fields such as technicianEmail).
      */
     @Synchronized
-    fun visitIdsRecordedBy(tenantId: String, email: String): List<String> =
+    fun visitIdsCreatedBy(tenantId: String, userId: String): List<String> =
         connection.prepareStatement(
-            "SELECT id FROM visits WHERE tenant_id = ? AND json_extract(data, '$.deleted') IS NOT 1 AND (" +
-                "lower(json_extract(data, '$.technicianEmail')) = lower(?) OR " +
-                "(json_extract(data, '$.technicianEmail') IS NULL AND lower(updated_by) = lower(?)))"
+            "SELECT id FROM visits WHERE tenant_id = ? AND created_by = ? AND updated_by != ?"
         ).use { ps ->
-            ps.setString(1, tenantId); ps.setString(2, email); ps.setString(3, email)
+            ps.setString(1, tenantId); ps.setString(2, userId); ps.setString(3, SYSTEM_DELETION)
             ps.executeQuery().use { rs -> buildList { while (rs.next()) add(rs.getString(1)) } }
         }
 
@@ -195,7 +215,7 @@ class Store(dbFile: File) {
      * changes removes its copy; the record's content is gone from the server.
      */
     fun tombstone(kind: Kind, tenantId: String, id: String) {
-        upsert(kind, tenantId, id, JSONObject().put("id", id).put("deleted", true), "system:deletion")
+        upsert(kind, tenantId, id, JSONObject().put("id", id).put("deleted", true), SYSTEM_DELETION)
     }
 
     private fun java.sql.ResultSet.toDeletion() = DeletionRequest(

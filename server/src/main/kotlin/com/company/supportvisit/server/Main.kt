@@ -159,7 +159,12 @@ fun Application.module(config: Config, verify: (String) -> Caller) {
                     val since = call.request.queryParameters["since"]?.toLongOrNull() ?: 0L
                     val records = store.changesSince(kind, c.tenantId, since)
                     val items = JSONArray()
-                    records.forEach { items.put(JSONObject(it.data.toString()).put("serverUpdatedAt", it.serverUpdatedAt)) }
+                    records.forEach { r ->
+                        val item = JSONObject(r.data.toString()).put("serverUpdatedAt", r.serverUpdatedAt)
+                        item.remove("deleted")
+                        if (r.isServerTombstone) item.put("deleted", true)
+                        items.put(item)
+                    }
                     call.respondJson(
                         HttpStatusCode.OK,
                         JSONObject()
@@ -176,7 +181,15 @@ fun Application.module(config: Config, verify: (String) -> Caller) {
                     val body = JSONObject(call.receiveText())
                     require(body.optString("id") == id) { "Body id does not match URL" }
                     body.remove("serverUpdatedAt")
-                    val stamp = store.upsert(kind, c.tenantId, id, body, c.email.ifBlank { c.userId })
+                    body.remove("deleted")
+                    if (kind == Store.Kind.VISITS) {
+                        val creator = store.creatorOf(kind, c.tenantId, id)
+                        if (creator != null && creator != c.userId) {
+                            call.respondJson(HttpStatusCode.Forbidden, JSONObject().put("error", "not_your_visit"))
+                            return@put
+                        }
+                    }
+                    val stamp = store.upsert(kind, c.tenantId, id, body, c.email.ifBlank { c.userId }, createdBy = c.userId)
                     call.respondJson(HttpStatusCode.OK, JSONObject().put("id", id).put("serverUpdatedAt", stamp))
                 }
             }
