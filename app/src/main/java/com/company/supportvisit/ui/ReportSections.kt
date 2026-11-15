@@ -9,6 +9,7 @@ data class ReportSections(
     val visitType: Boolean,
     val photos: Boolean,
     val parts: Boolean,
+    val billing: Boolean,
     val technicianSignature: Boolean
 ) {
     companion object {
@@ -16,6 +17,7 @@ data class ReportSections(
             visitType = FormSettings.isEnabled(context, Section.VISIT_TYPE),
             photos = FormSettings.isEnabled(context, Section.PHOTOS),
             parts = FormSettings.isEnabled(context, Section.PARTS),
+            billing = FormSettings.isEnabled(context, Section.BILLING),
             technicianSignature = FormSettings.isEnabled(context, Section.TECHNICIAN_SIGNATURE)
         )
     }

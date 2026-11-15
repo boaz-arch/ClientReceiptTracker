@@ -16,6 +16,8 @@ data class ClientEntity(
     /** Hourly rate in the company currency, if agreed. */
     val hourlyRate: Double? = null,
     val notes: String = "",
+    /** Support package: hours included per month (null = no package). Added in database version 3. */
+    val monthlyHoursAllowance: Double? = null,
     val remoteDirty: Boolean = true,
     val updatedAt: Long = System.currentTimeMillis()
 )

@@ -55,7 +55,17 @@ data class VisitEntity(
      * are never uploaded or emailed from here.
      */
     @ColumnInfo(defaultValue = "1")
-    val ownedLocally: Boolean = true
+    val ownedLocally: Boolean = true,
+
+    // --- Added in database version 3 (billing) ---
+
+    /** Unbilled break during the visit, in minutes. */
+    @ColumnInfo(defaultValue = "0")
+    val breakMinutes: Int = 0,
+    /** When set, the billable time instead of (end - start - break). */
+    val billableMinutesOverride: Int? = null,
+    /** The client's hourly rate when the visit was recorded (later rate changes don't alter it). */
+    val hourlyRate: Double? = null
 ) {
     val type: VisitType get() = VisitType.fromKey(visitType)
 }
