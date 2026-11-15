@@ -13,6 +13,8 @@ import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.company.supportvisit.billing.Billing
+import com.company.supportvisit.billing.bill
 import com.company.supportvisit.data.SyncStatus
 import com.company.supportvisit.data.VisitEntity
 import com.company.supportvisit.data.partsTotal
@@ -80,8 +82,19 @@ class VisitDetailsActivity : AppCompatActivity() {
             lblParts.visibility = if (hasParts) View.VISIBLE else View.GONE
             tvParts.visibility = lblParts.visibility
             tvParts.text = visit.parts.joinToString("\n") { part ->
-                getString(R.string.part_line, part.description, Money.quantity(part.quantity), Money.format(part.total))
-            } + if (hasParts) "\n" + getString(R.string.parts_total, Money.format(visit.parts.partsTotal())) else ""
+                getString(R.string.part_line, part.description, Money.quantity(part.quantity), Money.format(this@VisitDetailsActivity, part.total))
+            } + if (hasParts) "\n" + getString(R.string.parts_total, Money.format(this@VisitDetailsActivity, visit.parts.partsTotal())) else ""
+
+            val bill = visit.bill()
+            val ctx = this@VisitDetailsActivity
+            tvBilling.text = buildString {
+                append(getString(R.string.pdf_billable_time, Billing.formatMinutes(bill.billableMinutes)))
+                if (bill.breakMinutes > 0) append("\n").append(getString(R.string.pdf_break, bill.breakMinutes))
+                bill.hourlyRate?.let { rate ->
+                    append("\n").append(getString(R.string.pdf_rate, Money.format(ctx, rate)))
+                    append("\n").append(getString(R.string.pdf_subtotal, Money.format(ctx, bill.total)))
+                }
+            }
 
             val photoLinks = visit.photos.mapNotNull { it.remoteUrl }
             lblPhotos.visibility = if (visit.photos.isEmpty()) View.GONE else View.VISIBLE

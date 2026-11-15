@@ -22,7 +22,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:background="@color/dashboard_card"
+        android:background="@drawable/bg_search_field"
         android:hint="@string/search_hint"
         android:importantForAutofill="no"
         android:inputType="text"

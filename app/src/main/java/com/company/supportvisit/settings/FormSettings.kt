@@ -11,6 +11,7 @@ object FormSettings {
         VISIT_TYPE("report_visit_type", true),
         PHOTOS("report_photos", true),
         PARTS("report_parts", true),
+        BILLING("report_billing", false),
         TECHNICIAN_SIGNATURE("technician_signature_enabled", false)
     }
 

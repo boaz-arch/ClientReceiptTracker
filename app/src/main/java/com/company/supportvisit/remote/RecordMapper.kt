@@ -33,6 +33,9 @@ object RecordMapper {
         .put("syncStatus", v.syncStatus.name)
         .put("createdAt", v.createdAt)
         .put("updatedAt", v.updatedAt)
+        .put("breakMinutes", v.breakMinutes)
+        .put("billableMinutesOverride", v.billableMinutesOverride ?: JSONObject.NULL)
+        .put("hourlyRate", v.hourlyRate ?: JSONObject.NULL)
 
     /** Builds a visit pulled from the server; returns null if it has no id. */
     fun jsonToVisit(json: JSONObject): VisitEntity? {
@@ -56,7 +59,10 @@ object RecordMapper {
             photos = (0 until (photoUrls?.length() ?: 0)).map { VisitPhoto(remoteUrl = photoUrls!!.getString(it)) },
             parts = JsonCodec.partsFromJson(json.optJSONArray("parts")?.toString()),
             remoteDirty = false,
-            ownedLocally = false
+            ownedLocally = false,
+            breakMinutes = json.optInt("breakMinutes", 0),
+            billableMinutesOverride = json.optIntOrNull("billableMinutesOverride"),
+            hourlyRate = json.optDoubleOrNull("hourlyRate")
         )
     }
 
@@ -69,6 +75,7 @@ object RecordMapper {
         .put("address", c.address)
         .put("hourlyRate", c.hourlyRate ?: JSONObject.NULL)
         .put("notes", c.notes)
+        .put("monthlyHoursAllowance", c.monthlyHoursAllowance ?: JSONObject.NULL)
         .put("updatedAt", c.updatedAt)
 
     fun jsonToClient(json: JSONObject): ClientEntity? {
@@ -80,12 +87,19 @@ object RecordMapper {
             email = json.optString("email"),
             phone = json.optString("phone"),
             address = json.optString("address"),
-            hourlyRate = if (json.isNull("hourlyRate")) null else json.optDouble("hourlyRate").takeUnless { it.isNaN() },
+            hourlyRate = json.optDoubleOrNull("hourlyRate"),
+            monthlyHoursAllowance = json.optDoubleOrNull("monthlyHoursAllowance"),
             notes = json.optString("notes"),
             remoteDirty = false,
             updatedAt = json.optLong("updatedAt", 0L)
         )
     }
+
+    private fun JSONObject.optDoubleOrNull(name: String): Double? =
+        if (!has(name) || isNull(name)) null else optDouble(name).takeUnless { it.isNaN() }
+
+    private fun JSONObject.optIntOrNull(name: String): Int? =
+        if (!has(name) || isNull(name)) null else optInt(name)
 
     private fun JSONObject.optStringOrNull(name: String): String? =
         if (isNull(name)) null else optString(name).ifBlank { null }

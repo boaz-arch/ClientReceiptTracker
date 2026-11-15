@@ -32,6 +32,12 @@ class FileStore(dataDir: File, private val maxBytes: Long) {
         return File(File(File(root, tenantId), visitId), name)
     }
 
+    /** Deletes every file of a visit (PDF and photos). */
+    fun deleteVisit(tenantId: String, visitId: String) {
+        require(isSafeId(tenantId) && isSafeId(visitId)) { "Invalid path" }
+        File(File(root, tenantId), visitId).deleteRecursively()
+    }
+
     /** Writes the upload to a temp file first, so a failed upload never leaves a half file. */
     fun save(tenantId: String, visitId: String, name: String, input: InputStream): Long {
         val target = file(tenantId, visitId, name)

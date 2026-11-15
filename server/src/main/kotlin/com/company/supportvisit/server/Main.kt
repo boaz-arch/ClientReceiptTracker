@@ -15,12 +15,16 @@ import io.ktor.server.request.receiveText
 import io.ktor.server.response.header
 import io.ktor.server.response.respondFile
 import io.ktor.server.response.respondText
+import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.put
 import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
 import io.ktor.utils.io.jvm.javaio.toInputStream
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
@@ -58,6 +62,18 @@ fun Application.module(config: Config, verify: (String) -> Caller) {
     val store = Store(File(config.dataDir, "supportvisit.db"))
     val files = FileStore(config.dataDir, config.maxUploadBytes)
     val signer = LinkSigner(config.linkSecret)
+
+    // Purge accounts whose grace period has ended: at start-up, then every hour.
+    launch {
+        while (isActive) {
+            try {
+                AccountPurge.run(store, files)
+            } catch (e: Exception) {
+                log.error("Account purge failed", e)
+            }
+            delay(config.purgeIntervalMs)
+        }
+    }
 
     install(CallLogging) {
         // Paths only: never log tokens or personal data.
@@ -99,6 +115,41 @@ fun Application.module(config: Config, verify: (String) -> Caller) {
                 )
             }
 
+            // Account deletion: scheduled now, purged after the grace period, cancellable until then.
+            route("/me/deletion") {
+                get {
+                    val c = call.caller()
+                    val r = store.deletionRequest(c.tenantId, c.userId)
+                    call.respondJson(
+                        HttpStatusCode.OK,
+                        JSONObject().put("pending", r != null)
+                            .put("purgeAt", r?.purgeAt ?: JSONObject.NULL)
+                            .put("keepShared", r?.keepShared ?: false)
+                    )
+                }
+                post {
+                    val c = call.caller()
+                    val body = call.receiveText().let { if (it.isBlank()) JSONObject() else JSONObject(it) }
+                    val now = System.currentTimeMillis()
+                    val request = Store.DeletionRequest(
+                        tenantId = c.tenantId,
+                        userId = c.userId,
+                        email = c.email,
+                        keepShared = body.optBoolean("keepShared", false),
+                        requestedAt = now,
+                        purgeAt = now + config.deletionGraceMs
+                    )
+                    store.requestDeletion(request)
+                    log.info("Account deletion scheduled (keepShared={})", request.keepShared)
+                    call.respondJson(HttpStatusCode.OK, JSONObject().put("pending", true).put("purgeAt", request.purgeAt))
+                }
+                delete {
+                    val c = call.caller()
+                    val cancelled = store.cancelDeletion(c.tenantId, c.userId)
+                    call.respondJson(HttpStatusCode.OK, JSONObject().put("cancelled", cancelled))
+                }
+            }
+
             for (kind in Store.Kind.entries) {
                 val path = "/${kind.table}"
 
@@ -108,7 +159,12 @@ fun Application.module(config: Config, verify: (String) -> Caller) {
                     val since = call.request.queryParameters["since"]?.toLongOrNull() ?: 0L
                     val records = store.changesSince(kind, c.tenantId, since)
                     val items = JSONArray()
-                    records.forEach { items.put(JSONObject(it.data.toString()).put("serverUpdatedAt", it.serverUpdatedAt)) }
+                    records.forEach { r ->
+                        val item = JSONObject(r.data.toString()).put("serverUpdatedAt", r.serverUpdatedAt)
+                        item.remove("deleted")
+                        if (r.isServerTombstone) item.put("deleted", true)
+                        items.put(item)
+                    }
                     call.respondJson(
                         HttpStatusCode.OK,
                         JSONObject()
@@ -125,7 +181,15 @@ fun Application.module(config: Config, verify: (String) -> Caller) {
                     val body = JSONObject(call.receiveText())
                     require(body.optString("id") == id) { "Body id does not match URL" }
                     body.remove("serverUpdatedAt")
-                    val stamp = store.upsert(kind, c.tenantId, id, body, c.email.ifBlank { c.userId })
+                    body.remove("deleted")
+                    if (kind == Store.Kind.VISITS) {
+                        val creator = store.creatorOf(kind, c.tenantId, id)
+                        if (creator != null && creator != c.userId) {
+                            call.respondJson(HttpStatusCode.Forbidden, JSONObject().put("error", "not_your_visit"))
+                            return@put
+                        }
+                    }
+                    val stamp = store.upsert(kind, c.tenantId, id, body, c.email.ifBlank { c.userId }, createdBy = c.userId)
                     call.respondJson(HttpStatusCode.OK, JSONObject().put("id", id).put("serverUpdatedAt", stamp))
                 }
             }

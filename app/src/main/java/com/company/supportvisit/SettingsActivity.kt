@@ -10,7 +10,12 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.FileProvider
 import androidx.lifecycle.lifecycleScope
+import com.company.supportvisit.account.AccountDeletion
+import com.company.supportvisit.account.UnsentVisitsException
 import com.company.supportvisit.databinding.ActivitySettingsBinding
+import com.company.supportvisit.databinding.DialogDeleteAccountBinding
+import com.company.supportvisit.utils.DateUtils
+import androidx.appcompat.app.AlertDialog
 import com.company.supportvisit.graph.AuthManager
 import com.company.supportvisit.graph.MicrosoftAuthManager
 import com.company.supportvisit.settings.ThemeManager
@@ -34,10 +39,21 @@ class SettingsActivity : AppCompatActivity() {
         setContentView(binding.root)
         binding.root.applySystemBarInsets()
 
-        binding.btnLightMode.setOnClickListener { applyThemeMode(AppCompatDelegate.MODE_NIGHT_NO) }
-        binding.btnDarkMode.setOnClickListener { applyThemeMode(AppCompatDelegate.MODE_NIGHT_YES) }
-        binding.btnSystemMode.setOnClickListener { applyThemeMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM) }
+        val modes = mapOf(
+            R.id.btnLightMode to AppCompatDelegate.MODE_NIGHT_NO,
+            R.id.btnDarkMode to AppCompatDelegate.MODE_NIGHT_YES,
+            R.id.btnSystemMode to AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+        )
+        val current = ThemeManager.savedMode(this)
+        modes.entries.firstOrNull { it.value == current }?.let { binding.themeToggle.check(it.key) }
+        binding.themeToggle.addOnButtonCheckedListener { _, id, checked ->
+            val mode = modes[id]
+            if (checked && mode != null && mode != ThemeManager.savedMode(this)) applyThemeMode(mode)
+        }
 
+        binding.btnBillingSettings.setOnClickListener {
+            startActivity(Intent(this, BillingSettingsActivity::class.java))
+        }
         binding.btnCustomizeReport.setOnClickListener {
             startActivity(Intent(this, ReportSettingsActivity::class.java))
         }
@@ -45,6 +61,7 @@ class SettingsActivity : AppCompatActivity() {
         binding.btnExportCsv.setOnClickListener { exportCsv() }
 
         binding.btnConnectMicrosoft.setOnClickListener { connectMicrosoft() }
+        binding.btnDeleteAccount.setOnClickListener { confirmDeleteAccount() }
         binding.btnDisconnectMicrosoft.setOnClickListener { disconnectMicrosoft() }
 
         // Local login buttons only make sense when the local login screen is enabled.
@@ -83,6 +100,47 @@ class SettingsActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 Log.w(TAG, "CSV export failed", e)
                 Toast.makeText(this@SettingsActivity, R.string.export_failed, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    /** Delete account: wipe everything by default; optionally keep reports in the company records. */
+    private fun confirmDeleteAccount() {
+        val dialogBinding = DialogDeleteAccountBinding.inflate(layoutInflater)
+        AlertDialog.Builder(this)
+            .setTitle(R.string.delete_account)
+            .setView(dialogBinding.root)
+            .setNegativeButton(R.string.cancel, null)
+            .setPositiveButton(R.string.delete_account_confirm) { _, _ ->
+                deleteAccount(keepShared = dialogBinding.cbKeepShared.isChecked)
+            }
+            .show()
+    }
+
+    private fun deleteAccount(keepShared: Boolean) {
+        binding.btnDeleteAccount.isEnabled = false
+        lifecycleScope.launch {
+            try {
+                if (!SignInHelper.ensureSignedIn(this@SettingsActivity)) return@launch
+                val purgeAt = AccountDeletion.request(this@SettingsActivity, keepShared)
+                val message = if (purgeAt != null) {
+                    getString(R.string.delete_account_scheduled, DateUtils.formatForDisplay(
+                        java.time.Instant.ofEpochMilli(purgeAt).atZone(java.time.ZoneId.systemDefault()).toLocalDate().toString()
+                    ))
+                } else {
+                    getString(R.string.delete_account_done_local)
+                }
+                Toast.makeText(this@SettingsActivity, message, Toast.LENGTH_LONG).show()
+                startActivity(Intent(this@SettingsActivity, MainActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK))
+                finish()
+            } catch (e: UnsentVisitsException) {
+                Toast.makeText(this@SettingsActivity, R.string.delete_account_unsent, Toast.LENGTH_LONG).show()
+            } catch (e: Exception) {
+                Log.w(TAG, "Account deletion failed", e)
+                Toast.makeText(this@SettingsActivity, R.string.delete_account_failed, Toast.LENGTH_LONG).show()
+            } finally {
+                binding.btnDeleteAccount.isEnabled = true
             }
         }
     }

@@ -16,6 +16,9 @@ import com.company.supportvisit.R
 import com.company.supportvisit.data.VisitEntity
 import com.company.supportvisit.data.partsTotal
 import com.company.supportvisit.settings.FormSettings
+import com.company.supportvisit.settings.BillingSettings
+import com.company.supportvisit.billing.Billing
+import com.company.supportvisit.billing.bill
 import com.company.supportvisit.ui.labelRes
 import java.io.File
 
@@ -76,24 +79,61 @@ object PdfReportGenerator {
         if (visit.parts.isNotEmpty()) {
             writer.space(4f)
             writer.paragraph(context.getString(R.string.label_parts), labelPaint, spacingAfter = 4f)
+            val partPrices = FormSettings.isEnabled(context, FormSettings.Section.BILLING) &&
+                BillingSettings.showPricesOnPdf(context)
             visit.parts.forEach { part ->
+                if (!partPrices) {
+                    writer.paragraph(
+                        context.getString(R.string.pdf_part_line_no_price, part.description, Money.quantity(part.quantity)),
+                        bodyPaint,
+                        spacingAfter = 2f
+                    )
+                    return@forEach
+                }
                 writer.paragraph(
                     context.getString(
                         R.string.pdf_part_line,
                         part.description,
                         Money.quantity(part.quantity),
-                        Money.format(part.unitPrice),
-                        Money.format(part.total)
+                        Money.format(context, part.unitPrice),
+                        Money.format(context, part.total)
                     ),
                     bodyPaint,
                     spacingAfter = 2f
                 )
             }
-            writer.paragraph(
-                context.getString(R.string.parts_total, Money.format(visit.parts.partsTotal())),
-                labelPaint,
-                spacingAfter = 10f
+            if (partPrices) {
+                writer.paragraph(
+                    context.getString(R.string.parts_total, Money.format(context, visit.parts.partsTotal())),
+                    labelPaint,
+                    spacingAfter = 10f
+                )
+            } else {
+                writer.space(8f)
+            }
+        }
+
+        if (FormSettings.isEnabled(context, FormSettings.Section.BILLING)) {
+            val bill = visit.bill()
+            val showPrices = BillingSettings.showPricesOnPdf(context) && bill.hourlyRate != null
+            writer.space(4f)
+            writer.paragraph(context.getString(R.string.billing_section), labelPaint, spacingAfter = 4f)
+            val lines = mutableListOf(
+                context.getString(R.string.pdf_billable_time, Billing.formatMinutes(bill.billableMinutes))
             )
+            if (bill.breakMinutes > 0) lines += context.getString(R.string.pdf_break, bill.breakMinutes)
+            if (showPrices) {
+                val vatPercent = BillingSettings.vatPercent(context)
+                val vat = Billing.vat(bill.total, vatPercent)
+                lines += context.getString(R.string.pdf_rate, Money.format(context, bill.hourlyRate!!))
+                lines += context.getString(R.string.pdf_labor, Money.format(context, bill.laborAmount))
+                if (bill.partsAmount > 0) lines += context.getString(R.string.pdf_parts_amount, Money.format(context, bill.partsAmount))
+                lines += context.getString(R.string.pdf_subtotal, Money.format(context, bill.total))
+                lines += context.getString(R.string.pdf_vat, Money.quantity(vatPercent), Money.format(context, vat))
+                lines += context.getString(R.string.pdf_total_with_vat, Money.format(context, Billing.round2(bill.total + vat)))
+            }
+            lines.forEach { writer.paragraph(it, bodyPaint, spacingAfter = 2f) }
+            writer.space(8f)
         }
 
         writer.space(10f)

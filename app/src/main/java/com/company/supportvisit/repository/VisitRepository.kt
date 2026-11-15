@@ -33,7 +33,11 @@ data class NewVisitInput(
     val workDescription: String,
     val parts: List<PartItem>,
     /** Compressed photos from the draft folder; moved into the visit's own folder on submit. */
-    val photoPaths: List<String>
+    val photoPaths: List<String>,
+    val breakMinutes: Int = 0,
+    val billableMinutesOverride: Int? = null,
+    /** The client's hourly rate at submit time. */
+    val hourlyRate: Double? = null
 )
 
 /**
@@ -79,6 +83,11 @@ class VisitRepository(
 
     suspend fun getRemoteDirtyVisits(): List<VisitEntity> = visitDao.getRemoteDirty()
 
+    suspend fun getVisitsInRange(from: String, to: String, clientId: String? = null): List<VisitEntity> =
+        visitDao.getInRange(from, to, clientId)
+
+    fun observeVisitsInRange(from: String, to: String): Flow<List<VisitEntity>> = visitDao.observeInRange(from, to)
+
     /**
      * Saves a new visit locally (status PENDING) and clears the draft in one transaction.
      * Uploading and emailing happen later in the sync worker.
@@ -118,6 +127,9 @@ class VisitRepository(
             parts = input.parts,
             photos = photos,
             technicianEmail = technicianEmail,
+            breakMinutes = input.breakMinutes,
+            billableMinutesOverride = input.billableMinutesOverride,
+            hourlyRate = input.hourlyRate,
             signaturePath = signatureFile.absolutePath,
             technicianSignaturePath = techSignatureFile?.absolutePath,
             syncStatus = SyncStatus.PENDING
@@ -170,6 +182,17 @@ class VisitRepository(
 
     suspend fun markRemoteSynced(visit: VisitEntity) {
         visitDao.markRemoteSynced(visit.id, visit.updatedAt)
+    }
+
+    /**
+     * Removes a visit the server deleted (its technician deleted their account). A visit this
+     * phone is still sending, or has unsent changes to, is never deleted.
+     */
+    suspend fun deleteLocal(id: String) {
+        val local = visitDao.getById(id) ?: return
+        if (local.ownedLocally && (local.remoteDirty || local.syncStatus != SyncStatus.EMAILED)) return
+        visitDao.deleteById(id)
+        withContext(Dispatchers.IO) { File(File(filesDir, "visits"), id).deleteRecursively() }
     }
 
     /** Applies visits pulled from the server. */

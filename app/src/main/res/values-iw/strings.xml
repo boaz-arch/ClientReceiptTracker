@@ -9,8 +9,8 @@
     <string name="signed_in_as">מחובר בתור %1$s</string>
     <string name="signed_in_guest">מחובר כאורח</string>
     <string name="what_would_you_like_to_do">מה תרצה לעשות?</string>
-    <string name="add_new_visit_report">הוספת דוח ביקור חדש</string>
-    <string name="view_my_past_visits">הצגת הביקורים שלי</string>
+    <string name="add_new_visit_report">דוח ביקור חדש</string>
+    <string name="view_my_past_visits">ביקורים קודמים</string>
     <string name="settings">הגדרות</string>
 
     <!-- New visit -->
@@ -68,10 +68,10 @@
     <string name="visit_not_found">הביקור לא נמצא</string>
 
     <!-- Settings -->
-    <string name="mode_settings">מצב תצוגה</string>
-    <string name="light_mode">מצב בהיר</string>
-    <string name="dark_mode">מצב כהה</string>
-    <string name="system_mode">לפי המערכת</string>
+    <string name="mode_settings">ערכת נושא</string>
+    <string name="light_mode">בהיר</string>
+    <string name="dark_mode">כהה</string>
+    <string name="system_mode">מערכת</string>
     <string name="export_data">ייצוא נתונים</string>
     <string name="export_csv">ייצוא CSV</string>
     <string name="share_csv">שיתוף CSV</string>
@@ -149,7 +149,7 @@
     <string name="hint_email">אימייל</string>
     <string name="hint_phone">טלפון</string>
     <string name="hint_address">כתובת</string>
-    <string name="hint_hourly_rate">תעריף לשעה</string>
+    <string name="hint_hourly_rate">תעריף לשעה (לא חובה, גובר על ברירת המחדל)</string>
     <string name="hint_notes">הערות</string>
     <string name="error_client_name_required">יש להזין את שם הלקוח</string>
     <string name="error_invalid_rate">יש להזין תעריף שעתי תקין</string>
@@ -180,4 +180,104 @@
     <string name="report_option_parts_hint">חלקים וחומרים עם כמות ומחיר, וסה״כ.</string>
     <string name="report_option_technician_signature_hint">משטח חתימה נוסף לטכנאי, ליד חתימת הלקוח.</string>
 
+
+    <!-- Phase 3: billing, support packages, monthly reports, invoices -->
+    <string name="billing_section">זמן וחיוב</string>
+    <string name="billing_enter_times">הזינו שעת התחלה וסיום כדי לראות את זמן החיוב</string>
+    <string name="billing_summary">לחיוב %1$s ש׳ × %2$s = %3$s</string>
+    <string name="billing_summary_no_rate">זמן: %1$s ש׳ (הגדירו תעריף שעתי בהגדרות > חיוב)</string>
+    <string name="report_option_billing_hint">הזמן משעת ההתחלה עד הסיום × התעריף השעתי, והסכום; מופיע ב-PDF.</string>
+    <string name="retainer_usage">בנק שעות: נוצלו %1$s מתוך %2$s ש׳ החודש</string>
+    <string name="retainer_usage_warning">בנק שעות: נוצלו %1$s מתוך %2$s ש׳ החודש (מעל 80%%)</string>
+    <string name="retainer_usage_over">חריגה מבנק השעות: נוצלו %1$s מתוך %2$s ש׳ החודש</string>
+    <string name="hint_monthly_hours">שעות כלולות בחודש (בנק שעות)</string>
+    <string name="helper_monthly_hours">השאירו ריק אם ללקוח אין בנק שעות</string>
+    <string name="error_invalid_hours">יש להזין מספר שעות תקין</string>
+    <string name="pdf_billable_time">זמן לחיוב: %1$s ש׳</string>
+    <string name="pdf_break">הפסקה: %1$d דק׳</string>
+    <string name="pdf_rate">תעריף שעתי: %1$s</string>
+    <string name="pdf_labor">עבודה: %1$s</string>
+    <string name="pdf_parts_amount">חלקים: %1$s</string>
+    <string name="pdf_subtotal">סה״כ לפני מע״מ: %1$s</string>
+    <string name="pdf_vat">מע״מ %1$s%%: %2$s</string>
+    <string name="pdf_total_with_vat">סה״כ כולל מע״מ: %1$s</string>
+    <string name="pdf_part_line_no_price">%1$s × %2$s</string>
+    <string name="monthly_report_title">דוחות חודשיים</string>
+    <string name="monthly_report_subtitle">%1$s · %2$s</string>
+    <string name="monthly_report_no_visits">אין ביקורים ללקוח זה בחודש זה</string>
+    <string name="monthly_report_no_clients">הוסיפו קודם לקוחות (לקוחות במסך הבית)</string>
+    <string name="monthly_report_client_no_email">ללקוח זה אין כתובת אימייל</string>
+    <string name="monthly_report_email_confirm">לשלוח את הדוח החודשי (PDF ו-Excel) אל %1$s?</string>
+    <string name="monthly_report_email_subject">דוח תמיכה חודשי - %1$s - %2$s</string>
+    <string name="monthly_report_email_body">שלום,\n\nמצורף דוח התמיכה החודשי של %1$s לחודש %2$s.\n\nבברכה</string>
+    <string name="monthly_report_email_sent">הדוח נשלח</string>
+    <string name="report_visits_count">ביקורים: %1$d</string>
+    <string name="report_total_hours">שעות לחיוב: %1$s</string>
+    <string name="report_col_hours">שעות</string>
+    <string name="report_col_amount">סכום</string>
+    <string name="previous_month">החודש הקודם</string>
+    <string name="next_month">החודש הבא</string>
+    <string name="share_pdf">שיתוף PDF</string>
+    <string name="share_excel">שיתוף Excel (CSV)</string>
+    <string name="email_report_to_client">שליחה ללקוח באימייל</string>
+    <string name="create_draft_invoice">יצירת טיוטת חשבונית</string>
+    <string name="send">שליחה</string>
+    <string name="ok">אישור</string>
+    <string name="open">פתיחה</string>
+    <string name="action_failed">משהו השתבש. נסו שוב.</string>
+    <string name="action_failed_offline">אין חיבור. נסו שוב כשתהיו מחוברים.</string>
+    <string name="invoice_not_configured">הגדירו קודם מערכת הנהלת חשבונות בהגדרות &gt; חיוב</string>
+    <string name="invoice_created_title">הטיוטה נוצרה</string>
+    <string name="invoice_created_message">נוצר חשבון עסקה במערכת הנהלת החשבונות: %1$s. בדקו והפיקו אותו שם.</string>
+    <string name="invoice_failed">מערכת הנהלת החשבונות לא קיבלה את הבקשה. בדקו את מפתח ה-API בהגדרות &gt; חיוב.</string>
+    <string name="billing_settings">חיוב</string>
+    <string name="label_currency">מטבע</string>
+    <string name="label_vat_percent">מע״מ (%)</string>
+    <string name="setting_show_prices">הצגת מחירים ב-PDF ללקוח</string>
+    <string name="setting_show_prices_hint">כשכבוי, ה-PDF שהלקוח מקבל מציג שעות וחלקים ללא סכומים.</string>
+    <string name="invoices_header">חשבוניות</string>
+    <string name="label_invoice_provider">מערכת הנהלת חשבונות</string>
+    <string name="invoice_provider_none">ללא</string>
+    <string name="invoice_provider_green">חשבונית ירוקה (Morning)</string>
+    <string name="invoice_provider_icount">iCount</string>
+    <string name="invoice_provider_rivhit">ריווחית</string>
+    <string name="invoice_provider_coming_soon">בקרוב. בינתיים בחרו בחשבונית ירוקה.</string>
+    <string name="label_api_key_id">מזהה מפתח API</string>
+    <string name="label_api_secret">סוד API</string>
+    <string name="api_secret_helper">נשמר מוצפן בטלפון זה בלבד</string>
+    <string name="api_secret_saved">סוד API (שמור; הקלידו כדי להחליף)</string>
+    <string name="setting_sandbox">סביבת בדיקות (Sandbox)</string>
+    <string name="save_and_test">שמירה ובדיקה</string>
+    <string name="testing">בודק…</string>
+    <string name="invoice_enter_key">הזינו מזהה מפתח API וסוד</string>
+    <string name="invoice_connected">מחובר למערכת הנהלת החשבונות</string>
+    <string name="invoice_connection_failed">החיבור נכשל. בדקו את המפתח, את מתג סביבת הבדיקות ואת החיבור.</string>
+    <string name="invoice_service_line">שירותי תמיכה ותחזוקה - %1$s</string>
+    <string name="invoice_service_line_hours">שירותי תמיכה ותחזוקה - %1$s (%2$s שעות)</string>
+    <string name="invoice_description">דוח חודשי %1$s</string>
+    <string name="invoice_remarks">%1$s שעות, %2$d ביקורים</string>
+
+    <string name="label_default_rate">תעריף שעתי ברירת מחדל</string>
+    <string name="default_rate_helper">משמש לכל ביקור. תעריף ייעודי של לקוח, אם הוגדר, גובר עליו.</string>
+    <string name="setting_enable_billing">חיוב בדוחות ביקור</string>
+    <string name="setting_enable_billing_hint">חישוב הסכום של כל ביקור לפי שעת ההתחלה והסיום והתעריף השעתי, והצגתו ב-PDF של הביקור.</string>
+
+    <!-- Account deletion -->
+    <string name="delete_account">מחיקת חשבון</string>
+    <string name="delete_account_confirm">מחיקה</string>
+    <string name="delete_account_message">החשבון שלך יימחק בעוד 14 יום. עד אז אפשר לשחזר אותו על ידי התחברות מחדש.\n\nאחרי 14 יום, כל דוחות הביקור, קובצי ה-PDF והתמונות שלך יימחקו לצמיתות מהשרת ומהטלפונים של עמיתיך. הנתונים בטלפון זה נמחקים עכשיו.\n\nלקוחות שהוספת נשארים בחברה. לא ניתן לבטל אימיילים שכבר נשלחו.</string>
+    <string name="delete_account_keep_shared">השארת דוחות הביקור שלי ברישומי החברה</string>
+    <string name="delete_account_keep_shared_hint">החשבון שלך יימחק, אבל הדוחות שתיעדת יישארו ביומן החברה.</string>
+    <string name="delete_account_scheduled">החשבון שלך יימחק ב-%1$s. התחברו שוב לפני כן כדי לשחזר אותו.</string>
+    <string name="delete_account_done_local">הנתונים שלך נמחקו מהטלפון הזה.</string>
+    <string name="delete_account_unsent">יש ביקורים שעדיין לא נשלחו. שלחו אותם קודם (ביקורים קודמים), ואז מחקו את החשבון.</string>
+    <string name="delete_account_failed">לא ניתן למחוק את החשבון. בדקו את החיבור ונסו שוב.</string>
+    <string name="restore_account_title">החשבון מתוזמן למחיקה</string>
+    <string name="restore_account_message">החשבון הזה יימחק לצמיתות ב-%1$s. לשחזר אותו?</string>
+    <string name="restore_account">שחזור החשבון</string>
+    <string name="restore_account_keep_deleting">להמשיך במחיקה</string>
+    <string name="restore_account_done">החשבון שוחזר. הנתונים מורדים.</string>
+
+    <string name="setting_monthly_billing">חיוב בדוחות חודשיים ובחשבוניות</string>
+    <string name="setting_monthly_billing_hint">הצגת סכומים ומע״מ בדוחות החודשיים ויצירת טיוטות חשבונית מהם.</string>
 </resources>

@@ -37,6 +37,18 @@ interface VisitDao {
     @Query("SELECT * FROM visits WHERE remoteDirty = 1 AND ownedLocally = 1")
     suspend fun getRemoteDirty(): List<VisitEntity>
 
+    /** Visits in an ISO date range (inclusive), optionally for one client. */
+    @Query(
+        "SELECT * FROM visits WHERE visitDate BETWEEN :from AND :to " +
+            "AND (:clientId IS NULL OR clientId = :clientId) ORDER BY visitDate, startTime"
+    )
+    suspend fun getInRange(from: String, to: String, clientId: String?): List<VisitEntity>
+
+    @Query(
+        "SELECT * FROM visits WHERE visitDate BETWEEN :from AND :to ORDER BY visitDate, startTime"
+    )
+    fun observeInRange(from: String, to: String): Flow<List<VisitEntity>>
+
     @Query("SELECT COUNT(*) FROM visits WHERE ownedLocally = 1 AND syncStatus != 'EMAILED'")
     fun observeUnsentCount(): Flow<Int>
 
@@ -51,6 +63,9 @@ interface VisitDao {
 
     @Update
     suspend fun update(visit: VisitEntity)
+
+    @Query("DELETE FROM visits WHERE id = :id")
+    suspend fun deleteById(id: String)
 
     /** Clears the dirty flag after an upload, unless the visit changed meanwhile. */
     @Query("UPDATE visits SET remoteDirty = 0 WHERE id = :id AND updatedAt = :pushedUpdatedAt")

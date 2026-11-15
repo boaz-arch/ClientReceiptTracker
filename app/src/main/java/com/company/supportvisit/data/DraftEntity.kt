@@ -26,12 +26,18 @@ data class DraftEntity(
     @ColumnInfo(defaultValue = "[]")
     val photoPaths: List<String> = emptyList(),
     @ColumnInfo(defaultValue = "[]")
-    val parts: List<PartItem> = emptyList()
+    val parts: List<PartItem> = emptyList(),
+
+    // --- Added in database version 3 ---
+    @ColumnInfo(defaultValue = "0")
+    val breakMinutes: Int = 0,
+    val billableMinutesOverride: Int? = null
 ) {
     fun isEmpty(): Boolean =
         clientName.isBlank() && clientEmail.isBlank() && startTime.isBlank() &&
             endTime.isBlank() && workDescription.isBlank() && signaturePath == null &&
-            technicianSignaturePath == null && photoPaths.isEmpty() && parts.isEmpty()
+            technicianSignaturePath == null && photoPaths.isEmpty() && parts.isEmpty() &&
+            breakMinutes == 0 && billableMinutesOverride == null
 
     companion object {
         const val SINGLE_DRAFT_ID = 1

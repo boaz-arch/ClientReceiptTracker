@@ -30,6 +30,28 @@ class ServerApi(baseUrl: String, private val token: String) {
         return ServerIdentity(json.optString("tenantId"), json.optString("email"))
     }
 
+    /** Pending account deletion for the signed-in user, if any. */
+    fun deletionStatus(): com.company.supportvisit.account.DeletionStatus {
+        val json = getJson("$base/api/v1/me/deletion")
+        return com.company.supportvisit.account.DeletionStatus(
+            pending = json.optBoolean("pending"),
+            purgeAt = if (json.isNull("purgeAt")) null else json.optLong("purgeAt")
+        )
+    }
+
+    /** Schedules the signed-in user's account for deletion; returns when it will be purged. */
+    fun requestDeletion(keepShared: Boolean): Long {
+        val request = Request.Builder()
+            .url("$base/api/v1/me/deletion")
+            .post(JSONObject().put("keepShared", keepShared).toString().toRequestBody(jsonType))
+            .build()
+        return JSONObject(GraphHttp.execute(request, token)).optLong("purgeAt")
+    }
+
+    fun cancelDeletion() {
+        GraphHttp.execute(Request.Builder().url("$base/api/v1/me/deletion").delete().build(), token)
+    }
+
     fun visitChanges(since: Long) = changes("visits", since)
 
     fun clientChanges(since: Long) = changes("clients", since)

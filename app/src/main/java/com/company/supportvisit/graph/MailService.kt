@@ -50,6 +50,36 @@ object MailService {
             .put("saveToSentItems", true)
     }
 
+    /** One file to attach. */
+    data class Attachment(val file: File, val contentType: String)
+
+    /** Sends a message with several attachments (total must stay under the 4 MB request limit). */
+    fun sendMailWithAttachments(
+        token: String,
+        subject: String,
+        body: String,
+        recipients: List<String>,
+        attachments: List<Attachment>
+    ) {
+        val json = buildSendMailJson(subject, body, recipients, null, null)
+        val list = JSONArray()
+        attachments.forEach { a ->
+            list.put(
+                JSONObject()
+                    .put("@odata.type", "#microsoft.graph.fileAttachment")
+                    .put("name", a.file.name)
+                    .put("contentType", a.contentType)
+                    .put("contentBytes", Base64.getEncoder().encodeToString(a.file.readBytes()))
+            )
+        }
+        json.getJSONObject("message").put("attachments", list)
+        val request = Request.Builder()
+            .url("${GraphHttp.BASE_URL}/me/sendMail")
+            .post(json.toString().toRequestBody("application/json".toMediaType()))
+            .build()
+        GraphHttp.execute(request, token)
+    }
+
     fun sendMail(
         token: String,
         subject: String,

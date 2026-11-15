@@ -9,12 +9,16 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.company.supportvisit.R
 import com.company.supportvisit.app
+import com.company.supportvisit.billing.RetainerCalculator
+import com.company.supportvisit.billing.RetainerUsage
+import com.company.supportvisit.billing.isoRange
 import com.company.supportvisit.data.ClientEntity
 import com.company.supportvisit.data.DraftEntity
 import com.company.supportvisit.data.PartItem
 import com.company.supportvisit.data.VisitType
 import com.company.supportvisit.graph.MicrosoftAuthManager
 import com.company.supportvisit.repository.NewVisitInput
+import com.company.supportvisit.settings.BillingSettings
 import com.company.supportvisit.sync.SyncScheduler
 import com.company.supportvisit.utils.DateUtils
 import com.company.supportvisit.utils.PhotoCompressor
@@ -32,6 +36,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.time.YearMonth
 
 /** The text fields of the New Visit form. */
 data class VisitForm(
@@ -48,6 +53,10 @@ data class NewVisitUiState(
     val visitType: VisitType = VisitType.OTHER,
     val photoPaths: List<String> = emptyList(),
     val parts: List<PartItem> = emptyList(),
+    /** The picked client (for hourly rate and support package), if any. */
+    val client: ClientEntity? = null,
+    /** This month's support package usage for the picked client, if it has a package. */
+    val retainer: RetainerUsage? = null,
     val isAddingPhotos: Boolean = false,
     val isSubmitting: Boolean = false,
     val isSubmitted: Boolean = false,
@@ -103,7 +112,16 @@ class NewVisitViewModel(application: Application) : AndroidViewModel(application
                 parts = draft.parts
             )
         }
+        draft.clientId?.let { id -> app.clientRepository.getClient(id)?.let { loadClientInfo(it) } }
         return draft
+    }
+
+    /** Remembers the picked client and works out this month's package usage for it. */
+    private suspend fun loadClientInfo(client: ClientEntity) {
+        val month = YearMonth.now()
+        val (from, to) = month.isoRange()
+        val visits = repository.getVisitsInRange(from, to, client.id)
+        _state.update { it.copy(client = client, retainer = RetainerCalculator.usage(client, visits, month)) }
     }
 
     fun onFormChanged(newForm: VisitForm) {
@@ -112,7 +130,9 @@ class NewVisitViewModel(application: Application) : AndroidViewModel(application
         val clientId = _state.value.clientId
         if (clientId != null && newForm.clientName != form.clientName) {
             val picked = clients.value.firstOrNull { it.id == clientId }
-            if (picked == null || picked.name != newForm.clientName) _state.update { it.copy(clientId = null) }
+            if (picked == null || picked.name != newForm.clientName) {
+                _state.update { it.copy(clientId = null, client = null, retainer = null) }
+            }
         }
         form = newForm
         scheduleDraftSave()
@@ -120,6 +140,7 @@ class NewVisitViewModel(application: Application) : AndroidViewModel(application
 
     fun selectClient(client: ClientEntity) {
         _state.update { it.copy(clientId = client.id) }
+        viewModelScope.launch { loadClientInfo(client) }
         form = form.copy(clientName = client.name, clientEmail = client.email.ifBlank { form.clientEmail })
         scheduleDraftSave()
     }
@@ -241,7 +262,10 @@ class NewVisitViewModel(application: Application) : AndroidViewModel(application
                         workDescription = currentForm.workDescription,
                         // Switched-off sections are left out even if an older draft has data in them.
                         parts = if (sections.parts) current.parts else emptyList(),
-                        photoPaths = if (sections.photos) current.photoPaths else emptyList()
+                        photoPaths = if (sections.photos) current.photoPaths else emptyList(),
+                        // Billed from the start and end time at the client's rate, or the default rate.
+                        hourlyRate = current.client?.hourlyRate
+                            ?: BillingSettings.defaultHourlyRate(getApplication())
                     ),
                     signature = signature,
                     technicianSignature = technicianSignature,
