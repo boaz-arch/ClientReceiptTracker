@@ -41,7 +41,7 @@ class ChangeLoginActivity : AppCompatActivity() {
 
                 Toast.makeText(
                     this,
-                    "Complete all fields",
+                    getString(R.string.complete_all_fields),
                     Toast.LENGTH_LONG
                 ).show()
 
@@ -56,7 +56,7 @@ class ChangeLoginActivity : AppCompatActivity() {
 
             Toast.makeText(
                 this,
-                "Login Updated",
+                getString(R.string.login_updated),
                 Toast.LENGTH_LONG
             ).show()
 

@@ -59,7 +59,7 @@ class LoginActivity : AppCompatActivity() {
 
                 Toast.makeText(
                     this,
-                    "Invalid Username or Password",
+                    getString(R.string.invalid_credentials),
                     Toast.LENGTH_LONG
                 ).show()
             }

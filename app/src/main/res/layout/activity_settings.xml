@@ -104,7 +104,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="32dp"
             android:gravity="center"
-            android:text="@string/livnelavan_ltd"
+            android:text="@string/company_footer"
             android:textColor="@color/text_muted"
             android:textSize="12sp"
             android:paddingBottom="40dp"/>
