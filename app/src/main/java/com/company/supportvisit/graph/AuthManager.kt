@@ -2,150 +2,49 @@ package com.company.supportvisit.graph
 
 import android.content.Context
 
+/**
+ * Optional local login, only used when AppConfig.LOGIN_ENABLED is true.
+ * Scheduled for removal in Phase 5 (Microsoft sign-in becomes the only login).
+ */
 object AuthManager {
 
-    private const val PREFS =
-        "auth_prefs"
-
-    private const val KEY_USERNAME =
-        "username"
-
-    private const val KEY_PASSWORD =
-        "password"
+    private const val PREFS = "auth_prefs"
+    private const val KEY_USERNAME = "username"
+    private const val KEY_PASSWORD = "password"
+    private const val DEFAULT_CREDENTIAL = "admin"
 
     private var loggedIn = false
 
-    fun initialize(
-        context: Context
-    ) {
-
-        val prefs =
-            context.getSharedPreferences(
-                PREFS,
-                Context.MODE_PRIVATE
-            )
-
-        if (
-            !prefs.contains(KEY_USERNAME)
-        ) {
-
+    fun initialize(context: Context) {
+        val prefs = prefs(context)
+        if (!prefs.contains(KEY_USERNAME)) {
             prefs.edit()
-
-                .putString(
-                    KEY_USERNAME,
-                    "admin"
-                )
-
-                .putString(
-                    KEY_PASSWORD,
-                    "admin"
-                )
-
+                .putString(KEY_USERNAME, DEFAULT_CREDENTIAL)
+                .putString(KEY_PASSWORD, DEFAULT_CREDENTIAL)
                 .apply()
         }
     }
 
-    fun login(
-        context: Context,
-        username: String,
-        password: String
-    ): Boolean {
-
-        val prefs =
-            context.getSharedPreferences(
-                PREFS,
-                Context.MODE_PRIVATE
-            )
-
-        val savedUser =
-            prefs.getString(
-                KEY_USERNAME,
-                "admin"
-            )
-
-        val savedPass =
-            prefs.getString(
-                KEY_PASSWORD,
-                "admin"
-            )
-
-        if (
-            username == savedUser &&
-            password == savedPass
-        ) {
-
-            loggedIn = true
-
-            return true
-        }
-
-        return false
-    }
-
-    fun logout() {
-
-        loggedIn = false
-    }
-
-    fun isLoggedIn(): Boolean {
-
+    fun login(context: Context, username: String, password: String): Boolean {
+        val prefs = prefs(context)
+        loggedIn = username == prefs.getString(KEY_USERNAME, DEFAULT_CREDENTIAL) &&
+            password == prefs.getString(KEY_PASSWORD, DEFAULT_CREDENTIAL)
         return loggedIn
     }
 
-    fun getUserName(
-        context: Context
-    ): String {
-
-        val prefs =
-            context.getSharedPreferences(
-                PREFS,
-                Context.MODE_PRIVATE
-            )
-
-        return prefs.getString(
-            KEY_USERNAME,
-            "admin"
-        ) ?: "admin"
+    fun logout() {
+        loggedIn = false
     }
 
-    fun changeLoginInfo(
+    fun isLoggedIn(): Boolean = loggedIn
 
-        context: Context,
-
-        username: String,
-
-        password: String
-
-    ) {
-
-        val prefs =
-            context.getSharedPreferences(
-                PREFS,
-                Context.MODE_PRIVATE
-            )
-
-        prefs.edit()
-
-            .putString(
-                KEY_USERNAME,
-                username
-            )
-
-            .putString(
-                KEY_PASSWORD,
-                password
-            )
-
+    fun changeLoginInfo(context: Context, username: String, password: String) {
+        prefs(context).edit()
+            .putString(KEY_USERNAME, username)
+            .putString(KEY_PASSWORD, password)
             .apply()
     }
 
-    fun getUserEmail(): String {
-
-        return "boaz@livnelavan.com"
-    }
-
-    fun getToken(): String {
-
-        return ""
-    }
+    private fun prefs(context: Context) =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 }
