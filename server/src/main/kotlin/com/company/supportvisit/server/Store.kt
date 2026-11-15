@@ -65,6 +65,19 @@ class Store(dbFile: File) {
                     "CREATE INDEX IF NOT EXISTS idx_${kind.table}_changes ON ${kind.table} (tenant_id, server_updated_at)"
                 )
             }
+            st.execute(
+                """
+                CREATE TABLE IF NOT EXISTS deletion_requests (
+                    tenant_id TEXT NOT NULL,
+                    user_id TEXT NOT NULL,
+                    email TEXT NOT NULL,
+                    keep_shared INTEGER NOT NULL,
+                    requested_at INTEGER NOT NULL,
+                    purge_at INTEGER NOT NULL,
+                    PRIMARY KEY (tenant_id, user_id)
+                )
+                """.trimIndent()
+            )
             st.executeQuery("SELECT MAX(m) FROM (SELECT MAX(server_updated_at) m FROM visits UNION ALL SELECT MAX(server_updated_at) FROM clients)")
                 .use { rs -> if (rs.next()) lastStamp = rs.getLong(1) }
         }
@@ -112,6 +125,85 @@ class Store(dbFile: File) {
                 }
             }
         }
+
+    // region Account deletion
+
+    data class DeletionRequest(
+        val tenantId: String,
+        val userId: String,
+        val email: String,
+        val keepShared: Boolean,
+        val requestedAt: Long,
+        val purgeAt: Long
+    )
+
+    @Synchronized
+    fun requestDeletion(r: DeletionRequest) {
+        connection.prepareStatement(
+            "INSERT OR REPLACE INTO deletion_requests (tenant_id, user_id, email, keep_shared, requested_at, purge_at) " +
+                "VALUES (?, ?, ?, ?, ?, ?)"
+        ).use { ps ->
+            ps.setString(1, r.tenantId); ps.setString(2, r.userId); ps.setString(3, r.email)
+            ps.setInt(4, if (r.keepShared) 1 else 0); ps.setLong(5, r.requestedAt); ps.setLong(6, r.purgeAt)
+            ps.executeUpdate()
+        }
+    }
+
+    @Synchronized
+    fun deletionRequest(tenantId: String, userId: String): DeletionRequest? =
+        connection.prepareStatement(
+            "SELECT tenant_id, user_id, email, keep_shared, requested_at, purge_at FROM deletion_requests " +
+                "WHERE tenant_id = ? AND user_id = ?"
+        ).use { ps ->
+            ps.setString(1, tenantId); ps.setString(2, userId)
+            ps.executeQuery().use { rs -> if (rs.next()) rs.toDeletion() else null }
+        }
+
+    @Synchronized
+    fun cancelDeletion(tenantId: String, userId: String): Boolean =
+        connection.prepareStatement("DELETE FROM deletion_requests WHERE tenant_id = ? AND user_id = ?").use { ps ->
+            ps.setString(1, tenantId); ps.setString(2, userId)
+            ps.executeUpdate() > 0
+        }
+
+    @Synchronized
+    fun dueDeletions(now: Long): List<DeletionRequest> =
+        connection.prepareStatement(
+            "SELECT tenant_id, user_id, email, keep_shared, requested_at, purge_at FROM deletion_requests WHERE purge_at <= ?"
+        ).use { ps ->
+            ps.setLong(1, now)
+            ps.executeQuery().use { rs -> buildList { while (rs.next()) add(rs.toDeletion()) } }
+        }
+
+    /**
+     * Ids of the visits a user recorded: technicianEmail on the visit, or (for visits without one)
+     * the account that last wrote it.
+     */
+    @Synchronized
+    fun visitIdsRecordedBy(tenantId: String, email: String): List<String> =
+        connection.prepareStatement(
+            "SELECT id FROM visits WHERE tenant_id = ? AND json_extract(data, '$.deleted') IS NOT 1 AND (" +
+                "lower(json_extract(data, '$.technicianEmail')) = lower(?) OR " +
+                "(json_extract(data, '$.technicianEmail') IS NULL AND lower(updated_by) = lower(?)))"
+        ).use { ps ->
+            ps.setString(1, tenantId); ps.setString(2, email); ps.setString(3, email)
+            ps.executeQuery().use { rs -> buildList { while (rs.next()) add(rs.getString(1)) } }
+        }
+
+    /**
+     * Replaces a record with a tombstone ({"id", "deleted": true}) so every phone that pulls
+     * changes removes its copy; the record's content is gone from the server.
+     */
+    fun tombstone(kind: Kind, tenantId: String, id: String) {
+        upsert(kind, tenantId, id, JSONObject().put("id", id).put("deleted", true), "system:deletion")
+    }
+
+    private fun java.sql.ResultSet.toDeletion() = DeletionRequest(
+        tenantId = getString(1), userId = getString(2), email = getString(3), keepShared = getInt(4) == 1,
+        requestedAt = getLong(5), purgeAt = getLong(6)
+    )
+
+    // endregion
 
     @Synchronized
     fun exists(kind: Kind, tenantId: String, id: String): Boolean =

@@ -14,7 +14,10 @@ data class Config(
     val publicBaseUrl: String,
     /** Secret for signing temporary file links. */
     val linkSecret: String,
-    val maxUploadBytes: Long = 25L * 1024 * 1024
+    val maxUploadBytes: Long = 25L * 1024 * 1024,
+    /** How long a deleted account can still be restored. */
+    val deletionGraceMs: Long = 14L * 24 * 60 * 60 * 1000,
+    val purgeIntervalMs: Long = 60L * 60 * 1000
 ) {
     companion object {
         fun fromEnv(env: Map<String, String> = System.getenv()): Config {
