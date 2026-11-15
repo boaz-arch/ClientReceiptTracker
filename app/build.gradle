@@ -99,6 +99,23 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 }
+// msal_config.json is not committed (it holds the app registration IDs).
+// Copy msal_config.example.json to app/src/main/res/raw/msal_config.json and fill it in.
+def checkMsalConfig = tasks.register("checkMsalConfig") {
+    def config = file("src/main/res/raw/msal_config.json")
+    doLast {
+        if (!config.exists()) {
+            throw new GradleException(
+                    "Missing app/src/main/res/raw/msal_config.json. " +
+                    "Copy msal_config.example.json there and fill in your Azure app registration " +
+                    "(see README.md > Microsoft sign-in setup)."
+            )
+        }
+    }
+}
+
+tasks.named("preBuild") { dependsOn(checkMsalConfig) }
+
 dependencies {
 
     implementation 'androidx.core:core-ktx:1.13.1'
