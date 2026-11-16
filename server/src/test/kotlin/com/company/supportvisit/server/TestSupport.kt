@@ -55,12 +55,18 @@ class People(private val client: HttpClient, private val mailer: FakeMailer) {
         return JSONObject(r.bodyAsText()).getString("tenantId")
     }
 
-    /** [admin] invites [email], who then signs in and joins. Returns the new member's user id. */
+    /** [admin] invites [email], who then signs in and accepts. Returns the new member's user id. */
     suspend fun join(admin: String, email: String, role: String = "TECHNICIAN"): String {
         val r = client.post("/api/v1/members/invites") {
             bearerAuth(token(admin)); setBody(JSONObject().put("email", email).put("role", role).toString())
         }
         assertEquals(HttpStatusCode.OK, r.status, r.bodyAsText())
+        accept(email, me(admin).getString("tenantId"))
         return me(email).getString("userId")
+    }
+
+    suspend fun accept(email: String, tenantId: String) {
+        val a = client.post("/api/v1/me/invites/$tenantId/accept") { bearerAuth(token(email)) }
+        assertEquals(HttpStatusCode.OK, a.status, a.bodyAsText())
     }
 }

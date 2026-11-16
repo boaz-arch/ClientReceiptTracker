@@ -84,6 +84,8 @@ fun Application.module(config: Config, mailer: Mailer) {
     // Per client address: sign-in emails and code checks (on top of the per-email limits).
     val startLimiter = WindowLimiter(max = 20, windowMs = 3_600_000)
     val verifyLimiter = WindowLimiter(max = 40, windowMs = 3_600_000)
+    // Whole server: protects the sending address even from many addresses at once.
+    val globalStartLimiter = WindowLimiter(max = 500, windowMs = 3_600_000)
 
     // Carry out account deletions whose grace period has ended: at start-up, then every hour.
     launch {
@@ -105,8 +107,8 @@ fun Application.module(config: Config, mailer: Mailer) {
         exception<AuthException> { call, e ->
             call.respondJson(HttpStatusCode.Unauthorized, JSONObject().put("error", e.message ?: "unauthorized"))
         }
-        exception<NoCompanyException> { call, _ ->
-            call.respondJson(HttpStatusCode.Conflict, JSONObject().put("error", "no_company"))
+        exception<NoCompanyException> { call, e ->
+            call.respondJson(HttpStatusCode.Conflict, JSONObject().put("error", "no_company").put("invites", JSONArray(e.invites)))
         }
         exception<ForbiddenException> { call, e ->
             call.respondJson(HttpStatusCode.Forbidden, JSONObject().put("error", e.message))
@@ -148,13 +150,38 @@ fun Application.module(config: Config, mailer: Mailer) {
 
     fun ApplicationCall.caller(): Caller = member().first
 
-    /** Behind Apache the client address is the first X-Forwarded-For entry. */
-    fun ApplicationCall.clientKey(): String =
-        request.headers["X-Forwarded-For"]?.substringBefore(',')?.trim()?.takeIf { it.isNotEmpty() }
-            ?: request.local.remoteAddress
-
     fun planOf(tenantId: String): String =
         if (team.hasProGrant(tenantId) || tenantId in config.proTenants) "PRO" else "FREE"
+
+    /**
+     * The client address. The server listens only on 127.0.0.1 behind Apache, which appends the
+     * real address as the LAST X-Forwarded-For entry (earlier entries can be forged by the client).
+     */
+    fun ApplicationCall.clientKey(): String =
+        request.headers["X-Forwarded-For"]?.substringAfterLast(',')?.trim()?.takeIf { it.isNotEmpty() }
+            ?: request.local.remoteAddress
+
+    /**
+     * Whether a company may send one more report email today: a daily limit per company (lower
+     * for new companies without Pro, so a fresh sign-up can't use the address for spam) and a
+     * daily cap for the whole server.
+     */
+    fun takeMailQuota(tenantId: String): Boolean {
+        val day = LocalDate.now(ZoneOffset.UTC).toString()
+        if (team.mailSentToday(day) >= config.mailGlobalDailyLimit) {
+            log.warn("Server-wide daily email cap reached")
+            return false
+        }
+        val isNew = System.currentTimeMillis() - team.companyCreatedAt(tenantId) < NEW_COMPANY_MS
+        val limit = if (isNew && planOf(tenantId) != "PRO") minOf(config.mailDailyLimit, config.newCompanyMailDailyLimit) else config.mailDailyLimit
+        return team.takeMailQuota(tenantId, day, limit)
+    }
+
+    /** "Acme IT (via Support Visit)": the company's name, but clearly sent through the service. */
+    fun senderName(company: JSONObject): String {
+        val name = company.optString("name").replace(Regex("[\\r\\n\"<>]"), " ").trim().take(80)
+        return if (name.isEmpty()) config.appName else "$name (via ${config.appName})"
+    }
 
     fun fileUrl(visitId: String, name: String) = "${config.publicBaseUrl}/api/v1/visits/$visitId/files/$name"
 
@@ -168,6 +195,7 @@ fun Application.module(config: Config, mailer: Mailer) {
             // Sign-in: email → 6-digit code → session token.
             post("/auth/start") {
                 startLimiter.check(call.clientKey())
+                globalStartLimiter.check("all")
                 val body = JSONObject(call.receiveText())
                 val email = AccountStore.normalizeEmail(body.optString("email"))
                 val code = accounts.startLogin(email)
@@ -203,6 +231,14 @@ fun Application.module(config: Config, mailer: Mailer) {
                 require(name.isNotEmpty()) { "Name is empty" }
                 accounts.setName(u.userId, name)
                 call.respondJson(HttpStatusCode.OK, JSONObject().put("name", name.take(80)))
+            }
+
+            // Joining is the invited person's choice (the 409 from /me lists their invitations).
+            post("/me/invites/{tenantId}/accept") {
+                val u = call.user()
+                val m = team.acceptInvite(u, call.parameters["tenantId"].orEmpty())
+                log.info("Invitation accepted")
+                call.respondJson(HttpStatusCode.OK, JSONObject().put("tenantId", m.tenantId).put("role", m.role.name))
             }
 
             // A signed-in person who isn't in a company yet starts one and becomes its admin.
@@ -245,7 +281,8 @@ fun Application.module(config: Config, mailer: Mailer) {
                 if (!m.role.canManageCompany) return@delete call.forbidden("admins_only")
                 val target = call.parameters["userId"].orEmpty()
                 require(target != c.userId) { "You can't remove yourself" }
-                team.removeMember(c.tenantId, target)
+                if (!team.removeMember(c.tenantId, target)) return@delete call.notFound()
+                // Only ever someone who was in this admin's company.
                 accounts.revokeAll(target)
                 call.respondJson(HttpStatusCode.OK, JSONObject().put("removed", true))
             }
@@ -457,13 +494,14 @@ fun Application.module(config: Config, mailer: Mailer) {
                 val text = body.optString("body").take(20_000)
                 require(subject.isNotEmpty()) { "Subject is empty" }
                 val pdf = files.file(c.tenantId, id, "report.pdf")
-                if (!pdf.exists()) return@post call.respondJson(HttpStatusCode.BadRequest, JSONObject().put("error", "report_missing"))
-                val day = LocalDate.now(ZoneOffset.UTC).toString()
-                if (!team.takeMailQuota(c.tenantId, day, config.mailDailyLimit)) {
+                if (!pdf.exists() || !isPdf(pdf.inputStream().use { it.readNBytes(5) })) {
+                    return@post call.respondJson(HttpStatusCode.BadRequest, JSONObject().put("error", "report_missing"))
+                }
+                if (!takeMailQuota(c.tenantId)) {
                     return@post call.respondJson(HttpStatusCode.TooManyRequests, JSONObject().put("error", "daily_email_limit"))
                 }
                 val company = team.company(c.tenantId)
-                val fromName = company.optString("name").ifBlank { config.appName }
+                val fromName = senderName(company)
                 val replyTo = company.optString("email").takeIf { runCatching { AccountStore.normalizeEmail(it) }.isSuccess } ?: c.email
                 val attachName = body.optString("fileName").takeIf { FileStore.isSafeName(it) && it.endsWith(".pdf") } ?: "report.pdf"
                 val attach = pdf.length() <= MAX_ATTACHMENT_BYTES
@@ -481,6 +519,41 @@ fun Application.module(config: Config, mailer: Mailer) {
                 )
                 log.info("Report emailed to {} recipient(s)", to.size)
                 call.respondJson(HttpStatusCode.OK, JSONObject().put("sent", true).put("attached", attach))
+            }
+
+            // Monthly report for a client: the app sends the PDF and CSV it made (base64, max 10 MB).
+            post("/reports/email") {
+                val (c, _) = call.member()
+                val body = JSONObject(call.receiveText())
+                val to = body.optJSONArray("to")?.let { a -> (0 until a.length()).map { a.optString(it) } }.orEmpty()
+                    .map { AccountStore.normalizeEmail(it) }.distinct()
+                require(to.isNotEmpty() && to.size <= MAX_REPORT_RECIPIENTS) { "1 to $MAX_REPORT_RECIPIENTS recipients" }
+                val subject = body.optString("subject").replace('\n', ' ').trim().take(200)
+                require(subject.isNotEmpty()) { "Subject is empty" }
+                val list = body.optJSONArray("attachments") ?: JSONArray()
+                require(list.length() in 1..3) { "1 to 3 attachments" }
+                var total = 0L
+                val attachments = (0 until list.length()).map { i ->
+                    val a = list.getJSONObject(i)
+                    val name = a.optString("name")
+                    val type = a.optString("contentType")
+                    require(FileStore.isSafeName(name)) { "Invalid file name" }
+                    require(type in setOf("application/pdf", "text/csv")) { "Only PDF and CSV" }
+                    val bytes = java.util.Base64.getDecoder().decode(a.optString("data"))
+                    total += bytes.size
+                    require(total <= MAX_ATTACHMENT_BYTES) { "Attachments too large" }
+                    // Must really be what it says: a PDF, or plain text for the CSV.
+                    if (type == "application/pdf") require(isPdf(bytes)) { "Not a PDF" }
+                    else require(isPlainText(bytes)) { "Not a CSV file" }
+                    MailAttachment(name, type, bytes)
+                }
+                if (!takeMailQuota(c.tenantId)) {
+                    return@post call.respondJson(HttpStatusCode.TooManyRequests, JSONObject().put("error", "daily_email_limit"))
+                }
+                val company = team.company(c.tenantId)
+                val replyTo = company.optString("email").takeIf { runCatching { AccountStore.normalizeEmail(it) }.isSuccess } ?: c.email
+                send(Mail(to, subject, body.optString("body").take(20_000), senderName(company), replyTo, attachments))
+                call.respondJson(HttpStatusCode.OK, JSONObject().put("sent", true))
             }
         }
 
@@ -532,6 +605,17 @@ fun Application.module(config: Config, mailer: Mailer) {
 
 private const val MAX_REPORT_RECIPIENTS = 10
 private const val MAX_ATTACHMENT_BYTES = 10L * 1024 * 1024
+/** Companies younger than this (and without Pro) get the lower email limit. */
+private const val NEW_COMPANY_MS = 7L * 24 * 60 * 60 * 1000
+
+private fun isPdf(bytes: ByteArray) = bytes.size >= 5 && String(bytes, 0, 5, Charsets.US_ASCII) == "%PDF-"
+
+/** Valid UTF-8 (with or without BOM) and no control characters other than tab and line breaks. */
+private fun isPlainText(bytes: ByteArray): Boolean {
+    val decoder = Charsets.UTF_8.newDecoder()
+    val text = runCatching { decoder.decode(java.nio.ByteBuffer.wrap(bytes)).toString() }.getOrNull() ?: return false
+    return text.none { it < ' ' && it != '\t' && it != '\n' && it != '\r' }
+}
 
 private suspend fun ApplicationCall.respondStoredFile(file: File) {
     if (!file.exists()) {

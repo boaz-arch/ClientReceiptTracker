@@ -43,7 +43,7 @@ if [[ ! -f .env ]]; then
 fi
 chmod 600 .env
 # Settings added in later versions: append them (empty) so they're easy to fill in.
-for key in SMTP_HOST SMTP_PORT SMTP_USER SMTP_PASSWORD SMTP_FROM SMTP_TLS APP_NAME MAIL_DAILY_LIMIT; do
+for key in SMTP_HOST SMTP_PORT SMTP_USER SMTP_PASSWORD SMTP_FROM SMTP_TLS APP_NAME MAIL_DAILY_LIMIT MAIL_NEW_COMPANY_DAILY_LIMIT MAIL_GLOBAL_DAILY_LIMIT; do
   if ! grep -q "^$key=" .env; then
     grep "^$key=" .env.example >> .env || true
     added=1

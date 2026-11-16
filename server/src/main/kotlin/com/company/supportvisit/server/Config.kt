@@ -33,7 +33,11 @@ data class Config(
     /** Optional: companies given Pro for free via the environment (in addition to `grant-pro`). */
     val proTenants: Set<String> = emptySet(),
     /** Visit report emails per company per day (protects the sending address from abuse). */
-    val mailDailyLimit: Int = 200
+    val mailDailyLimit: Int = 200,
+    /** The same for a company's first 7 days, unless it has Pro. */
+    val newCompanyMailDailyLimit: Int = 20,
+    /** Report emails per day for the whole server. */
+    val mailGlobalDailyLimit: Int = 2000
 ) {
     companion object {
         fun fromEnv(env: Map<String, String> = System.getenv()): Config {
@@ -61,7 +65,9 @@ data class Config(
                 smtp = smtp,
                 appName = env["APP_NAME"]?.takeIf { it.isNotBlank() } ?: "Support Visit",
                 proTenants = list("PRO_TENANT_IDS"),
-                mailDailyLimit = env["MAIL_DAILY_LIMIT"]?.toIntOrNull() ?: 200
+                mailDailyLimit = env["MAIL_DAILY_LIMIT"]?.toIntOrNull() ?: 200,
+                newCompanyMailDailyLimit = env["MAIL_NEW_COMPANY_DAILY_LIMIT"]?.toIntOrNull() ?: 20,
+                mailGlobalDailyLimit = env["MAIL_GLOBAL_DAILY_LIMIT"]?.toIntOrNull() ?: 2000
             )
         }
     }

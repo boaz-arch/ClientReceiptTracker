@@ -11,5 +11,5 @@ data class Caller(
 /** 401: not signed in, or the session is no longer valid. */
 class AuthException(message: String) : Exception(message)
 
-/** 409: signed in, but not (yet) part of a company. */
-class NoCompanyException(val invitedTo: String? = null) : Exception("no_company")
+/** 409: signed in, but not (yet) part of a company; [invites] are companies that invited them. */
+class NoCompanyException(val invites: List<org.json.JSONObject> = emptyList()) : Exception("no_company")

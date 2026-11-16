@@ -51,6 +51,35 @@ class TeamApiTest {
     }
 
     @Test
+    fun `invitations wait for the person to choose, and companies can't replace each other's`() = testApplication {
+        application { module(testConfig(dataDir), mailer) }
+        val p = People(client, mailer)
+        val a = p.company("boss@a.test", "A Ltd")
+        val b = p.company("boss@b.test", "B Ltd")
+        for (admin in listOf("boss@a.test", "boss@b.test")) {
+            client.post("/api/v1/members/invites") { bearerAuth(p.token(admin)); setBody("""{"email":"tech@x.test"}""") }
+        }
+        // Not joined automatically: both invitations are offered.
+        val r = client.get("/api/v1/me") { bearerAuth(p.token("tech@x.test")) }
+        assertEquals(HttpStatusCode.Conflict, r.status)
+        val offered = JSONObject(r.bodyAsText()).getJSONArray("invites")
+        assertEquals(setOf("A Ltd", "B Ltd"), (0 until offered.length()).map { offered.getJSONObject(it).getString("companyName") }.toSet())
+
+        // Accepting a company that didn't invite them is refused.
+        assertEquals(HttpStatusCode.Forbidden, client.post("/api/v1/me/invites/c-nope/accept") { bearerAuth(p.token("tech@x.test")) }.status)
+        p.accept("tech@x.test", a)
+        assertEquals(a, p.me("tech@x.test").getString("tenantId"))
+        assertEquals(0, JSONObject(client.get("/api/v1/members/invites") { bearerAuth(p.token("boss@b.test")) }.bodyAsText())
+            .getJSONArray("items").length(), "the other invitation is gone")
+
+        // Another company's admin can't remove (or sign out) A's members.
+        val techId = p.me("tech@x.test").getString("userId")
+        assertEquals(HttpStatusCode.NotFound, client.delete("/api/v1/members/$techId") { bearerAuth(p.token("boss@b.test")) }.status)
+        assertEquals(HttpStatusCode.OK, client.get("/api/v1/me") { bearerAuth(p.token("tech@x.test")) }.status)
+        assertTrue(b.isNotEmpty())
+    }
+
+    @Test
     fun `removed members are blocked until an admin restores or re-invites them`() = testApplication {
         application { module(testConfig(dataDir), mailer) }
         val p = People(client, mailer)
@@ -73,9 +102,10 @@ class TeamApiTest {
         assertEquals(HttpStatusCode.OK, client.post("/api/v1/members/$leaver/restore") { bearerAuth(boss) }.status)
         assertEquals(Role.TECHNICIAN, team.resolve(account).role)
 
-        // Removing and inviting again also lets them back in.
+        // Removing and inviting again also lets them back in (once they accept).
         client.delete("/api/v1/members/$leaver") { bearerAuth(boss) }
         client.post("/api/v1/members/invites") { bearerAuth(boss); setBody("""{"email":"leaver@a.test","role":"MANAGER"}""") }
+        team.acceptInvite(account, p.me("boss@a.test").getString("tenantId"))
         assertEquals(Role.MANAGER, team.resolve(account).role)
     }
 
@@ -152,19 +182,37 @@ class TeamApiTest {
 
         assertEquals(HttpStatusCode.BadRequest, client.post("/api/v1/visits/v1/email") { bearerAuth(dana); setBody(email) }.status,
             "no report uploaded yet")
+        client.put("/api/v1/visits/v1/files/report.pdf") { bearerAuth(dana); setBody("MZ not a pdf".toByteArray()) }
+        assertEquals(HttpStatusCode.BadRequest, client.post("/api/v1/visits/v1/email") { bearerAuth(dana); setBody(email) }.status,
+            "only a real PDF is sent")
         client.put("/api/v1/visits/v1/files/report.pdf") { bearerAuth(dana); setBody("%PDF-1.4".toByteArray()) }
 
         assertEquals(HttpStatusCode.Forbidden, client.post("/api/v1/visits/v1/email") { bearerAuth(p.token("omer@a.test")); setBody(email) }.status)
         assertEquals(HttpStatusCode.OK, client.post("/api/v1/visits/v1/email") { bearerAuth(dana); setBody(email) }.status)
         val sent = mailer.sent.last()
         assertEquals(listOf("client@example.com"), sent.to)
-        assertEquals("Acme IT", sent.fromName)
+        assertEquals("Acme IT (via Support Visit)", sent.fromName)
         assertEquals("office@acme.test", sent.replyTo)
         assertEquals("Visit_2026.pdf", sent.attachments.single().name)
 
         assertEquals(HttpStatusCode.OK, client.post("/api/v1/visits/v1/email") { bearerAuth(p.token("boss@a.test")); setBody(email) }.status)
         assertEquals(HttpStatusCode.TooManyRequests, client.post("/api/v1/visits/v1/email") { bearerAuth(dana); setBody(email) }.status,
             "daily limit per company")
+    }
+
+    @Test
+    fun `monthly reports are emailed with their PDF and CSV only`() = testApplication {
+        application { module(testConfig(dataDir), mailer) }
+        val p = People(client, mailer)
+        p.company("boss@a.test")
+        val pdf = java.util.Base64.getEncoder().encodeToString("%PDF-1.4".toByteArray())
+        fun body(type: String) = JSONObject().put("to", org.json.JSONArray(listOf("client@example.com"))).put("subject", "March")
+            .put("attachments", org.json.JSONArray().put(JSONObject().put("name", "Report.pdf").put("contentType", type).put("data", pdf)))
+            .toString()
+        assertEquals(HttpStatusCode.OK, client.post("/api/v1/reports/email") { bearerAuth(p.token("boss@a.test")); setBody(body("application/pdf")) }.status)
+        assertEquals("Report.pdf", mailer.sent.last().attachments.single().name)
+        assertEquals(HttpStatusCode.BadRequest,
+            client.post("/api/v1/reports/email") { bearerAuth(p.token("boss@a.test")); setBody(body("application/x-msdownload")) }.status)
     }
 
     @Test

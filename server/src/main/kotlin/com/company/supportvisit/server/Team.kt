@@ -60,8 +60,8 @@ class TeamStore(dbFile: File) {
             }
             if (!hasStatus) st.execute("ALTER TABLE members ADD COLUMN status TEXT NOT NULL DEFAULT 'ACTIVE'")
             st.execute(
-                "CREATE TABLE IF NOT EXISTS member_invites (email TEXT PRIMARY KEY, tenant_id TEXT NOT NULL, " +
-                    "role TEXT NOT NULL, invited_by TEXT NOT NULL, created_at INTEGER NOT NULL)"
+                "CREATE TABLE IF NOT EXISTS member_invites (email TEXT NOT NULL, tenant_id TEXT NOT NULL, " +
+                    "role TEXT NOT NULL, invited_by TEXT NOT NULL, created_at INTEGER NOT NULL, PRIMARY KEY (email, tenant_id))"
             )
             st.execute(
                 "CREATE TABLE IF NOT EXISTS mail_counts (tenant_id TEXT NOT NULL, day TEXT NOT NULL, count INTEGER NOT NULL, " +
@@ -108,15 +108,53 @@ class TeamStore(dbFile: File) {
             }
             return existing.copy(email = user.email, name = user.name, lastSeenAt = now)
         }
-        // An admin's invitation also lets back in someone they removed earlier.
-        invite(user.email)?.let { (tenantId, role) ->
-            addMember(tenantId, user, role, now)
-            deleteInvite(tenantId, user.email)
-            return member(tenantId, user.userId)!!
-        }
-        if (hasRemovedMembership(user.userId)) throw ForbiddenException("member_removed")
-        throw NoCompanyException()
+        // Invitations are never accepted automatically: the person chooses (see [acceptInvite]).
+        val pending = invitesFor(user.email)
+        if (pending.isEmpty() && hasRemovedMembership(user.userId)) throw ForbiddenException("member_removed")
+        throw NoCompanyException(pending)
     }
+
+    /** Pending invitations for [email], with the inviting company's name. */
+    @Synchronized
+    fun invitesFor(email: String): List<JSONObject> =
+        connection.prepareStatement("SELECT tenant_id, role, created_at FROM member_invites WHERE email = ? ORDER BY created_at").use { ps ->
+            ps.setString(1, email)
+            ps.executeQuery().use { rs ->
+                buildList {
+                    while (rs.next()) add(JSONObject().put("tenantId", rs.getString(1)).put("role", rs.getString(2)).put("createdAt", rs.getLong(3)))
+                }
+            }
+        }.onEach { it.put("companyName", company(it.getString("tenantId")).optString("name")) }
+
+    /**
+     * Joins the company that invited [user] (also lets back in someone the admin removed
+     * earlier). Other pending invitations are dropped.
+     */
+    @Synchronized
+    fun acceptInvite(user: UserAccount, tenantId: String, now: Long = System.currentTimeMillis()): Member {
+        if (activeMembership(user.userId) != null) throw IllegalArgumentException("Already in a company")
+        val role = connection.prepareStatement("SELECT role FROM member_invites WHERE email = ? AND tenant_id = ?").use { ps ->
+            ps.setString(1, user.email); ps.setString(2, tenantId)
+            ps.executeQuery().use { rs -> if (rs.next()) runCatching { Role.valueOf(rs.getString(1)) }.getOrDefault(Role.TECHNICIAN) else null }
+        } ?: throw ForbiddenException("no_invitation")
+        addMember(tenantId, user, role, now)
+        connection.prepareStatement("DELETE FROM member_invites WHERE email = ?").use { ps -> ps.setString(1, user.email); ps.executeUpdate() }
+        return member(tenantId, user.userId)!!
+    }
+
+    /** When the company was created (its first member joined); 0 if unknown. */
+    @Synchronized
+    fun companyCreatedAt(tenantId: String): Long =
+        connection.prepareStatement("SELECT MIN(joined_at) FROM members WHERE tenant_id = ?").use { ps ->
+            ps.setString(1, tenantId); ps.executeQuery().use { rs -> if (rs.next()) rs.getLong(1) else 0L }
+        }
+
+    /** Report emails sent today by every company together. */
+    @Synchronized
+    fun mailSentToday(day: String): Int =
+        connection.prepareStatement("SELECT COALESCE(SUM(count), 0) FROM mail_counts WHERE day = ?").use { ps ->
+            ps.setString(1, day); ps.executeQuery().use { rs -> if (rs.next()) rs.getInt(1) else 0 }
+        }
 
     /** Starts a new company with [user] as its admin. */
     @Synchronized
@@ -162,8 +200,10 @@ class TeamStore(dbFile: File) {
 
     @Synchronized
     fun createInvite(tenantId: String, email: String, role: Role, invitedBy: String, now: Long = System.currentTimeMillis()) {
+        // One invitation per company and email: a company can only replace its own.
         connection.prepareStatement(
-            "INSERT OR REPLACE INTO member_invites (email, tenant_id, role, invited_by, created_at) VALUES (?, ?, ?, ?, ?)"
+            "INSERT INTO member_invites (email, tenant_id, role, invited_by, created_at) VALUES (?, ?, ?, ?, ?) " +
+                "ON CONFLICT (email, tenant_id) DO UPDATE SET role = excluded.role, invited_by = excluded.invited_by, created_at = excluded.created_at"
         ).use { ps ->
             ps.setString(1, email); ps.setString(2, tenantId); ps.setString(3, role.name); ps.setString(4, invitedBy); ps.setLong(5, now)
             ps.executeUpdate()
@@ -190,14 +230,6 @@ class TeamStore(dbFile: File) {
     fun deleteInvite(tenantId: String, email: String): Boolean =
         connection.prepareStatement("DELETE FROM member_invites WHERE tenant_id = ? AND email = ?").use { ps ->
             ps.setString(1, tenantId); ps.setString(2, email.trim().lowercase()); ps.executeUpdate() > 0
-        }
-
-    private fun invite(email: String): Pair<String, Role>? =
-        connection.prepareStatement("SELECT tenant_id, role FROM member_invites WHERE email = ?").use { ps ->
-            ps.setString(1, email)
-            ps.executeQuery().use { rs ->
-                if (rs.next()) rs.getString(1) to (runCatching { Role.valueOf(rs.getString(2)) }.getOrDefault(Role.TECHNICIAN)) else null
-            }
         }
 
     /** Daily cap on visit report emails per company. Returns false when the cap is reached. */
@@ -255,16 +287,17 @@ class TeamStore(dbFile: File) {
         return true
     }
 
-    /** Blocks the member: they can't sign in to the company again until re-added. */
+    /** Blocks the member: they can't use the company again until re-added. False if not a member. */
     @Synchronized
-    fun removeMember(tenantId: String, userId: String) {
-        val target = member(tenantId, userId) ?: return
+    fun removeMember(tenantId: String, userId: String): Boolean {
+        val target = member(tenantId, userId) ?: return false
         if (target.role == Role.ADMIN && members(tenantId).count { it.role == Role.ADMIN } <= 1) {
             throw IllegalArgumentException("A company needs at least one admin")
         }
         connection.prepareStatement("UPDATE members SET status = 'REMOVED' WHERE tenant_id = ? AND user_id = ?").use { ps ->
             ps.setString(1, tenantId); ps.setString(2, userId); ps.executeUpdate()
         }
+        return true
     }
 
     /** Lets a removed member back in (as technician), unless they have joined another company since. */
