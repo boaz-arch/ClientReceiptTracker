@@ -22,33 +22,37 @@ import io.ktor.server.routing.put
 import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
 import io.ktor.utils.io.jvm.javaio.toInputStream
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 import org.slf4j.LoggerFactory
 import java.io.File
+import java.time.LocalDate
+import java.time.ZoneOffset
 
 private val log = LoggerFactory.getLogger("supportvisit")
 
 fun main(args: Array<String>) {
-    // Maintenance commands used by deploy/pm2/backup.sh.
+    // Maintenance commands used by deploy/pm2/backup.sh and the server operator.
     when (args.firstOrNull()) {
         "backup" -> {
             val dataDir = File(System.getenv("DATA_DIR") ?: "/data")
             Store.backup(File(dataDir, "supportvisit.db"), File(args.getOrNull(1) ?: error("usage: backup <file>")))
             return
         }
-        "grant-pro", "revoke-pro", "grants", "crashes", "invite-admin" -> {
+        "grant-pro", "revoke-pro", "grants", "crashes", "companies" -> {
             val team = TeamStore(File(File(System.getenv("DATA_DIR") ?: "/data"), "supportvisit.db"))
             when (args[0]) {
-                "grant-pro" -> team.grantPro(args.getOrNull(1)?.lowercase() ?: error("usage: grant-pro <tenantId> [note]"), args.drop(2).joinToString(" "))
-                "revoke-pro" -> team.revokePro(args.getOrNull(1)?.lowercase() ?: error("usage: revoke-pro <tenantId>"))
+                "grant-pro" -> team.grantPro(args.getOrNull(1)?.lowercase() ?: error("usage: grant-pro <companyId> [note]"), args.drop(2).joinToString(" "))
+                "revoke-pro" -> team.revokePro(args.getOrNull(1)?.lowercase() ?: error("usage: revoke-pro <companyId>"))
                 "grants" -> team.grants().forEach { (tenant, note) -> println("$tenant  $note") }
                 "crashes" -> println(team.recentCrashes().toString(2))
-                "invite-admin" -> team.inviteAdmin(args.getOrNull(1) ?: error("usage: invite-admin <email>"))
+                "companies" -> team.companies().forEach { (id, name, members) -> println("$id  $members member(s)  $name") }
             }
             return
         }
@@ -61,25 +65,31 @@ fun main(args: Array<String>) {
     }
 
     val config = Config.fromEnv()
+    if (config.smtp == null) log.warn("SMTP is not configured: nobody can sign in until SMTP_HOST and SMTP_FROM are set")
     // Only reachable through the reverse proxy unless HOST says otherwise (Docker sets 0.0.0.0).
     val host = System.getenv("HOST")?.takeIf { it.isNotBlank() } ?: "127.0.0.1"
     embeddedServer(Netty, port = config.port, host = host) {
-        module(config, EntraTokenVerifier(config)::verify)
+        module(config, config.smtp?.let(::SmtpMailer) ?: NoMailer)
     }.start(wait = true)
 }
 
-/** The whole API. [verify] turns a bearer token into a [Caller] (swapped out in tests). */
-fun Application.module(config: Config, verify: (String) -> Caller) {
-    val store = Store(File(config.dataDir, "supportvisit.db"))
+/** The whole API. [mailer] sends sign-in codes, invitations and reports (a fake in tests). */
+fun Application.module(config: Config, mailer: Mailer) {
+    val dbFile = File(config.dataDir, "supportvisit.db")
+    val store = Store(dbFile)
     val files = FileStore(config.dataDir, config.maxUploadBytes)
     val signer = LinkSigner(config.linkSecret)
-    val team = TeamStore(File(config.dataDir, "supportvisit.db"), config.adminEmails)
+    val team = TeamStore(dbFile)
+    val accounts = AccountStore(dbFile, config.linkSecret)
+    // Per client address: sign-in emails and code checks (on top of the per-email limits).
+    val startLimiter = WindowLimiter(max = 20, windowMs = 3_600_000)
+    val verifyLimiter = WindowLimiter(max = 40, windowMs = 3_600_000)
 
-    // Purge accounts whose grace period has ended: at start-up, then every hour.
+    // Carry out account deletions whose grace period has ended: at start-up, then every hour.
     launch {
         while (isActive) {
             try {
-                AccountPurge.run(store, files)
+                AccountPurge.run(store, files, team, accounts)
             } catch (e: Exception) {
                 log.error("Account purge failed", e)
             }
@@ -88,15 +98,25 @@ fun Application.module(config: Config, verify: (String) -> Caller) {
     }
 
     install(CallLogging) {
-        // Paths only: never log tokens or personal data.
+        // Paths only: never log tokens, codes or personal data.
         format { call -> "${call.request.local.method.value} ${call.request.local.uri.substringBefore('?')} -> ${call.response.status()?.value}" }
     }
     install(StatusPages) {
         exception<AuthException> { call, e ->
-            call.respondJson(HttpStatusCode.Unauthorized, JSONObject().put("error", "unauthorized").put("message", e.message))
+            call.respondJson(HttpStatusCode.Unauthorized, JSONObject().put("error", e.message ?: "unauthorized"))
+        }
+        exception<NoCompanyException> { call, _ ->
+            call.respondJson(HttpStatusCode.Conflict, JSONObject().put("error", "no_company"))
         }
         exception<ForbiddenException> { call, e ->
             call.respondJson(HttpStatusCode.Forbidden, JSONObject().put("error", e.message))
+        }
+        exception<RateLimitedException> { call, e ->
+            call.response.header(HttpHeaders.RetryAfter, e.retryAfterSeconds.toString())
+            call.respondJson(HttpStatusCode.TooManyRequests, JSONObject().put("error", "rate_limited").put("retryAfter", e.retryAfterSeconds))
+        }
+        exception<MailNotConfiguredException> { call, _ ->
+            call.respondJson(HttpStatusCode.ServiceUnavailable, JSONObject().put("error", "email_not_configured"))
         }
         exception<IllegalArgumentException> { call, e ->
             call.respondJson(HttpStatusCode.BadRequest, JSONObject().put("error", "bad_request").put("message", e.message))
@@ -110,27 +130,64 @@ fun Application.module(config: Config, verify: (String) -> Caller) {
         }
     }
 
-    fun ApplicationCall.caller(): Caller {
+    fun ApplicationCall.bearer(): String {
         val header = request.headers[HttpHeaders.Authorization].orEmpty()
-        if (!header.startsWith("Bearer ", ignoreCase = true)) throw AuthException("Missing bearer token")
-        return verify(header.substring(7).trim())
+        if (!header.startsWith("Bearer ", ignoreCase = true)) throw AuthException("missing_token")
+        return header.substring(7).trim()
     }
 
-    /** The caller as a company member (registered on first use; the first one becomes admin). */
+    /** The signed-in person (no company needed). */
+    fun ApplicationCall.user(): UserAccount = accounts.authenticate(bearer())
+
+    /** The signed-in person as a member of their company. */
     fun ApplicationCall.member(): Pair<Caller, Member> {
-        val c = caller()
-        return c to team.touch(c)
+        val u = user()
+        val m = team.resolve(u)
+        return Caller(m.tenantId, u.userId, u.email, u.name) to m
     }
+
+    fun ApplicationCall.caller(): Caller = member().first
+
+    /** Behind Apache the client address is the first X-Forwarded-For entry. */
+    fun ApplicationCall.clientKey(): String =
+        request.headers["X-Forwarded-For"]?.substringBefore(',')?.trim()?.takeIf { it.isNotEmpty() }
+            ?: request.local.remoteAddress
 
     fun planOf(tenantId: String): String =
         if (team.hasProGrant(tenantId) || tenantId in config.proTenants) "PRO" else "FREE"
 
     fun fileUrl(visitId: String, name: String) = "${config.publicBaseUrl}/api/v1/visits/$visitId/files/$name"
 
+    suspend fun send(mail: Mail) = withContext(Dispatchers.IO) { mailer.send(mail) }
+
     routing {
         get("/health") { call.respondText("ok") }
 
         route("/api/v1") {
+
+            // Sign-in: email → 6-digit code → session token.
+            post("/auth/start") {
+                startLimiter.check(call.clientKey())
+                val body = JSONObject(call.receiveText())
+                val email = AccountStore.normalizeEmail(body.optString("email"))
+                val code = accounts.startLogin(email)
+                val (subject, text) = Emails.loginCode(config.appName, code, body.optString("lang"))
+                send(Mail(listOf(email), subject, text, fromName = config.appName))
+                call.respondJson(HttpStatusCode.OK, JSONObject().put("sent", true))
+            }
+            post("/auth/verify") {
+                verifyLimiter.check(call.clientKey())
+                val body = JSONObject(call.receiveText())
+                val (token, user) = accounts.verifyLogin(body.optString("email"), body.optString("code"),
+                    existingUserId = team::legacyUserIdForEmail)
+                log.info("Signed in")
+                call.respondJson(HttpStatusCode.OK, JSONObject().put("token", token).put("userId", user.userId).put("email", user.email))
+            }
+            post("/auth/logout") {
+                accounts.logout(call.bearer())
+                call.respondJson(HttpStatusCode.OK, JSONObject().put("ok", true))
+            }
+
             get("/me") {
                 val (c, m) = call.member()
                 call.respondJson(
@@ -140,8 +197,25 @@ fun Application.module(config: Config, verify: (String) -> Caller) {
                         .put("plan", planOf(c.tenantId)).put("memberCount", team.memberCount(c.tenantId))
                 )
             }
+            put("/me/name") {
+                val u = call.user()
+                val name = JSONObject(call.receiveText()).optString("name").trim()
+                require(name.isNotEmpty()) { "Name is empty" }
+                accounts.setName(u.userId, name)
+                call.respondJson(HttpStatusCode.OK, JSONObject().put("name", name.take(80)))
+            }
 
-            // Team: managers and admins see everyone; only admins change roles.
+            // A signed-in person who isn't in a company yet starts one and becomes its admin.
+            post("/companies") {
+                val u = call.user()
+                val name = JSONObject(call.receiveText()).optString("name").trim()
+                require(name.isNotEmpty()) { "Company name is empty" }
+                val m = team.createCompany(u, name)
+                log.info("Company created")
+                call.respondJson(HttpStatusCode.OK, JSONObject().put("tenantId", m.tenantId).put("role", m.role.name))
+            }
+
+            // Team: managers and admins see everyone; only admins change roles and invite.
             get("/members") {
                 val (c, m) = call.member()
                 val list = if (m.role.canSeeEverything) team.members(c.tenantId) else listOf(m)
@@ -172,7 +246,38 @@ fun Application.module(config: Config, verify: (String) -> Caller) {
                 val target = call.parameters["userId"].orEmpty()
                 require(target != c.userId) { "You can't remove yourself" }
                 team.removeMember(c.tenantId, target)
+                accounts.revokeAll(target)
                 call.respondJson(HttpStatusCode.OK, JSONObject().put("removed", true))
+            }
+
+            get("/members/invites") {
+                val (c, m) = call.member()
+                if (!m.role.canManageCompany) return@get call.forbidden("admins_only")
+                call.respondJson(HttpStatusCode.OK, JSONObject().put("items", JSONArray(team.invites(c.tenantId))))
+            }
+            post("/members/invites") {
+                val (c, m) = call.member()
+                if (!m.role.canManageCompany) return@post call.forbidden("admins_only")
+                val body = JSONObject(call.receiveText())
+                val email = AccountStore.normalizeEmail(body.optString("email"))
+                val role = runCatching { Role.valueOf(body.optString("role", "TECHNICIAN")) }.getOrDefault(Role.TECHNICIAN)
+                if (team.isActiveMemberAnywhere(email)) {
+                    return@post call.respondJson(HttpStatusCode.Conflict, JSONObject().put("error", "already_in_a_company"))
+                }
+                team.createInvite(c.tenantId, email, role, c.userId)
+                // The invitation stands even if the email can't be sent; the admin can tell them.
+                val emailed = runCatching {
+                    val company = team.company(c.tenantId).optString("name").ifBlank { config.appName }
+                    val (subject, text) = Emails.invitation(config.appName, company, c.name.ifBlank { c.email }, email, body.optString("lang"))
+                    send(Mail(listOf(email), subject, text, fromName = company, replyTo = c.email))
+                }.onFailure { log.warn("Invitation email failed: {}", it.javaClass.simpleName) }.isSuccess
+                call.respondJson(HttpStatusCode.OK, JSONObject().put("email", email).put("role", role.name).put("emailed", emailed))
+            }
+            delete("/members/invites/{email}") {
+                val (c, m) = call.member()
+                if (!m.role.canManageCompany) return@delete call.forbidden("admins_only")
+                team.deleteInvite(c.tenantId, call.parameters["email"].orEmpty())
+                call.respondJson(HttpStatusCode.OK, JSONObject().put("deleted", true))
             }
 
             // Company profile: branding and email template, shared with every member.
@@ -207,7 +312,7 @@ fun Application.module(config: Config, verify: (String) -> Caller) {
                 val (c, _) = call.member()
                 val body = JSONObject(call.receiveText())
                 val names = body.optJSONArray("events")?.let { a -> (0 until a.length()).map { a.optString(it) } }.orEmpty()
-                team.addEvents(c.tenantId, java.time.LocalDate.now(java.time.ZoneOffset.UTC).toString(), names.take(500))
+                team.addEvents(c.tenantId, LocalDate.now(ZoneOffset.UTC).toString(), names.take(500))
                 call.respondJson(HttpStatusCode.OK, JSONObject().put("ok", true))
             }
 
@@ -279,8 +384,8 @@ fun Application.module(config: Config, verify: (String) -> Caller) {
                     body.remove("serverUpdatedAt")
                     body.remove("deleted")
                     if (kind == Store.Kind.VISITS) {
-                        // Fail closed: only the creator (immutable Microsoft user id) may overwrite a
-                        // visit. Rows without a recorded creator are read-only.
+                        // Fail closed: only the creator (immutable user id) may overwrite a visit.
+                        // Rows without a recorded creator are read-only.
                         val owner = store.ownershipOf(kind, c.tenantId, id)
                         val allowed = owner == null || owner.createdBy == c.userId
                         if (!allowed) {
@@ -304,6 +409,10 @@ fun Application.module(config: Config, verify: (String) -> Caller) {
                 val c = call.caller()
                 val id = call.parameters["id"].orEmpty()
                 val name = call.parameters["name"].orEmpty()
+                require(FileStore.isSafeId(id)) { "Invalid id" }
+                // Same rule as the visit itself: only its creator may replace its files.
+                val owner = store.ownershipOf(Store.Kind.VISITS, c.tenantId, id)
+                if (owner != null && owner.createdBy != c.userId) return@put call.forbidden("not_your_visit")
                 files.save(c.tenantId, id, name, call.receiveChannel().toInputStream())
                 call.respondJson(HttpStatusCode.OK, JSONObject().put("url", fileUrl(id, name)))
             }
@@ -328,6 +437,50 @@ fun Application.module(config: Config, verify: (String) -> Caller) {
                 val path = "${c.tenantId}/$id/$name"
                 val url = "${config.publicBaseUrl}/files/$path?exp=$expires&sig=${signer.sign(path, expires)}"
                 call.respondJson(HttpStatusCode.OK, JSONObject().put("url", url).put("expiresAt", expires))
+            }
+
+            /*
+             * Emails a visit's signed report (already uploaded as report.pdf) from the server's
+             * address, shown with the company's name; replies go to the company or the technician.
+             */
+            post("/visits/{id}/email") {
+                val (c, m) = call.member()
+                val id = call.parameters["id"].orEmpty()
+                require(FileStore.isSafeId(id)) { "Invalid id" }
+                val owner = store.ownershipOf(Store.Kind.VISITS, c.tenantId, id) ?: return@post call.notFound()
+                if (owner.createdBy != c.userId && !m.role.canSeeEverything) return@post call.forbidden("not_your_visit")
+                val body = JSONObject(call.receiveText())
+                val to = body.optJSONArray("to")?.let { a -> (0 until a.length()).map { a.optString(it) } }.orEmpty()
+                    .map { AccountStore.normalizeEmail(it) }.distinct()
+                require(to.isNotEmpty() && to.size <= MAX_REPORT_RECIPIENTS) { "1 to $MAX_REPORT_RECIPIENTS recipients" }
+                val subject = body.optString("subject").replace('\n', ' ').trim().take(200)
+                val text = body.optString("body").take(20_000)
+                require(subject.isNotEmpty()) { "Subject is empty" }
+                val pdf = files.file(c.tenantId, id, "report.pdf")
+                if (!pdf.exists()) return@post call.respondJson(HttpStatusCode.BadRequest, JSONObject().put("error", "report_missing"))
+                val day = LocalDate.now(ZoneOffset.UTC).toString()
+                if (!team.takeMailQuota(c.tenantId, day, config.mailDailyLimit)) {
+                    return@post call.respondJson(HttpStatusCode.TooManyRequests, JSONObject().put("error", "daily_email_limit"))
+                }
+                val company = team.company(c.tenantId)
+                val fromName = company.optString("name").ifBlank { config.appName }
+                val replyTo = company.optString("email").takeIf { runCatching { AccountStore.normalizeEmail(it) }.isSuccess } ?: c.email
+                val attachName = body.optString("fileName").takeIf { FileStore.isSafeName(it) && it.endsWith(".pdf") } ?: "report.pdf"
+                val attach = pdf.length() <= MAX_ATTACHMENT_BYTES
+                val finalText = if (attach) text else {
+                    // Too big to attach: a 30-day signed link instead.
+                    val expires = System.currentTimeMillis() / 1000 + 30L * 24 * 60 * 60
+                    val path = "${c.tenantId}/$id/report.pdf"
+                    text + "\n\n" + "${config.publicBaseUrl}/files/$path?exp=$expires&sig=${signer.sign(path, expires)}"
+                }
+                send(
+                    Mail(
+                        to = to, subject = subject, text = finalText, fromName = fromName, replyTo = replyTo,
+                        attachments = if (attach) listOf(MailAttachment(attachName, "application/pdf", pdf.readBytes())) else emptyList()
+                    )
+                )
+                log.info("Report emailed to {} recipient(s)", to.size)
+                call.respondJson(HttpStatusCode.OK, JSONObject().put("sent", true).put("attached", attach))
             }
         }
 
@@ -376,6 +529,9 @@ fun Application.module(config: Config, verify: (String) -> Caller) {
         }
     }
 }
+
+private const val MAX_REPORT_RECIPIENTS = 10
+private const val MAX_ATTACHMENT_BYTES = 10L * 1024 * 1024
 
 private suspend fun ApplicationCall.respondStoredFile(file: File) {
     if (!file.exists()) {

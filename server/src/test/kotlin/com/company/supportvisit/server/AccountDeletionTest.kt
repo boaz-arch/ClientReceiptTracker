@@ -1,4 +1,4 @@
-package com.company.supportvisit.server
+﻿package com.company.supportvisit.server
 
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.delete
@@ -7,6 +7,7 @@ import io.ktor.client.request.post
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.testApplication
 import org.json.JSONObject
 import java.io.File
@@ -14,31 +15,24 @@ import java.nio.file.Files
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class AccountDeletionTest {
 
     private val dataDir: File = Files.createTempDirectory("svdel").toFile()
-    private val config = Config(
-        port = 0, dataDir = dataDir, clientId = "client", allowedTenants = emptySet(),
-        publicBaseUrl = "https://example.test/sv", linkSecret = "x".repeat(40),
-        purgeIntervalMs = 3_600_000
-    )
-    private val fakeVerify: (String) -> Caller = { token ->
-        val parts = token.split(':')
-        if (parts.size !in 2..3) throw AuthException("bad")
-        val email = parts[1]
-        Caller(parts[0], "oid-$email", email, email,
-            if (parts.getOrNull(2) == "ga") setOf(Caller.GLOBAL_ADMIN_ROLE) else emptySet())
-    }
+    private val config = testConfig(dataDir)
+    private val mailer = FakeMailer()
 
     private fun visit(id: String, tech: String) =
         JSONObject().put("id", id).put("technicianEmail", tech).put("clientName", "Acme").toString()
 
     @Test
     fun `deletion can be scheduled, checked and cancelled`() = testApplication {
-        application { module(config, fakeVerify) }
-        val me = "t1:tech@a.test"
+        application { module(config, mailer) }
+        val p = People(client, mailer)
+        p.company("tech@a.test")
+        val me = p.token("tech@a.test")
 
         val scheduled = JSONObject(client.post("/api/v1/me/deletion") { bearerAuth(me); setBody("""{"keepShared":false}""") }.bodyAsText())
         assertTrue(scheduled.getBoolean("pending"))
@@ -86,16 +80,37 @@ class AccountDeletionTest {
     }
 
     @Test
+    fun `a purged account can no longer sign in to the company`() = testApplication {
+        application { module(config, mailer) }
+        val p = People(client, mailer)
+        p.company("boss@a.test")
+        val techId = p.join("boss@a.test", "tech@a.test")
+        val tech = p.token("tech@a.test")
+        client.post("/api/v1/me/deletion") { bearerAuth(tech); setBody("{}") }
+
+        val db = File(dataDir, "supportvisit.db")
+        val store = Store(db)
+        val accounts = AccountStore(db, "x".repeat(40))
+        store.requestDeletion(store.deletionRequest(p.me("boss@a.test").getString("tenantId"), techId)!!.copy(purgeAt = 1))
+        AccountPurge.run(store, FileStore(dataDir, 1_000_000), TeamStore(db), accounts, now = 2)
+
+        assertNull(accounts.userByEmail("tech@a.test"))
+        assertEquals(HttpStatusCode.Unauthorized, client.get("/api/v1/me") { bearerAuth(tech) }.status)
+        assertEquals(1, p.me("boss@a.test").getInt("memberCount"))
+    }
+
+    @Test
     fun `tombstones reach other phones through the change feed`() = testApplication {
-        application { module(config, fakeVerify) }
-        client.get("/api/v1/me") { bearerAuth("t9:x@b.c:ga") } // the reader is the admin
-        client.put("/api/v1/visits/v9") { bearerAuth("t9:a@b.c"); setBody(visit("v9", "a@b.c")) }
-        val cursor = JSONObject(client.get("/api/v1/visits?since=0") { bearerAuth("t9:x@b.c:ga") }.bodyAsText()).getLong("cursor")
+        application { module(config, mailer) }
+        val p = People(client, mailer)
+        val tenant = p.company("x@b.test")
+        p.join("x@b.test", "a@b.test")
+        client.put("/api/v1/visits/v9") { bearerAuth(p.token("a@b.test")); setBody(visit("v9", "a@b.test")) }
+        val cursor = JSONObject(client.get("/api/v1/visits?since=0") { bearerAuth(p.token("x@b.test")) }.bodyAsText()).getLong("cursor")
 
-        val store = Store(File(dataDir, "supportvisit.db"))
-        store.tombstone(Store.Kind.VISITS, "t9", "v9")
+        Store(File(dataDir, "supportvisit.db")).tombstone(Store.Kind.VISITS, tenant, "v9")
 
-        val items = JSONObject(client.get("/api/v1/visits?since=$cursor") { bearerAuth("t9:x@b.c:ga") }.bodyAsText())
+        val items = JSONObject(client.get("/api/v1/visits?since=$cursor") { bearerAuth(p.token("x@b.test")) }.bodyAsText())
             .getJSONArray("items")
         assertEquals(1, items.length())
         assertTrue(items.getJSONObject(0).getBoolean("deleted"))
@@ -103,21 +118,26 @@ class AccountDeletionTest {
 
     @Test
     fun `phones cannot write tombstones or overwrite another user's visit`() = testApplication {
-        application { module(config, fakeVerify) }
-        client.get("/api/v1/me") { bearerAuth("t5:x@a.test:ga") } // the reader is the admin
-        client.put("/api/v1/visits/v5") { bearerAuth("t5:owner@a.test"); setBody(visit("v5", "owner@a.test")) }
+        application { module(config, mailer) }
+        val p = People(client, mailer)
+        p.company("x@a.test")
+        p.join("x@a.test", "owner@a.test")
+        p.join("x@a.test", "mallory@a.test")
+        client.put("/api/v1/visits/v5") { bearerAuth(p.token("owner@a.test")); setBody(visit("v5", "owner@a.test")) }
 
-        // A coworker tries to overwrite it, and to push a fake tombstone.
+        // A coworker tries to overwrite it, its files, and to push a fake tombstone.
         val overwrite = client.put("/api/v1/visits/v5") {
-            bearerAuth("t5:mallory@a.test"); setBody(JSONObject(visit("v5", "owner@a.test")).put("deleted", true).toString())
+            bearerAuth(p.token("mallory@a.test")); setBody(JSONObject(visit("v5", "owner@a.test")).put("deleted", true).toString())
         }
-        assertEquals(io.ktor.http.HttpStatusCode.Forbidden, overwrite.status)
+        assertEquals(HttpStatusCode.Forbidden, overwrite.status)
+        assertEquals(HttpStatusCode.Forbidden,
+            client.put("/api/v1/visits/v5/files/report.pdf") { bearerAuth(p.token("mallory@a.test")); setBody("fake".toByteArray()) }.status)
 
         // The owner's own "deleted" flag is ignored too.
         client.put("/api/v1/visits/v5") {
-            bearerAuth("t5:owner@a.test"); setBody(JSONObject(visit("v5", "owner@a.test")).put("deleted", true).toString())
+            bearerAuth(p.token("owner@a.test")); setBody(JSONObject(visit("v5", "owner@a.test")).put("deleted", true).toString())
         }
-        val item = JSONObject(client.get("/api/v1/visits?since=0") { bearerAuth("t5:x@a.test:ga") }.bodyAsText())
+        val item = JSONObject(client.get("/api/v1/visits?since=0") { bearerAuth(p.token("x@a.test")) }.bodyAsText())
             .getJSONArray("items").getJSONObject(0)
         assertFalse(item.optBoolean("deleted"))
         assertEquals("Acme", item.getString("clientName"))
@@ -125,16 +145,19 @@ class AccountDeletionTest {
 
     @Test
     fun `rows without a recorded creator are read-only and never auto-purged`() = testApplication {
-        application { module(config, fakeVerify) }
+        application { module(config, mailer) }
+        val p = People(client, mailer)
+        val tenant = p.company("tech@a.test")
+        val userId = p.me("tech@a.test").getString("userId")
         val store = Store(File(dataDir, "supportvisit.db"))
         // Simulates a row stored before creators were tracked.
-        store.upsert(Store.Kind.VISITS, "t7", "old", JSONObject(visit("old", "tech@a.test")), "tech@a.test", createdBy = null)
+        store.upsert(Store.Kind.VISITS, tenant, "old", JSONObject(visit("old", "tech@a.test")), "tech@a.test", createdBy = null)
 
-        val write = client.put("/api/v1/visits/old") { bearerAuth("t7:tech@a.test"); setBody(visit("old", "tech@a.test")) }
-        assertEquals(io.ktor.http.HttpStatusCode.Forbidden, write.status)
+        val write = client.put("/api/v1/visits/old") { bearerAuth(p.token("tech@a.test")); setBody(visit("old", "tech@a.test")) }
+        assertEquals(HttpStatusCode.Forbidden, write.status)
 
-        store.requestDeletion(Store.DeletionRequest("t7", "oid-tech@a.test", "tech@a.test", false, 0, purgeAt = 1))
+        store.requestDeletion(Store.DeletionRequest(tenant, userId, "tech@a.test", false, 0, purgeAt = 1))
         AccountPurge.run(store, FileStore(dataDir, 1_000_000), now = 2)
-        assertFalse(store.changesSince(Store.Kind.VISITS, "t7", 0).single().data.optBoolean("deleted"))
+        assertFalse(store.changesSince(Store.Kind.VISITS, tenant, 0).single().data.optBoolean("deleted"))
     }
 }

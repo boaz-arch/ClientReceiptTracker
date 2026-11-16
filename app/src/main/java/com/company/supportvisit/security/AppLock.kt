@@ -6,6 +6,8 @@ import android.content.Context
 import android.os.Bundle
 import android.os.SystemClock
 import android.view.View
+import android.view.WindowManager
+import java.lang.ref.WeakReference
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_WEAK
 import androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
@@ -61,39 +63,65 @@ object AppLock : Application.ActivityLifecycleCallbacks {
     }
 
     override fun onActivityResumed(activity: Activity) {
-        if (!isEnabled(activity)) {
+        val enabled = isEnabled(activity)
+        // Keep app content out of the recent-apps thumbnail while the lock is on.
+        if (enabled) activity.window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        else activity.window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        if (!enabled) {
             locked = false
             return
         }
-        if (!locked || prompting || activity !is FragmentActivity) return
+        if (!locked) {
+            showContent(activity)
+            return
+        }
         if (!isAvailable(activity)) {
             // The screen lock was removed from the phone: nothing to check against.
             locked = false
+            showContent(activity)
             return
         }
-        // Hide the content until unlocked.
-        val content = activity.findViewById<View>(android.R.id.content)
-        content?.visibility = View.INVISIBLE
+        // Every screen that comes up while locked stays hidden until unlocked.
+        activity.findViewById<View>(android.R.id.content)?.visibility = View.INVISIBLE
+        if (activity !is FragmentActivity) {
+            activity.finishAffinity()
+            return
+        }
+        // A prompt shown on another (now hidden) screen is replaced by one on this screen.
+        if (prompting && promptActivity?.get() === activity) return
         prompt(
             activity,
             onSuccess = {
                 locked = false
-                content?.visibility = View.VISIBLE
+                showContent(activity)
             },
             onFail = { activity.finishAffinity() }
         )
     }
 
+    private fun showContent(activity: Activity) {
+        activity.findViewById<View>(android.R.id.content)?.visibility = View.VISIBLE
+    }
+
+    private var promptActivity: WeakReference<Activity>? = null
+
     private fun prompt(activity: FragmentActivity, onSuccess: () -> Unit, onFail: () -> Unit) {
         prompting = true
+        promptActivity = WeakReference(activity)
         val prompt = BiometricPrompt(activity, ContextCompat.getMainExecutor(activity), object : BiometricPrompt.AuthenticationCallback() {
             override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
                 prompting = false
+                promptActivity = null
                 onSuccess()
             }
 
             override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
                 prompting = false
+                promptActivity = null
+                // Cancelled because another screen took over: that screen asks instead.
+                if (errorCode == BiometricPrompt.ERROR_CANCELED && activity.isFinishing.not() && locked &&
+                    !activity.lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)
+                ) return
                 onFail()
             }
         })
@@ -109,5 +137,10 @@ object AppLock : Application.ActivityLifecycleCallbacks {
     override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) = Unit
     override fun onActivityPaused(activity: Activity) = Unit
     override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
-    override fun onActivityDestroyed(activity: Activity) = Unit
+    override fun onActivityDestroyed(activity: Activity) {
+        if (promptActivity?.get() === activity) {
+            prompting = false
+            promptActivity = null
+        }
+    }
 }

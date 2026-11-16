@@ -38,10 +38,23 @@ if [[ ! -f .env ]]; then
   cp .env.example .env
   sed -i "s|^LINK_SECRET=.*|LINK_SECRET=$(openssl rand -base64 48 | tr -d '\n')|" .env
   chmod 600 .env
-  echo "Created ~/SupportVisit/.env: fill in AZURE_CLIENT_ID, PUBLIC_BASE_URL (and ALLOWED_TENANT_IDS), then deploy again."
+  echo "Created ~/SupportVisit/.env: fill in PUBLIC_BASE_URL and the SMTP_* lines, then deploy again."
   exit 2
 fi
 chmod 600 .env
+# Settings added in later versions: append them (empty) so they're easy to fill in.
+for key in SMTP_HOST SMTP_PORT SMTP_USER SMTP_PASSWORD SMTP_FROM SMTP_TLS APP_NAME MAIL_DAILY_LIMIT; do
+  if ! grep -q "^$key=" .env; then
+    grep "^$key=" .env.example >> .env || true
+    added=1
+  fi
+done
+if [[ "${added:-}" == 1 ]]; then
+  echo "Added new settings to ~/SupportVisit/.env: fill in the SMTP_* lines (sign-in needs email)." >&2
+fi
+if ! grep -q "^SMTP_HOST=." .env; then
+  echo "WARNING: SMTP_HOST is empty in ~/SupportVisit/.env, so nobody can sign in until it is set." >&2
+fi
 
 # Keep the running version for rollback, then switch.
 if [[ -d server ]]; then

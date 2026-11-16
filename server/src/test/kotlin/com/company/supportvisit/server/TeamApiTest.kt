@@ -1,6 +1,5 @@
 package com.company.supportvisit.server
 
-import io.ktor.client.HttpClient
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
@@ -20,118 +19,176 @@ import kotlin.test.assertTrue
 class TeamApiTest {
 
     private val dataDir: File = Files.createTempDirectory("svteam").toFile()
-    private val config = Config(
-        port = 0, dataDir = dataDir, clientId = "client", allowedTenants = emptySet(),
-        publicBaseUrl = "https://example.test/sv", linkSecret = "x".repeat(40), proTenants = setOf("t-env"),
-        adminEmails = setOf("boss@a.test")
-    )
-    /** Tokens: "<tenant>:<email>[:ga]" — ":ga" marks a Microsoft 365 Global Administrator. */
-    private val fakeVerify: (String) -> Caller = { token ->
-        val parts = token.split(':')
-        val email = parts[1]
-        Caller(parts[0], "oid-$email", email, email.substringBefore('@'),
-            if (parts.getOrNull(2) == "ga") setOf(Caller.GLOBAL_ADMIN_ROLE) else emptySet())
-    }
-
-    private suspend fun HttpClient.me(token: String) = JSONObject(get("/api/v1/me") { bearerAuth(token) }.bodyAsText())
+    private val mailer = FakeMailer()
 
     @Test
-    fun `only an invited admin or a Microsoft 365 global admin becomes the first admin`() = testApplication {
-        application { module(config, fakeVerify) }
-        // An ordinary user signing in first does NOT get admin.
-        assertEquals("TECHNICIAN", client.me("t3:random@c.test").getString("role"))
-        assertEquals("ADMIN", client.me("t3:it@c.test:ga").getString("role"), "global admin of the tenant")
-        assertEquals("ADMIN", client.me("t4:first@d.test:ga").getString("role"))
-        assertEquals("TECHNICIAN", client.me("t4:second@d.test:ga").getString("role"), "only while the company has no admin")
-        assertEquals("ADMIN", client.me("t1:boss@a.test").getString("role"), "invited through ADMIN_EMAILS")
-        assertEquals("TECHNICIAN", client.me("t1:tech@a.test").getString("role"))
-        assertEquals(2, client.me("t1:boss@a.test").getInt("memberCount"))
+    fun `whoever creates a company is its admin, invited people join with their role`() = testApplication {
+        application { module(testConfig(dataDir), mailer) }
+        val p = People(client, mailer)
+        p.company("boss@a.test")
+        assertEquals("ADMIN", p.me("boss@a.test").getString("role"))
+
+        p.join("boss@a.test", "dana@a.test", role = "MANAGER")
+        assertEquals("MANAGER", p.me("dana@a.test").getString("role"))
+        assertEquals(p.me("boss@a.test").getString("tenantId"), p.me("dana@a.test").getString("tenantId"))
+        assertEquals(2, p.me("boss@a.test").getInt("memberCount"))
+        assertTrue(mailer.sent.any { "dana@a.test" in it.to && it.subject.contains("Acme IT") }, "invitation emailed")
+
+        // Not invited: no company until they create one.
+        assertEquals(HttpStatusCode.Conflict, client.get("/api/v1/me") { bearerAuth(p.token("stranger@x.test")) }.status)
+        // Someone already in a company can't be invited into another, nor start a second one.
+        p.company("other@b.test", "B Ltd")
+        assertEquals(HttpStatusCode.Conflict, client.post("/api/v1/members/invites") {
+            bearerAuth(p.token("other@b.test")); setBody("""{"email":"dana@a.test"}""")
+        }.status)
+        assertEquals(HttpStatusCode.BadRequest, client.post("/api/v1/companies") {
+            bearerAuth(p.token("dana@a.test")); setBody("""{"name":"Second"}""")
+        }.status)
+        // Only admins invite.
+        assertEquals(HttpStatusCode.Forbidden, client.post("/api/v1/members/invites") {
+            bearerAuth(p.token("dana@a.test")); setBody("""{"email":"x@a.test"}""")
+        }.status)
     }
 
     @Test
-    fun `removed members are blocked until an admin restores them`() = testApplication {
-        application { module(config, fakeVerify) }
-        client.me("t1:boss@a.test")
-        client.me("t1:leaver@a.test")
-        assertEquals(HttpStatusCode.OK, client.delete("/api/v1/members/oid-leaver@a.test") { bearerAuth("t1:boss@a.test") }.status)
-        assertEquals(HttpStatusCode.Forbidden, client.get("/api/v1/me") { bearerAuth("t1:leaver@a.test") }.status)
-        assertEquals(HttpStatusCode.Forbidden, client.get("/api/v1/visits?since=0") { bearerAuth("t1:leaver@a.test") }.status)
-        assertEquals(HttpStatusCode.OK, client.post("/api/v1/members/oid-leaver@a.test/restore") { bearerAuth("t1:boss@a.test") }.status)
-        assertEquals("TECHNICIAN", client.me("t1:leaver@a.test").getString("role"))
+    fun `removed members are blocked until an admin restores or re-invites them`() = testApplication {
+        application { module(testConfig(dataDir), mailer) }
+        val p = People(client, mailer)
+        p.company("boss@a.test")
+        val leaver = p.join("boss@a.test", "leaver@a.test")
+        val boss = p.token("boss@a.test")
+        val leaverToken = p.token("leaver@a.test")
+
+        assertEquals(HttpStatusCode.OK, client.delete("/api/v1/members/$leaver") { bearerAuth(boss) }.status)
+        // Their sessions are ended.
+        assertEquals(HttpStatusCode.Unauthorized, client.get("/api/v1/me") { bearerAuth(leaverToken) }.status)
+
+        // Signing in again doesn't get them back in (checked on the store: a new code is rate limited for 30 s).
+        val db = File(dataDir, "supportvisit.db")
+        val account = AccountStore(db, "x".repeat(40)).userByEmail("leaver@a.test")!!
+        val team = TeamStore(db)
+        assertEquals("member_removed", runCatching { team.resolve(account) }.exceptionOrNull()?.message)
+        assertEquals(1, JSONObject(client.get("/api/v1/members/removed") { bearerAuth(boss) }.bodyAsText()).getJSONArray("items").length())
+
+        assertEquals(HttpStatusCode.OK, client.post("/api/v1/members/$leaver/restore") { bearerAuth(boss) }.status)
+        assertEquals(Role.TECHNICIAN, team.resolve(account).role)
+
+        // Removing and inviting again also lets them back in.
+        client.delete("/api/v1/members/$leaver") { bearerAuth(boss) }
+        client.post("/api/v1/members/invites") { bearerAuth(boss); setBody("""{"email":"leaver@a.test","role":"MANAGER"}""") }
+        assertEquals(Role.MANAGER, team.resolve(account).role)
     }
 
     @Test
     fun `technicians see only their own visits, managers see all`() = testApplication {
-        application { module(config, fakeVerify) }
-        client.me("t1:boss@a.test")
+        application { module(testConfig(dataDir), mailer) }
+        val p = People(client, mailer)
+        p.company("boss@a.test")
         for (who in listOf("dana", "omer")) {
-            client.put("/api/v1/visits/v-$who") { bearerAuth("t1:$who@a.test"); setBody(JSONObject().put("id", "v-$who").toString()) }
+            p.join("boss@a.test", "$who@a.test")
+            client.put("/api/v1/visits/v-$who") { bearerAuth(p.token("$who@a.test")); setBody(JSONObject().put("id", "v-$who").toString()) }
         }
         fun ids(json: String) = JSONObject(json).getJSONArray("items").let { a -> (0 until a.length()).map { a.getJSONObject(it).getString("id") }.toSet() }
-        assertEquals(setOf("v-dana"), ids(client.get("/api/v1/visits?since=0") { bearerAuth("t1:dana@a.test") }.bodyAsText()))
-        assertEquals(setOf("v-dana", "v-omer"), ids(client.get("/api/v1/visits?since=0") { bearerAuth("t1:boss@a.test") }.bodyAsText()))
+        assertEquals(setOf("v-dana"), ids(client.get("/api/v1/visits?since=0") { bearerAuth(p.token("dana@a.test")) }.bodyAsText()))
+        assertEquals(setOf("v-dana", "v-omer"), ids(client.get("/api/v1/visits?since=0") { bearerAuth(p.token("boss@a.test")) }.bodyAsText()))
     }
 
     @Test
     fun `tasks are visible to creator and assignee, editable by them or managers`() = testApplication {
-        application { module(config, fakeVerify) }
-        client.me("t1:boss@a.test")
-        client.me("t1:dana@a.test")
-        val task = JSONObject().put("id", "task1").put("title", "Replace router").put("assigneeId", "oid-dana@a.test")
-        assertEquals(HttpStatusCode.OK, client.put("/api/v1/tasks/task1") { bearerAuth("t1:boss@a.test"); setBody(task.toString()) }.status)
+        application { module(testConfig(dataDir), mailer) }
+        val p = People(client, mailer)
+        p.company("boss@a.test")
+        val dana = p.join("boss@a.test", "dana@a.test")
+        p.join("boss@a.test", "omer@a.test")
+        val task = JSONObject().put("id", "task1").put("title", "Replace router").put("assigneeId", dana)
+        assertEquals(HttpStatusCode.OK, client.put("/api/v1/tasks/task1") { bearerAuth(p.token("boss@a.test")); setBody(task.toString()) }.status)
 
         fun count(json: String) = JSONObject(json).getJSONArray("items").length()
-        assertEquals(1, count(client.get("/api/v1/tasks?since=0") { bearerAuth("t1:dana@a.test") }.bodyAsText()))
-        assertEquals(0, count(client.get("/api/v1/tasks?since=0") { bearerAuth("t1:omer@a.test") }.bodyAsText()))
+        assertEquals(1, count(client.get("/api/v1/tasks?since=0") { bearerAuth(p.token("dana@a.test")) }.bodyAsText()))
+        assertEquals(0, count(client.get("/api/v1/tasks?since=0") { bearerAuth(p.token("omer@a.test")) }.bodyAsText()))
 
         // The assignee may mark it done; an unrelated technician may not touch it.
         val done = JSONObject(task.toString()).put("done", true).toString()
-        assertEquals(HttpStatusCode.OK, client.put("/api/v1/tasks/task1") { bearerAuth("t1:dana@a.test"); setBody(done) }.status)
-        assertEquals(HttpStatusCode.Forbidden, client.put("/api/v1/tasks/task1") { bearerAuth("t1:omer@a.test"); setBody(done) }.status)
+        assertEquals(HttpStatusCode.OK, client.put("/api/v1/tasks/task1") { bearerAuth(p.token("dana@a.test")); setBody(done) }.status)
+        assertEquals(HttpStatusCode.Forbidden, client.put("/api/v1/tasks/task1") { bearerAuth(p.token("omer@a.test")); setBody(done) }.status)
     }
 
     @Test
     fun `only admins change the company profile and roles and the last admin stays`() = testApplication {
-        application { module(config, fakeVerify) }
-        client.me("t1:boss@a.test")
-        client.me("t1:dana@a.test")
+        application { module(testConfig(dataDir), mailer) }
+        val p = People(client, mailer)
+        p.company("boss@a.test", "Starter name")
+        val dana = p.join("boss@a.test", "dana@a.test")
+        val bossId = p.me("boss@a.test").getString("userId")
         val profile = JSONObject().put("name", "Acme IT").put("companyNumber", "514000000").put("ignored", "x").toString()
 
-        assertEquals(HttpStatusCode.Forbidden, client.put("/api/v1/company") { bearerAuth("t1:dana@a.test"); setBody(profile) }.status)
-        val saved = JSONObject(client.put("/api/v1/company") { bearerAuth("t1:boss@a.test"); setBody(profile) }.bodyAsText())
+        assertEquals(HttpStatusCode.Forbidden, client.put("/api/v1/company") { bearerAuth(p.token("dana@a.test")); setBody(profile) }.status)
+        val saved = JSONObject(client.put("/api/v1/company") { bearerAuth(p.token("boss@a.test")); setBody(profile) }.bodyAsText())
         assertEquals("Acme IT", saved.getString("name"))
         assertTrue(!saved.has("ignored"))
-        assertEquals("Acme IT", JSONObject(client.get("/api/v1/company") { bearerAuth("t1:dana@a.test") }.bodyAsText()).getString("name"))
+        assertEquals("Acme IT", JSONObject(client.get("/api/v1/company") { bearerAuth(p.token("dana@a.test")) }.bodyAsText()).getString("name"))
 
         assertEquals(HttpStatusCode.Forbidden,
-            client.put("/api/v1/members/oid-boss@a.test/role") { bearerAuth("t1:dana@a.test"); setBody("""{"role":"TECHNICIAN"}""") }.status)
+            client.put("/api/v1/members/$bossId/role") { bearerAuth(p.token("dana@a.test")); setBody("""{"role":"TECHNICIAN"}""") }.status)
         assertEquals(HttpStatusCode.BadRequest,
-            client.put("/api/v1/members/oid-boss@a.test/role") { bearerAuth("t1:boss@a.test"); setBody("""{"role":"TECHNICIAN"}""") }.status)
+            client.put("/api/v1/members/$bossId/role") { bearerAuth(p.token("boss@a.test")); setBody("""{"role":"TECHNICIAN"}""") }.status)
         assertEquals(HttpStatusCode.OK,
-            client.put("/api/v1/members/oid-dana@a.test/role") { bearerAuth("t1:boss@a.test"); setBody("""{"role":"MANAGER"}""") }.status)
-        assertEquals("MANAGER", client.me("t1:dana@a.test").getString("role"))
+            client.put("/api/v1/members/$dana/role") { bearerAuth(p.token("boss@a.test")); setBody("""{"role":"MANAGER"}""") }.status)
+        assertEquals("MANAGER", p.me("dana@a.test").getString("role"))
+    }
+
+    @Test
+    fun `reports are emailed from the server with the company name, and only by their creator or a manager`() = testApplication {
+        application { module(testConfig(dataDir, mailDailyLimit = 2), mailer) }
+        val p = People(client, mailer)
+        p.company("boss@a.test")
+        client.put("/api/v1/company") { bearerAuth(p.token("boss@a.test")); setBody("""{"name":"Acme IT","email":"office@acme.test"}""") }
+        p.join("boss@a.test", "dana@a.test")
+        p.join("boss@a.test", "omer@a.test")
+        val dana = p.token("dana@a.test")
+        client.put("/api/v1/visits/v1") { bearerAuth(dana); setBody("""{"id":"v1"}""") }
+        val email = JSONObject().put("to", org.json.JSONArray(listOf("client@example.com"))).put("subject", "Visit report")
+            .put("body", "Hello").put("fileName", "Visit_2026.pdf").toString()
+
+        assertEquals(HttpStatusCode.BadRequest, client.post("/api/v1/visits/v1/email") { bearerAuth(dana); setBody(email) }.status,
+            "no report uploaded yet")
+        client.put("/api/v1/visits/v1/files/report.pdf") { bearerAuth(dana); setBody("%PDF-1.4".toByteArray()) }
+
+        assertEquals(HttpStatusCode.Forbidden, client.post("/api/v1/visits/v1/email") { bearerAuth(p.token("omer@a.test")); setBody(email) }.status)
+        assertEquals(HttpStatusCode.OK, client.post("/api/v1/visits/v1/email") { bearerAuth(dana); setBody(email) }.status)
+        val sent = mailer.sent.last()
+        assertEquals(listOf("client@example.com"), sent.to)
+        assertEquals("Acme IT", sent.fromName)
+        assertEquals("office@acme.test", sent.replyTo)
+        assertEquals("Visit_2026.pdf", sent.attachments.single().name)
+
+        assertEquals(HttpStatusCode.OK, client.post("/api/v1/visits/v1/email") { bearerAuth(p.token("boss@a.test")); setBody(email) }.status)
+        assertEquals(HttpStatusCode.TooManyRequests, client.post("/api/v1/visits/v1/email") { bearerAuth(dana); setBody(email) }.status,
+            "daily limit per company")
     }
 
     @Test
     fun `plan grants, crash reports and events`() = testApplication {
-        application { module(config, fakeVerify) }
-        assertEquals("FREE", client.me("t1:boss@a.test").getString("plan"))
-        assertEquals("PRO", client.me("t-env:someone@e.test").getString("plan"), "granted through PRO_TENANT_IDS")
-        TeamStore(File(dataDir, "supportvisit.db")).grantPro("t1", "family")
-        assertEquals("PRO", client.me("t1:boss@a.test").getString("plan"))
+        application { module(testConfig(dataDir), mailer) }
+        val p = People(client, mailer)
+        val tenant = p.company("boss@a.test")
+        assertEquals("FREE", p.me("boss@a.test").getString("plan"))
+        TeamStore(File(dataDir, "supportvisit.db")).grantPro(tenant, "family")
+        assertEquals("PRO", p.me("boss@a.test").getString("plan"))
 
+        val boss = p.token("boss@a.test")
         assertEquals(HttpStatusCode.OK, client.post("/api/v1/crashes") {
-            bearerAuth("t1:boss@a.test"); setBody(JSONObject().put("appVersion", "1.0").put("stack", "java.lang.X\n at Y").toString())
+            bearerAuth(boss); setBody(JSONObject().put("appVersion", "1.0").put("stack", "java.lang.X\n at Y").toString())
         }.status)
-        client.post("/api/v1/events") { bearerAuth("t1:boss@a.test"); setBody("""{"events":["visit_submitted","visit_submitted","Bad Name!"]}""") }
+        client.post("/api/v1/events") { bearerAuth(boss); setBody("""{"events":["visit_submitted","visit_submitted","Bad Name!"]}""") }
         val team = TeamStore(File(dataDir, "supportvisit.db"))
-        assertEquals(mapOf("visit_submitted" to 2), team.eventCounts("t1"))
+        assertEquals(mapOf("visit_submitted" to 2), team.eventCounts(tenant))
         assertEquals(1, team.recentCrashes().length())
     }
 
     @Test
     fun `update manifest and legal pages are public`() = testApplication {
-        application { module(config, fakeVerify) }
+        application { module(testConfig(dataDir), mailer) }
         assertEquals(HttpStatusCode.NotFound, client.get("/updates/latest.json").status)
         File(dataDir, "updates").mkdirs()
         File(dataDir, "updates/latest.json").writeText("""{"versionCode":2}""")
