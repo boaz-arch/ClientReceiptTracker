@@ -7,8 +7,8 @@ import androidx.lifecycle.viewModelScope
 import com.company.supportvisit.R
 import com.company.supportvisit.app
 import com.company.supportvisit.data.VisitEntity
-import com.company.supportvisit.graph.AuthRequiredException
-import com.company.supportvisit.graph.MicrosoftAuthManager
+import com.company.supportvisit.auth.AuthRequiredException
+import com.company.supportvisit.auth.AuthSession
 import com.company.supportvisit.remote.ServerApi
 import com.company.supportvisit.settings.ServerSettings
 import com.company.supportvisit.sync.ServerSync
@@ -63,7 +63,7 @@ class PastVisitsViewModel(application: Application) : AndroidViewModel(applicati
         _refreshing.value = true
         viewModelScope.launch {
             try {
-                ServerSync.pushAndPull(getApplication(), ServerApi(url, MicrosoftAuthManager.getApiToken()))
+                ServerSync.pushAndPull(getApplication(), ServerApi(url, AuthSession.getApiToken()))
             } catch (e: AuthRequiredException) {
                 _message.value = R.string.sync_error_sign_in
             } catch (e: IOException) {

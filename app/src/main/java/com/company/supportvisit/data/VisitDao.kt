@@ -86,6 +86,31 @@ interface DraftDao {
 }
 
 @Dao
+interface TaskDao {
+
+    @Query("SELECT * FROM tasks ORDER BY done, CASE WHEN dueDate IS NULL THEN 1 ELSE 0 END, dueDate, createdAt DESC")
+    fun observeAll(): Flow<List<TaskEntity>>
+
+    @Query("SELECT * FROM tasks WHERE id = :id")
+    suspend fun getById(id: String): TaskEntity?
+
+    @Query("SELECT * FROM tasks WHERE remoteDirty = 1")
+    suspend fun getRemoteDirty(): List<TaskEntity>
+
+    @Query("SELECT * FROM tasks")
+    suspend fun getAll(): List<TaskEntity>
+
+    @Upsert
+    suspend fun upsert(task: TaskEntity)
+
+    @Query("DELETE FROM tasks WHERE id = :id")
+    suspend fun deleteById(id: String)
+
+    @Query("UPDATE tasks SET remoteDirty = 0 WHERE id = :id AND updatedAt = :pushedUpdatedAt")
+    suspend fun markRemoteSynced(id: String, pushedUpdatedAt: Long)
+}
+
+@Dao
 interface ClientDao {
 
     @Query("SELECT * FROM clients ORDER BY name COLLATE NOCASE")

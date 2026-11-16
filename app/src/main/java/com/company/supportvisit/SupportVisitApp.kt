@@ -3,9 +3,13 @@ package com.company.supportvisit
 import android.app.Application
 import android.content.Context
 import com.company.supportvisit.data.AppDatabase
-import com.company.supportvisit.graph.MicrosoftAuthManager
+import com.company.supportvisit.auth.AuthSession
 import com.company.supportvisit.repository.ClientRepository
+import com.company.supportvisit.repository.TaskRepository
+import com.company.supportvisit.team.TeamRepository
+import com.company.supportvisit.team.TeamSession
 import com.company.supportvisit.repository.VisitRepository
+import com.company.supportvisit.security.AppLock
 import com.company.supportvisit.settings.ThemeManager
 import com.company.supportvisit.sync.SyncScheduler
 import kotlinx.coroutines.CoroutineScope
@@ -24,16 +28,20 @@ class SupportVisitApp : Application() {
 
     val clientRepository: ClientRepository by lazy { ClientRepository(database.clientDao()) }
 
+    val taskRepository: TaskRepository by lazy { TaskRepository(database.taskDao()) }
+
     override fun onCreate() {
         super.onCreate()
 
         ThemeManager.applySaved(this)
+        TeamSession.load(this)
+        AppLock.install(this)
 
-        MicrosoftAuthManager.init(this)
+        AuthSession.init(this)
 
         appScope.launch {
             visitRepository.migrateLegacyIfNeeded()
-            MicrosoftAuthManager.refreshAccount()
+            if (AuthSession.refreshAccount() != null) TeamRepository.refresh(this@SupportVisitApp)
         }
 
         // Picks up anything left unsent from a previous session (runs once online).

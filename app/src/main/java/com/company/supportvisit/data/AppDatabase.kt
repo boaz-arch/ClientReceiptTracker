@@ -8,14 +8,16 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 
 @Database(
-    entities = [VisitEntity::class, DraftEntity::class, ClientEntity::class],
-    version = 3,
+    entities = [VisitEntity::class, DraftEntity::class, ClientEntity::class, TaskEntity::class],
+    version = 4,
     exportSchema = true,
     autoMigrations = [
         // v2: clients table; visit type, parts, photos, technician signature and server sync fields.
         AutoMigration(from = 1, to = 2),
         // v3: billing (break, billable override, hourly rate snapshot, client hours allowance).
-        AutoMigration(from = 2, to = 3)
+        AutoMigration(from = 2, to = 3),
+        // v4: tasks (to-do list).
+        AutoMigration(from = 3, to = 4)
     ]
 )
 @TypeConverters(Converters::class)
@@ -26,6 +28,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun draftDao(): DraftDao
 
     abstract fun clientDao(): ClientDao
+
+    abstract fun taskDao(): TaskDao
 
     companion object {
         fun build(context: Context): AppDatabase =

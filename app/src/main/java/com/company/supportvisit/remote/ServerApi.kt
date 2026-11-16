@@ -14,11 +14,18 @@ import java.io.File
 data class ChangesPage(val items: List<JSONObject>, val cursor: Long, val hasMore: Boolean)
 
 /** Info about the signed-in caller, as the server sees it. */
-data class ServerIdentity(val tenantId: String, val email: String)
+data class ServerIdentity(
+    val tenantId: String,
+    val email: String,
+    val userId: String = "",
+    val role: String = "TECHNICIAN",
+    val plan: String = "FREE",
+    val memberCount: Int = 1
+)
 
 /**
- * Client for the Support Visit server (see /server). [token] is an access token for the
- * server's own API scope, not a Graph token. Errors use GraphException (HTTP status + body).
+ * Client for the Support Visit server (see /server). [token] is the session token from email
+ * sign-in (empty for the sign-in calls). Errors use GraphException (HTTP status + body).
  */
 class ServerApi(baseUrl: String, private val token: String) {
 
@@ -27,8 +34,151 @@ class ServerApi(baseUrl: String, private val token: String) {
 
     fun me(): ServerIdentity {
         val json = getJson("$base/api/v1/me")
-        return ServerIdentity(json.optString("tenantId"), json.optString("email"))
+        return ServerIdentity(
+            tenantId = json.optString("tenantId"),
+            email = json.optString("email"),
+            userId = json.optString("userId"),
+            role = json.optString("role", "TECHNICIAN"),
+            plan = json.optString("plan", "FREE"),
+            memberCount = json.optInt("memberCount", 1)
+        )
     }
+
+    // region Sign-in
+
+    fun startSignIn(email: String, language: String) {
+        send("POST", "$base/api/v1/auth/start", JSONObject().put("email", email).put("lang", language))
+    }
+
+    /** Returns the session token and the (normalized) email. */
+    fun verifySignIn(email: String, code: String): Pair<String, String> {
+        val json = JSONObject(send("POST", "$base/api/v1/auth/verify", JSONObject().put("email", email).put("code", code)))
+        return json.getString("token") to json.optString("email", email)
+    }
+
+    fun signOut() {
+        send("POST", "$base/api/v1/auth/logout", JSONObject())
+    }
+
+    /**
+     * Where the signed-in person stands: in a company (200), not yet (409, with any invitations)
+     * or removed (403). Returns the HTTP status and the JSON body.
+     */
+    fun membership(): Pair<Int, JSONObject> {
+        val request = Request.Builder().url("$base/api/v1/me").header("Authorization", "Bearer $token").get().build()
+        return GraphHttp.client.newCall(request).execute().use { r ->
+            r.code to (runCatching { JSONObject(r.body?.string().orEmpty()) }.getOrDefault(JSONObject()))
+        }
+    }
+
+    fun acceptInvite(tenantId: String) {
+        send("POST", "$base/api/v1/me/invites/${seg(tenantId)}/accept", JSONObject())
+    }
+
+    /** Starts a new company with the signed-in person as its admin. */
+    fun createCompany(name: String) {
+        send("POST", "$base/api/v1/companies", JSONObject().put("name", name))
+    }
+
+    fun setMyName(name: String) {
+        send("PUT", "$base/api/v1/me/name", JSONObject().put("name", name))
+    }
+
+    // endregion
+
+    // region Email (sent by the server from its own address)
+
+    /** Emails the visit's uploaded report.pdf. */
+    fun emailVisit(visitId: String, to: List<String>, subject: String, body: String, fileName: String) {
+        send(
+            "POST", "$base/api/v1/visits/${seg(visitId)}/email",
+            JSONObject().put("to", org.json.JSONArray(to)).put("subject", subject).put("body", body).put("fileName", fileName)
+        )
+    }
+
+    fun emailReport(to: List<String>, subject: String, body: String, attachments: List<Pair<File, String>>) {
+        val list = org.json.JSONArray()
+        attachments.forEach { (file, type) ->
+            list.put(
+                JSONObject().put("name", file.name).put("contentType", type)
+                    .put("data", android.util.Base64.encodeToString(file.readBytes(), android.util.Base64.NO_WRAP))
+            )
+        }
+        send(
+            "POST", "$base/api/v1/reports/email",
+            JSONObject().put("to", org.json.JSONArray(to)).put("subject", subject).put("body", body).put("attachments", list)
+        )
+    }
+
+    // endregion
+
+    // region Team and company
+
+    fun members(): List<JSONObject> = items(getJson("$base/api/v1/members"))
+
+    fun invites(): List<JSONObject> = items(getJson("$base/api/v1/members/invites"))
+
+    /** Returns true if the invitation email went out. */
+    fun invite(email: String, role: String, language: String): Boolean =
+        JSONObject(send("POST", "$base/api/v1/members/invites", JSONObject().put("email", email).put("role", role).put("lang", language)))
+            .optBoolean("emailed")
+
+    fun cancelInvite(email: String) = send("DELETE", "$base/api/v1/members/invites/${seg(email)}", null)
+
+    fun removedMembers(): List<JSONObject> = items(getJson("$base/api/v1/members/removed"))
+
+    fun setRole(userId: String, role: String) {
+        send("PUT", "$base/api/v1/members/${seg(userId)}/role", JSONObject().put("role", role))
+    }
+
+    fun removeMember(userId: String) = send("DELETE", "$base/api/v1/members/${seg(userId)}", null)
+
+    fun restoreMember(userId: String) = send("POST", "$base/api/v1/members/${seg(userId)}/restore", JSONObject())
+
+    fun company(): JSONObject = getJson("$base/api/v1/company")
+
+    fun putCompany(changes: JSONObject): JSONObject = JSONObject(send("PUT", "$base/api/v1/company", changes))
+
+    fun uploadLogo(file: File) {
+        val request = Request.Builder().url("$base/api/v1/company/logo")
+            .put(file.asRequestBody("image/png".toMediaType())).build()
+        GraphHttp.execute(request, token)
+    }
+
+    /** Downloads the company logo into [target]; false if there is none. */
+    fun downloadLogo(target: File): Boolean {
+        val request = Request.Builder().url("$base/api/v1/company/logo")
+            .header("Authorization", "Bearer $token").get().build()
+        return GraphHttp.client.newCall(request).execute().use { r ->
+            if (!r.isSuccessful) return@use false
+            target.parentFile?.mkdirs()
+            r.body?.byteStream()?.use { input -> target.outputStream().use { input.copyTo(it) } }
+            true
+        }
+    }
+
+    fun sendCrash(report: JSONObject) = send("POST", "$base/api/v1/crashes", report)
+
+    fun sendEvents(names: List<String>) = send("POST", "$base/api/v1/events", JSONObject().put("events", org.json.JSONArray(names)))
+
+    fun taskChanges(since: Long) = changes("tasks", since)
+
+    fun putTask(json: JSONObject) = put("tasks", json)
+
+    private fun items(json: JSONObject): List<JSONObject> {
+        val a = json.optJSONArray("items") ?: return emptyList()
+        return (0 until a.length()).mapNotNull { a.optJSONObject(it) }
+    }
+
+    private fun seg(value: String) = java.net.URLEncoder.encode(value, "UTF-8").replace("+", "%20")
+
+    private fun send(method: String, url: String, body: JSONObject?): String {
+        val requestBody = body?.toString()?.toRequestBody(jsonType)
+        val request = Request.Builder().url(url).method(method, requestBody ?: if (method == "DELETE") null else ByteArray(0).toRequestBody(null)).build()
+        return GraphHttp.execute(request, token)
+    }
+
+    // endregion
 
     /** Pending account deletion for the signed-in user, if any. */
     fun deletionStatus(): com.company.supportvisit.account.DeletionStatus {

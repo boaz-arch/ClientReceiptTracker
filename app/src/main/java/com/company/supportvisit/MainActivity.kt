@@ -13,10 +13,9 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.company.supportvisit.account.AccountDeletion
 import com.company.supportvisit.dashboard.DashboardViewModel
 import com.company.supportvisit.databinding.ActivityMainBinding
-import com.company.supportvisit.graph.AuthManager
-import com.company.supportvisit.graph.MicrosoftAuthManager
+import com.company.supportvisit.auth.AuthSession
+import com.company.supportvisit.team.TeamSession
 import com.company.supportvisit.ui.applySystemBarInsets
-import com.company.supportvisit.utils.AppConfig
 import com.company.supportvisit.utils.DateUtils
 import com.company.supportvisit.utils.Money
 import kotlinx.coroutines.launch
@@ -39,14 +38,10 @@ class MainActivity : AppCompatActivity() {
 
     private var deletionPromptShown = false
 
+    private var companySetupShown = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        if (AppConfig.LOGIN_ENABLED && !AuthManager.isLoggedIn()) {
-            startActivity(Intent(this, LoginActivity::class.java))
-            finish()
-            return
-        }
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -63,17 +58,26 @@ class MainActivity : AppCompatActivity() {
         val openInsights = { startActivity(Intent(this, InsightsActivity::class.java)) }
         binding.btnInsights.setOnClickListener { openInsights() }
         binding.cardMonth.setOnClickListener { openInsights() }
+        binding.btnTasks.setOnClickListener { startActivity(Intent(this, TasksActivity::class.java)) }
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
-                    if (MicrosoftAuthManager.refreshAccount() != null) checkPendingDeletion()
-                    MicrosoftAuthManager.accountEmail.collect { email ->
+                    if (AuthSession.refreshAccount() != null) checkPendingDeletion()
+                    AuthSession.accountEmail.collect { email ->
                         binding.tvUser.text = if (email.isNullOrBlank()) {
                             getString(R.string.greeting_guest)
                         } else {
                             getString(R.string.greeting_name, email.substringBefore("@"))
                         }
+                    }
+                }
+                launch {
+                    val me = TeamSession.userId(this@MainActivity)
+                    app.taskRepository.observeTasks().collect { tasks ->
+                        val open = tasks.count { !it.done && (me.isBlank() || it.assigneeId == me || (it.assigneeId == null && it.createdById == me)) }
+                        binding.btnTasks.text = if (open == 0) getString(R.string.home_tasks)
+                        else getString(R.string.home_tasks) + " · " + resources.getQuantityString(R.plurals.home_tasks_open, open, open)
                     }
                 }
                 launch {
@@ -94,6 +98,16 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         viewModel.refresh()
+        maybeAskForCompanySetup()
+    }
+
+    /** The first admin of a new company sets up its name and logo before the team starts reporting. */
+    private fun maybeAskForCompanySetup() {
+        if (companySetupShown) return
+        if (!TeamSession.isTeamMember(this) || !TeamSession.role(this).canManageCompany) return
+        if (TeamSession.company(this).isConfigured) return
+        companySetupShown = true
+        startActivity(Intent(this, CompanySetupActivity::class.java))
     }
 
 
@@ -128,7 +142,7 @@ class MainActivity : AppCompatActivity() {
             .setNegativeButton(R.string.restore_account_keep_deleting) { _, _ ->
                 lifecycleScope.launch {
                     AccountDeletion.wipeLocalData(this@MainActivity)
-                    runCatching { MicrosoftAuthManager.signOut() }
+                    runCatching { AuthSession.signOut() }
                 }
             }
             .show()

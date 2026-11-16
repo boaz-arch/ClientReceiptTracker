@@ -13,6 +13,7 @@ object ServerSettings {
     private const val PREFS = "server"
     private const val KEY_VISITS_CURSOR = "visits_cursor"
     private const val KEY_CLIENTS_CURSOR = "clients_cursor"
+    private const val KEY_TASKS_CURSOR = "tasks_cursor"
 
     /** Server base URL (no trailing slash), or null when the build has none. */
     fun serverUrl(@Suppress("UNUSED_PARAMETER") context: Context): String? =
@@ -21,6 +22,14 @@ object ServerSettings {
     fun visitsCursor(context: Context): Long = prefs(context).getLong(KEY_VISITS_CURSOR, 0L)
 
     fun setVisitsCursor(context: Context, value: Long) = prefs(context).edit { putLong(KEY_VISITS_CURSOR, value) }
+
+    fun tasksCursor(context: Context): Long = prefs(context).getLong(KEY_TASKS_CURSOR, 0L)
+
+    fun setTasksCursor(context: Context, value: Long) = prefs(context).edit { putLong(KEY_TASKS_CURSOR, value) }
+
+    fun tasksFullSyncAt(context: Context): Long = prefs(context).getLong("tasks_full_sync_at", 0L)
+
+    fun setTasksFullSyncAt(context: Context, value: Long) = prefs(context).edit { putLong("tasks_full_sync_at", value) }
 
     fun clientsCursor(context: Context): Long = prefs(context).getLong(KEY_CLIENTS_CURSOR, 0L)
 

@@ -4,7 +4,6 @@
     <string name="app_name">Support Visit Manager</string>
 
     <!-- Branding: replaced by the company profile in a later phase. -->
-    <string name="company_footer" translatable="false">Livnelavan LTD</string>
 
     <!-- Home -->
     <string name="dashboard_title">Dashboard</string>
@@ -50,9 +49,9 @@
     <string name="status_emailed">Sent</string>
     <string name="status_failed">Failed</string>
     <string name="status_with_error">%1$s: %2$s</string>
-    <string name="sync_error_sign_in">Sign in to Microsoft to send this visit</string>
-    <string name="sync_error_network">No connection to Microsoft 365</string>
-    <string name="sync_error_server">Microsoft 365 rejected the request</string>
+    <string name="sync_error_sign_in">Sign in to send this visit</string>
+    <string name="sync_error_network">No connection to the server</string>
+    <string name="sync_error_server">The server rejected the request</string>
     <string name="sync_error_unknown">The report could not be prepared</string>
 
     <!-- Visit details -->
@@ -79,27 +78,12 @@
     <string name="export_csv">Export CSV</string>
     <string name="share_csv">Share CSV</string>
     <string name="export_failed">Could not export the visits</string>
-    <string name="login_settings">Login settings</string>
-    <string name="connect_microsoft_account">Connect Microsoft Account</string>
-    <string name="disconnect_microsoft_account">Disconnect Microsoft Account</string>
-    <string name="connected_as">Connected: %1$s</string>
-    <string name="microsoft_disconnected">Microsoft account disconnected</string>
+    <string name="login_settings">Account</string>
+    <string name="connected_as">Signed in: %1$s</string>
     <string name="sign_in_cancelled">Sign-in cancelled</string>
-    <string name="sign_in_failed">Microsoft sign-in failed. Check your connection and try again.</string>
-    <string name="sign_out_failed">Could not disconnect the Microsoft account</string>
-    <string name="change_login_info">Change Login Info</string>
-    <string name="logout">Logout</string>
+    <string name="sign_in_failed">Sign-in failed. Check your connection and try again.</string>
+    <string name="sign_out_failed">Could not sign out</string>
 
-    <!-- Local login -->
-    <string name="hint_username">Username</string>
-    <string name="hint_password">Password</string>
-    <string name="login">Login</string>
-    <string name="invalid_credentials">Invalid username or password</string>
-    <string name="hint_new_username">New Username</string>
-    <string name="hint_new_password">New Password</string>
-    <string name="save_changes">Save Changes</string>
-    <string name="complete_all_fields">Complete all fields</string>
-    <string name="login_updated">Login updated</string>
 
     <!-- PDF report -->
     <string name="pdf_title">Support Visit Report</string>
@@ -158,13 +142,12 @@
     <string name="error_invalid_rate">Enter a valid hourly rate</string>
     <string name="client_saved">Client saved</string>
     <string name="pull_to_refresh_hint">Pull down to sync with the team</string>
-    <string name="server_not_configured">Set the server address in Settings to share visits with the team</string>
+    <string name="server_not_configured">This app has no server set up yet</string>
     <string name="refresh_failed_offline">Could not reach the server. Showing visits saved on this phone.</string>
     <string name="refresh_failed">Sync failed. Try again later.</string>
     <string name="photos_waiting_upload">Photos: %1$d (waiting to upload)</string>
     <string name="open_photo">Open photo %1$d</string>
     <string name="open_file_failed">Could not open the file. Check your connection.</string>
-    <string name="admin_consent_missing">Your organization has not approved this app yet. Ask your Microsoft 365 administrator.</string>
     <string name="pdf_part_line">%1$s: %2$s × %3$s = %4$s</string>
     <string name="pdf_photos_title">Photos</string>
     <string name="pdf_photo_caption">Photo %1$d</string>
@@ -321,5 +304,115 @@
         <item quantity="one">1 visit is waiting to send</item>
         <item quantity="other">%1$d visits are waiting to send</item>
     </plurals>
+
+    <!-- Tasks -->
+    <string name="tasks_title">Tasks</string>
+    <string name="tasks_filter_mine">Mine</string>
+    <string name="tasks_filter_assigned">Assigned by me</string>
+    <string name="tasks_filter_all">Everyone</string>
+    <string name="tasks_filter_done">Done</string>
+    <string name="tasks_empty">Nothing here. Add a task to get started.</string>
+    <string name="add_task">Add task</string>
+    <string name="edit_task">Edit task</string>
+    <string name="task_mark_done">Mark as done</string>
+    <string name="hint_task_title">What needs doing?</string>
+    <string name="hint_due_date">Due date</string>
+    <string name="label_assignee">Assigned to</string>
+    <string name="me">Me</string>
+    <string name="none">None</string>
+    <string name="error_task_title">Please write what needs doing</string>
+    <string name="task_for">For %1$s</string>
+    <string name="task_from">From %1$s</string>
+    <string name="home_tasks">Tasks</string>
+    <!-- Company and team -->
+    <string name="company_settings">Company</string>
+    <string name="company_profile">Company profile</string>
+    <string name="company_profile_intro">Your company name, details and logo appear on every report.</string>
+    <string name="company_logo">Company logo</string>
+    <string name="company_logo_none">No logo yet</string>
+    <string name="company_logo_set">Logo</string>
+    <string name="company_logo_pick">Choose image</string>
+    <string name="company_logo_failed">That image could not be read. Please try another one.</string>
+    <string name="remove">Remove</string>
+    <string name="company_name">Company name</string>
+    <string name="company_name_required">Please enter the company name</string>
+    <string name="company_number">Company number</string>
+    <string name="company_address">Address</string>
+    <string name="company_phone">Phone</string>
+    <string name="company_email">Email</string>
+    <string name="company_website">Website</string>
+    <string name="company_email_section">Report email</string>
+    <string name="company_recipients">Also send every report to</string>
+    <string name="company_recipients_help">Separate addresses with commas</string>
+    <string name="company_subject_template">Subject</string>
+    <string name="company_body_template">Message</string>
+    <string name="company_template_help">You can use {client}, {date}, {time}, {hours}, {technician}, {description} and {company}.</string>
+    <string name="default_email_subject_template">Support visit report - {client}</string>
+    <string name="default_email_body_template">Hello,\n\nAttached is the report for the support visit on {date} ({time}).\n\nWork done:\n{description}\n\nRegards,\n{company}</string>
+    <string name="company_saved">Saved</string>
+    <string name="error_invalid_email_named">%1$s is not a valid email address</string>
+    <string name="team_members">Team members</string>
+    <string name="team_members_intro">Invite people by email. They install the app, sign in with that address and tap Join. Tap someone to change their role or remove them.</string>
+    <string name="team_removed">Removed</string>
+    <string name="member_you">%1$s (you)</string>
+    <string name="member_restore">Let back in</string>
+    <string name="member_restore_message">They will be able to sign in and sync again, as a technician.</string>
+    <string name="member_remove">Remove</string>
+    <string name="member_remove_title">Remove %1$s?</string>
+    <string name="member_remove_message">They will no longer be able to sync with the company. Reports they already sent stay.</string>
+    <string name="member_change_failed">That change did not go through. A company always needs at least one admin.</string>
+    <string name="role_admin">Admin</string>
+    <string name="role_manager">Manager</string>
+    <string name="role_technician">Technician</string>
+    <string name="app_version">Version %1$s</string>
+    <string name="close">Close</string>
+    <string name="security_settings">Security</string>
+    <string name="app_lock">Lock the app with fingerprint or face</string>
+    <string name="app_lock_summary">Asks again after a minute in the background</string>
+    <string name="app_lock_unavailable">Set up a fingerprint, face or screen lock on this phone first.</string>
+    <string name="app_lock_prompt_title">Unlock the app</string>
+    <string name="pdf_page">Page %1$d</string>
+    <string name="pdf_company_number">Company no. %1$s</string>
+    <plurals name="home_tasks_open">
+        <item quantity="one">1 open</item>
+        <item quantity="other">%1$d open</item>
+    </plurals>
+
+    <!-- Email sign-in -->
+    <string name="signed_out">Signed out</string>
+    <string name="sign_out">Sign out</string>
+    <string name="sign_in_title">Sign in</string>
+    <string name="sign_in_subtitle">Enter your email. We\'ll send you a code, no password needed.</string>
+    <string name="sign_in_email">Email</string>
+    <string name="sign_in_send_code">Send code</string>
+    <string name="sign_in_code_title">Check your email</string>
+    <string name="sign_in_code_sent">We sent a 6-digit code to %1$s. It is valid for 10 minutes.</string>
+    <string name="sign_in_code">Code</string>
+    <string name="sign_in_code_invalid">The code has 6 digits</string>
+    <string name="sign_in_code_wrong">That code is wrong or has expired. Check it, or send a new one.</string>
+    <string name="sign_in_verify">Sign in</string>
+    <string name="sign_in_resend">Send a new code</string>
+    <string name="sign_in_other_email">Use another email</string>
+    <string name="sign_in_wait">Too many tries. Please wait a little and try again.</string>
+    <string name="sign_in_email_unavailable">Sign-in emails can\'t be sent right now. Please try again later.</string>
+    <string name="sign_in_company_title">Your company</string>
+    <string name="sign_in_signed_in_as">Signed in as %1$s</string>
+    <string name="sign_in_join">Join %1$s</string>
+    <string name="sign_in_a_company">a company</string>
+    <string name="sign_in_create_company">New here? Create your company</string>
+    <string name="sign_in_create_company_button">Create company</string>
+    <string name="sign_in_join_hint">Joining your team\'s existing account? Ask your admin to invite %1$s in Settings → Team members, then tap Check again.</string>
+    <string name="sign_in_removed">%1$s was removed from its company. Ask the admin to invite you again, or create a company of your own.</string>
+    <string name="sign_in_check_again">Check again</string>
+    <string name="sign_in_later">Not now</string>
+    <string name="invite_member">Invite by email</string>
+    <string name="invite_email_hint">Their email</string>
+    <string name="invite_role">Role</string>
+    <string name="invite_send">Invite</string>
+    <string name="invite_sent">Invitation sent to %1$s</string>
+    <string name="invite_saved_not_emailed">Invitation saved, but the email could not be sent. Tell %1$s to sign in with this address.</string>
+    <string name="invite_already_member">That person already works in a company on this app.</string>
+    <string name="invites_pending">Invited, waiting to join</string>
+    <string name="invite_cancel">Cancel invitation</string>
 
 </resources>

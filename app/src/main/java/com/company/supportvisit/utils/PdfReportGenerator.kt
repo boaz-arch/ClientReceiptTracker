@@ -19,6 +19,7 @@ import com.company.supportvisit.settings.FormSettings
 import com.company.supportvisit.settings.BillingSettings
 import com.company.supportvisit.billing.Billing
 import com.company.supportvisit.billing.bill
+import com.company.supportvisit.team.Branding
 import com.company.supportvisit.ui.labelRes
 import java.io.File
 
@@ -33,6 +34,9 @@ object PdfReportGenerator {
 
     private const val SIGNATURE_MAX_WIDTH = 300f
     private const val SIGNATURE_MAX_HEIGHT = 120f
+
+    private const val LOGO_MAX_WIDTH = 160f
+    private const val LOGO_MAX_HEIGHT = 56f
 
     /** File name contains the visit id so re-uploads overwrite instead of duplicating. */
     fun fileNameFor(visit: VisitEntity): String {
@@ -56,6 +60,22 @@ object PdfReportGenerator {
         val footerPaint = textPaint(9f).apply { color = Color.DKGRAY }
 
         val writer = PageWriter(context, footerPaint)
+
+        // Company header: logo, name and contact details (whatever the admin filled in).
+        val logo = Branding.logo(context)
+        if (logo != null) {
+            writer.bitmap(logo, LOGO_MAX_WIDTH, LOGO_MAX_HEIGHT)
+            writer.space(8f)
+            logo.recycle()
+        }
+        val companyName = Branding.companyName(context)
+        if (companyName.isNotEmpty()) writer.paragraph(companyName, textPaint(14f, bold = true), spacingAfter = 2f)
+        val details = Branding.detailsLine(context)
+        if (details.isNotEmpty()) writer.paragraph(details, footerPaint, spacingAfter = 4f)
+        if (logo != null || companyName.isNotEmpty()) {
+            writer.rule()
+            writer.space(14f)
+        }
 
         writer.paragraph(context.getString(R.string.pdf_title), titlePaint, spacingAfter = 18f)
 
@@ -195,7 +215,7 @@ object PdfReportGenerator {
         }
 
         private fun finishPage(p: PdfDocument.Page) {
-            val footer = context.getString(R.string.pdf_footer, context.getString(R.string.company_footer), pageNumber)
+            val footer = Branding.pageFooter(context, pageNumber)
             val layout = layout(footer, footerPaint, Layout.Alignment.ALIGN_CENTER)
             p.canvas.save()
             p.canvas.translate(MARGIN, PAGE_HEIGHT - MARGIN - layout.height)
@@ -210,6 +230,14 @@ object PdfReportGenerator {
 
         fun pageBreak() {
             newPage()
+        }
+
+        /** A thin line across the page under the company header. */
+        fun rule() {
+            if (page == null || y + 6f > bottom) newPage()
+            y += 4f
+            canvas.drawLine(MARGIN, y, PAGE_WIDTH - MARGIN, y, Paint().apply { color = Color.LTGRAY; strokeWidth = 0.8f })
+            y += 2f
         }
 
         /** Draws wrapped text; long text continues on as many pages as needed. */

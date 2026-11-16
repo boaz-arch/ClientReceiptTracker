@@ -47,9 +47,9 @@
     <string name="status_emailed">נשלח</string>
     <string name="status_failed">נכשל</string>
     <string name="status_with_error">%1$s: %2$s</string>
-    <string name="sync_error_sign_in">יש להתחבר ל-Microsoft כדי לשלוח את הביקור</string>
-    <string name="sync_error_network">אין חיבור ל-Microsoft 365</string>
-    <string name="sync_error_server">Microsoft 365 דחה את הבקשה</string>
+    <string name="sync_error_sign_in">יש להתחבר כדי לשלוח את הביקור</string>
+    <string name="sync_error_network">אין חיבור לשרת</string>
+    <string name="sync_error_server">השרת דחה את הבקשה</string>
     <string name="sync_error_unknown">לא ניתן היה להכין את הדוח</string>
 
     <!-- Visit details -->
@@ -76,27 +76,12 @@
     <string name="export_csv">ייצוא CSV</string>
     <string name="share_csv">שיתוף CSV</string>
     <string name="export_failed">לא ניתן לייצא את הביקורים</string>
-    <string name="login_settings">הגדרות התחברות</string>
-    <string name="connect_microsoft_account">חיבור חשבון Microsoft</string>
-    <string name="disconnect_microsoft_account">ניתוק חשבון Microsoft</string>
-    <string name="connected_as">מחובר: %1$s</string>
-    <string name="microsoft_disconnected">חשבון Microsoft נותק</string>
+    <string name="login_settings">חשבון</string>
+    <string name="connected_as">מחובר/ת: %1$s</string>
     <string name="sign_in_cancelled">ההתחברות בוטלה</string>
-    <string name="sign_in_failed">ההתחברות ל-Microsoft נכשלה. בדוק את החיבור ונסה שוב.</string>
-    <string name="sign_out_failed">לא ניתן לנתק את חשבון Microsoft</string>
-    <string name="change_login_info">שינוי פרטי התחברות</string>
-    <string name="logout">התנתקות</string>
+    <string name="sign_in_failed">ההתחברות נכשלה. בדקו את החיבור ונסו שוב.</string>
+    <string name="sign_out_failed">לא ניתן היה להתנתק</string>
 
-    <!-- Local login -->
-    <string name="hint_username">שם משתמש</string>
-    <string name="hint_password">סיסמה</string>
-    <string name="login">התחברות</string>
-    <string name="invalid_credentials">שם משתמש או סיסמה שגויים</string>
-    <string name="hint_new_username">שם משתמש חדש</string>
-    <string name="hint_new_password">סיסמה חדשה</string>
-    <string name="save_changes">שמירת שינויים</string>
-    <string name="complete_all_fields">יש למלא את כל השדות</string>
-    <string name="login_updated">פרטי ההתחברות עודכנו</string>
 
     <!-- PDF report -->
     <string name="pdf_title">דוח ביקור תמיכה</string>
@@ -155,13 +140,12 @@
     <string name="error_invalid_rate">יש להזין תעריף שעתי תקין</string>
     <string name="client_saved">הלקוח נשמר</string>
     <string name="pull_to_refresh_hint">משכו למטה כדי לסנכרן עם הצוות</string>
-    <string name="server_not_configured">הגדירו את כתובת השרת בהגדרות כדי לשתף ביקורים עם הצוות</string>
+    <string name="server_not_configured">לאפליקציה עדיין לא הוגדר שרת</string>
     <string name="refresh_failed_offline">אין חיבור לשרת. מוצגים הביקורים השמורים בטלפון.</string>
     <string name="refresh_failed">הסנכרון נכשל. נסו שוב מאוחר יותר.</string>
     <string name="photos_waiting_upload">תמונות: %1$d (ממתינות להעלאה)</string>
     <string name="open_photo">פתיחת תמונה %1$d</string>
     <string name="open_file_failed">לא ניתן לפתוח את הקובץ. בדקו את החיבור.</string>
-    <string name="admin_consent_missing">הארגון שלכם עדיין לא אישר את האפליקציה. פנו למנהל Microsoft 365.</string>
     <string name="pdf_part_line">%1$s: %2$s × %3$s = %4$s</string>
     <string name="pdf_photos_title">תמונות</string>
     <string name="pdf_photo_caption">תמונה %1$d</string>
@@ -319,5 +303,116 @@
         <item quantity="two">שני ביקורים ממתינים לשליחה</item>
         <item quantity="other">%1$d ביקורים ממתינים לשליחה</item>
     </plurals>
+
+    <!-- Tasks -->
+    <string name="tasks_title">משימות</string>
+    <string name="tasks_filter_mine">שלי</string>
+    <string name="tasks_filter_assigned">שהקציתי</string>
+    <string name="tasks_filter_all">כולם</string>
+    <string name="tasks_filter_done">בוצעו</string>
+    <string name="tasks_empty">אין כאן כלום. הוסיפו משימה כדי להתחיל.</string>
+    <string name="add_task">הוספת משימה</string>
+    <string name="edit_task">עריכת משימה</string>
+    <string name="task_mark_done">סימון כבוצע</string>
+    <string name="hint_task_title">מה צריך לעשות?</string>
+    <string name="hint_due_date">תאריך יעד</string>
+    <string name="label_assignee">משויך אל</string>
+    <string name="me">אני</string>
+    <string name="none">ללא</string>
+    <string name="error_task_title">נא לכתוב מה צריך לעשות</string>
+    <string name="task_for">עבור %1$s</string>
+    <string name="task_from">מאת %1$s</string>
+    <string name="home_tasks">משימות</string>
+    <!-- Company and team -->
+    <string name="company_settings">החברה</string>
+    <string name="company_profile">פרופיל החברה</string>
+    <string name="company_profile_intro">שם החברה, הפרטים והלוגו יופיעו בכל דוח.</string>
+    <string name="company_logo">לוגו החברה</string>
+    <string name="company_logo_none">אין לוגו עדיין</string>
+    <string name="company_logo_set">לוגו</string>
+    <string name="company_logo_pick">בחירת תמונה</string>
+    <string name="company_logo_failed">לא ניתן לקרוא את התמונה. נסו תמונה אחרת.</string>
+    <string name="remove">הסרה</string>
+    <string name="company_name">שם החברה</string>
+    <string name="company_name_required">נא להזין את שם החברה</string>
+    <string name="company_number">ח.פ. / ע.מ.</string>
+    <string name="company_address">כתובת</string>
+    <string name="company_phone">טלפון</string>
+    <string name="company_email">אימייל</string>
+    <string name="company_website">אתר</string>
+    <string name="company_email_section">אימייל הדוח</string>
+    <string name="company_recipients">לשלוח כל דוח גם אל</string>
+    <string name="company_recipients_help">יש להפריד כתובות בפסיקים</string>
+    <string name="company_subject_template">נושא</string>
+    <string name="company_body_template">הודעה</string>
+    <string name="company_template_help">אפשר להשתמש ב-{client}, {date}, {time}, {hours}, {technician}, {description} ו-{company}.</string>
+    <string name="default_email_subject_template">דוח ביקור תמיכה - {client}</string>
+    <string name="default_email_body_template">שלום,\n\nמצורף הדוח של ביקור התמיכה בתאריך {date} ({time}).\n\nהעבודה שבוצעה:\n{description}\n\nבברכה,\n{company}</string>
+    <string name="company_saved">נשמר</string>
+    <string name="error_invalid_email_named">%1$s אינה כתובת אימייל תקינה</string>
+    <string name="team_members">חברי הצוות</string>
+    <string name="team_members_intro">הזמינו אנשים באימייל. הם מתקינים את האפליקציה, מתחברים עם הכתובת הזו ומקישים על הצטרפות. הקישו על אדם כדי לשנות את התפקיד שלו או להסיר אותו.</string>
+    <string name="team_removed">הוסרו</string>
+    <string name="member_you">%1$s (את/ה)</string>
+    <string name="member_restore">החזרה לצוות</string>
+    <string name="member_restore_message">יוכלו להתחבר ולסנכרן שוב, כטכנאי.</string>
+    <string name="member_remove">הסרה</string>
+    <string name="member_remove_title">להסיר את %1$s?</string>
+    <string name="member_remove_message">לא יוכלו עוד לסנכרן עם החברה. דוחות שכבר נשלחו יישארו.</string>
+    <string name="member_change_failed">השינוי לא בוצע. בחברה חייב להיות לפחות מנהל מערכת אחד.</string>
+    <string name="role_admin">מנהל מערכת</string>
+    <string name="role_manager">מנהל</string>
+    <string name="role_technician">טכנאי</string>
+    <string name="app_version">גרסה %1$s</string>
+    <string name="close">סגירה</string>
+    <string name="security_settings">אבטחה</string>
+    <string name="app_lock">נעילת האפליקציה בטביעת אצבע או בזיהוי פנים</string>
+    <string name="app_lock_summary">תתבקשו שוב אחרי דקה ברקע</string>
+    <string name="app_lock_unavailable">יש להגדיר קודם טביעת אצבע, זיהוי פנים או נעילת מסך בטלפון.</string>
+    <string name="app_lock_prompt_title">ביטול נעילת האפליקציה</string>
+    <string name="pdf_page">עמוד %1$d</string>
+    <string name="pdf_company_number">ח.פ. %1$s</string>
+    <plurals name="home_tasks_open">
+        <item quantity="one">אחת פתוחה</item>
+        <item quantity="two">2 פתוחות</item>
+        <item quantity="other">%1$d פתוחות</item>
+    </plurals>
+
+    <!-- Email sign-in -->
+    <string name="signed_out">התנתקת</string>
+    <string name="sign_out">התנתקות</string>
+    <string name="sign_in_title">התחברות</string>
+    <string name="sign_in_subtitle">הזינו את כתובת האימייל. נשלח אליכם קוד, בלי סיסמה.</string>
+    <string name="sign_in_email">אימייל</string>
+    <string name="sign_in_send_code">שליחת קוד</string>
+    <string name="sign_in_code_title">בדקו את האימייל</string>
+    <string name="sign_in_code_sent">שלחנו קוד בן 6 ספרות אל %1$s. הקוד תקף ל-10 דקות.</string>
+    <string name="sign_in_code">קוד</string>
+    <string name="sign_in_code_invalid">הקוד בן 6 ספרות</string>
+    <string name="sign_in_code_wrong">הקוד שגוי או שפג תוקפו. בדקו אותו או שלחו קוד חדש.</string>
+    <string name="sign_in_verify">התחברות</string>
+    <string name="sign_in_resend">שליחת קוד חדש</string>
+    <string name="sign_in_other_email">אימייל אחר</string>
+    <string name="sign_in_wait">יותר מדי ניסיונות. המתינו מעט ונסו שוב.</string>
+    <string name="sign_in_email_unavailable">לא ניתן לשלוח כרגע אימייל התחברות. נסו שוב מאוחר יותר.</string>
+    <string name="sign_in_company_title">החברה שלך</string>
+    <string name="sign_in_signed_in_as">מחובר/ת בתור %1$s</string>
+    <string name="sign_in_join">הצטרפות אל %1$s</string>
+    <string name="sign_in_a_company">חברה</string>
+    <string name="sign_in_create_company">חדשים כאן? צרו את החברה שלכם</string>
+    <string name="sign_in_create_company_button">יצירת חברה</string>
+    <string name="sign_in_join_hint">מצטרפים לחשבון קיים של הצוות? בקשו מהמנהל להזמין את %1$s בהגדרות ← חברי הצוות, ואז הקישו על בדיקה חוזרת.</string>
+    <string name="sign_in_removed">%1$s הוסר/ה מהחברה. בקשו מהמנהל להזמין אתכם שוב, או צרו חברה משלכם.</string>
+    <string name="sign_in_check_again">בדיקה חוזרת</string>
+    <string name="sign_in_later">לא עכשיו</string>
+    <string name="invite_member">הזמנה באימייל</string>
+    <string name="invite_email_hint">האימייל שלהם</string>
+    <string name="invite_role">תפקיד</string>
+    <string name="invite_send">הזמנה</string>
+    <string name="invite_sent">ההזמנה נשלחה אל %1$s</string>
+    <string name="invite_saved_not_emailed">ההזמנה נשמרה אך האימייל לא נשלח. בקשו מ-%1$s להתחבר עם הכתובת הזו.</string>
+    <string name="invite_already_member">האדם הזה כבר שייך לחברה באפליקציה.</string>
+    <string name="invites_pending">הוזמנו, ממתינים להצטרפות</string>
+    <string name="invite_cancel">ביטול ההזמנה</string>
 
 </resources>

@@ -53,7 +53,37 @@
 
         </com.google.android.material.button.MaterialButtonToggleGroup>
 
+        <!-- Company: admins only (or a phone working on its own). -->
+        <LinearLayout
+            android:id="@+id/sectionCompany"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                style="@style/SettingsSectionHeader"
+                android:text="@string/company_settings" />
+
+            <Button
+                android:id="@+id/btnCompanyProfile"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/company_profile" />
+
+            <Button
+                android:id="@+id/btnTeamMembers"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/team_members" />
+
+        </LinearLayout>
+
         <TextView
+            android:id="@+id/headerReportSettings"
             style="@style/SettingsSectionHeader"
             android:text="@string/report_settings" />
 
@@ -72,6 +102,26 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:text="@string/customize_report" />
+
+        <TextView
+            style="@style/SettingsSectionHeader"
+            android:text="@string/security_settings" />
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/switchAppLock"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:minHeight="48dp"
+            android:text="@string/app_lock" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/app_lock_summary"
+            android:textAlignment="viewStart"
+            android:textColor="@color/text_secondary"
+            android:textSize="13sp" />
 
         <TextView
             style="@style/SettingsSectionHeader"
@@ -95,7 +145,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="@string/connect_microsoft_account" />
+            android:text="@string/sign_in_title" />
 
         <Button
             android:id="@+id/btnDisconnectMicrosoft"
@@ -103,7 +153,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="@string/disconnect_microsoft_account" />
+            android:text="@string/sign_out" />
 
         <Button
             android:id="@+id/btnDeleteAccount"
@@ -115,26 +165,14 @@
             android:textColor="?attr/colorError"
             app:strokeColor="?attr/colorError" />
 
-        <Button
-            android:id="@+id/btnChangeLogin"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/change_login_info"/>
 
-        <Button
-            android:id="@+id/btnLogout"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/logout"/>
 
         <TextView
+            android:id="@+id/tvVersion"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="32dp"
             android:gravity="center"
-            android:text="@string/company_footer"
             android:textColor="@color/text_muted"
             android:textSize="12sp"
             android:paddingBottom="40dp"/>

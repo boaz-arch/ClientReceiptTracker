@@ -19,9 +19,9 @@ import com.company.supportvisit.billing.invoice.InvoiceProvider
 import com.company.supportvisit.billing.isoRange
 import com.company.supportvisit.data.ClientEntity
 import com.company.supportvisit.databinding.ActivityMonthlyReportBinding
-import com.company.supportvisit.graph.MailService
-import com.company.supportvisit.graph.MicrosoftAuthManager
+import com.company.supportvisit.auth.AuthSession
 import com.company.supportvisit.settings.BillingSettings
+import com.company.supportvisit.team.TeamRepository
 import com.company.supportvisit.ui.SignInHelper
 import com.company.supportvisit.ui.applySystemBarInsets
 import com.company.supportvisit.utils.Money
@@ -186,20 +186,17 @@ class MonthlyReportActivity : AppCompatActivity() {
 
     private fun sendEmail(r: MonthlyReport) = busy {
         if (!SignInHelper.ensureSignedIn(this)) return@busy
-        val token = MicrosoftAuthManager.getAccessToken(this)
+        val api = TeamRepository.api(this) ?: return@busy
         val monthLabel = MonthlyReportExport.monthLabel(r)
         withContext(Dispatchers.IO) {
             val pdf = pdf(r)
             val csv = MonthlyReportExport.writeCsv(r, exportDir)
-            MailService.sendMailWithAttachments(
-                token = token,
+            // Sent by the server from its address, in the company's name.
+            api.emailReport(
+                to = listOfNotNull(r.client.email, AuthSession.accountEmail.value).distinctBy { it.lowercase() },
                 subject = getString(R.string.monthly_report_email_subject, r.client.name, monthLabel),
                 body = getString(R.string.monthly_report_email_body, r.client.name, monthLabel),
-                recipients = listOfNotNull(r.client.email, MicrosoftAuthManager.accountEmail.value),
-                attachments = listOf(
-                    MailService.Attachment(pdf, "application/pdf"),
-                    MailService.Attachment(csv, "text/csv")
-                )
+                attachments = listOf(pdf to "application/pdf", csv to "text/csv")
             )
         }
         Toast.makeText(this, R.string.monthly_report_email_sent, Toast.LENGTH_LONG).show()

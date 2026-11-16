@@ -35,11 +35,7 @@
 
         </activity>
 
-        <activity
-            android:name=".LoginActivity"
-            android:exported="false" />
 
-        <activity android:name=".ChangeLoginActivity" />
 
         <activity android:name=".NewVisitActivity" />
 
@@ -61,24 +57,21 @@
 
         <activity android:name=".InsightsActivity" />
 
-        <!-- The path is the app's signature hash, read from msal_config.json at build time. -->
+        <activity android:name=".TasksActivity" />
+
         <activity
-            android:name="com.microsoft.identity.client.BrowserTabActivity"
-            android:exported="true">
+            android:name=".CompanySetupActivity"
+            android:windowSoftInputMode="adjustResize" />
 
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
+        <activity android:name=".TeamMembersActivity" />
 
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
+        <activity
+            android:name=".TaskEditActivity"
+            android:windowSoftInputMode="adjustResize" />
 
-                <data
-                    android:scheme="msauth"
-                    android:host="${applicationId}"
-                    android:path="/${msalSignatureHash}" />
-            </intent-filter>
-
-        </activity>
+        <activity
+            android:name=".SignInActivity"
+            android:windowSoftInputMode="adjustResize" />
 
     </application>
 

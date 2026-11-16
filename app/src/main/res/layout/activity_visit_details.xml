@@ -131,15 +131,6 @@
             android:layout_marginTop="8dp"
             android:text="@string/open_pdf_report" />
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="32dp"
-            android:gravity="center"
-            android:text="@string/company_footer"
-            android:textColor="@color/text_muted"
-            android:textSize="12sp" />
-
     </LinearLayout>
 
 </ScrollView>

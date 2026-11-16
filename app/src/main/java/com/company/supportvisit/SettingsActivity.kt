@@ -16,12 +16,14 @@ import com.company.supportvisit.databinding.ActivitySettingsBinding
 import com.company.supportvisit.databinding.DialogDeleteAccountBinding
 import com.company.supportvisit.utils.DateUtils
 import androidx.appcompat.app.AlertDialog
-import com.company.supportvisit.graph.AuthManager
-import com.company.supportvisit.graph.MicrosoftAuthManager
+import com.company.supportvisit.auth.AuthSession
+import com.company.supportvisit.security.AppLock
 import com.company.supportvisit.settings.ThemeManager
 import com.company.supportvisit.sync.SyncScheduler
+import com.company.supportvisit.team.TeamRepository
+import com.company.supportvisit.team.TeamSession
+import androidx.core.view.isVisible
 import com.company.supportvisit.ui.SignInHelper
-import com.company.supportvisit.utils.AppConfig
 import com.company.supportvisit.utils.CsvExporter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -58,25 +60,51 @@ class SettingsActivity : AppCompatActivity() {
             startActivity(Intent(this, ReportSettingsActivity::class.java))
         }
 
+        binding.btnCompanyProfile.setOnClickListener { startActivity(Intent(this, CompanySetupActivity::class.java)) }
+        binding.btnTeamMembers.setOnClickListener { startActivity(Intent(this, TeamMembersActivity::class.java)) }
+
+        binding.tvVersion.text = runCatching {
+            getString(R.string.app_version, packageManager.getPackageInfo(packageName, 0).versionName)
+        }.getOrDefault("")
+
+        binding.switchAppLock.isChecked = AppLock.isEnabled(this)
+        binding.switchAppLock.setOnCheckedChangeListener { view, checked ->
+            if (checked == AppLock.isEnabled(this)) return@setOnCheckedChangeListener
+            if (!AppLock.isAvailable(this)) {
+                view.isChecked = false
+                Toast.makeText(this, R.string.app_lock_unavailable, Toast.LENGTH_LONG).show()
+                return@setOnCheckedChangeListener
+            }
+            // Check they can unlock before turning it on (and before turning it off).
+            AppLock.confirm(this) { ok ->
+                if (ok) AppLock.setEnabled(this, checked) else view.isChecked = !checked
+            }
+        }
+
         binding.btnExportCsv.setOnClickListener { exportCsv() }
 
-        binding.btnConnectMicrosoft.setOnClickListener { connectMicrosoft() }
+        binding.btnConnectMicrosoft.setOnClickListener { signIn() }
         binding.btnDeleteAccount.setOnClickListener { confirmDeleteAccount() }
-        binding.btnDisconnectMicrosoft.setOnClickListener { disconnectMicrosoft() }
+        binding.btnDisconnectMicrosoft.setOnClickListener { signOut() }
 
-        // Local login buttons only make sense when the local login screen is enabled.
-        val localLoginVisibility = if (AppConfig.LOGIN_ENABLED) View.VISIBLE else View.GONE
-        binding.btnChangeLogin.visibility = localLoginVisibility
-        binding.btnLogout.visibility = localLoginVisibility
+    }
 
-        binding.btnChangeLogin.setOnClickListener {
-            startActivity(Intent(this, ChangeLoginActivity::class.java))
-        }
-        binding.btnLogout.setOnClickListener {
-            AuthManager.logout()
-            startActivity(Intent(this, LoginActivity::class.java))
-            finishAffinity()
-        }
+    override fun onResume() {
+        super.onResume()
+        applyRole()
+        showAccount()
+        // Coming back from Billing or Customize report: share the admin's choices with the team.
+        lifecycleScope.launch { TeamRepository.pushSettings(this@SettingsActivity) }
+    }
+
+    /** Company, billing and report screens belong to admins; a phone working alone is its own admin. */
+    private fun applyRole() {
+        val admin = TeamSession.role(this).canManageCompany
+        binding.sectionCompany.isVisible = admin
+        binding.btnTeamMembers.isVisible = admin && TeamSession.isTeamMember(this)
+        binding.headerReportSettings.isVisible = admin
+        binding.btnBillingSettings.isVisible = admin
+        binding.btnCustomizeReport.isVisible = admin
     }
 
     private fun applyThemeMode(mode: Int) {
@@ -145,28 +173,29 @@ class SettingsActivity : AppCompatActivity() {
         }
     }
 
-    private fun connectMicrosoft() {
-        lifecycleScope.launch {
-            if (!SignInHelper.ensureSignedIn(this@SettingsActivity)) return@launch
-            val email = MicrosoftAuthManager.accountEmail.value.orEmpty()
-            Toast.makeText(
-                this@SettingsActivity, getString(R.string.connected_as, email), Toast.LENGTH_LONG
-            ).show()
-            // Visits that failed for lack of a session can go now.
-            app.visitRepository.retryAllFailed()
-            SyncScheduler.enqueue(this@SettingsActivity)
-        }
+    /** Signed out: sign in. Signed in: the same screen checks the company (join / create). */
+    private fun signIn() {
+        startActivity(SignInActivity.intent(this))
     }
 
-    private fun disconnectMicrosoft() {
+    private fun showAccount() {
+        val email = AuthSession.accountEmail.value
+        binding.btnConnectMicrosoft.text = if (email == null) getString(R.string.sign_in_title) else getString(R.string.signed_in_as, email)
+        binding.btnDisconnectMicrosoft.isVisible = email != null
+    }
+
+    private fun signOut() {
         lifecycleScope.launch {
             try {
-                MicrosoftAuthManager.signOut()
-                Toast.makeText(this@SettingsActivity, R.string.microsoft_disconnected, Toast.LENGTH_LONG).show()
+                AuthSession.signOut()
+                TeamSession.clear(this@SettingsActivity)
+                Toast.makeText(this@SettingsActivity, R.string.signed_out, Toast.LENGTH_LONG).show()
             } catch (e: Exception) {
                 Log.w(TAG, "Sign-out failed", e)
                 Toast.makeText(this@SettingsActivity, R.string.sign_out_failed, Toast.LENGTH_LONG).show()
             }
+            showAccount()
+            applyRole()
         }
     }
 

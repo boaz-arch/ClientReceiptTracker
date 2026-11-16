@@ -25,6 +25,7 @@ import com.company.supportvisit.data.VisitType
 import com.company.supportvisit.databinding.ActivityInsightsBinding
 import com.company.supportvisit.databinding.DialogDashboardFiltersBinding
 import com.company.supportvisit.databinding.ItemRetainerRowBinding
+import com.company.supportvisit.team.TeamSession
 import com.company.supportvisit.ui.DonutChartView
 import com.company.supportvisit.ui.applySystemBarInsets
 import com.company.supportvisit.ui.labelRes
@@ -115,8 +116,8 @@ class InsightsActivity : AppCompatActivity() {
         binding.cardWeeks.isVisible = d.weeks.any { it.visits > 0 }
         renderWeeks(d)
 
-        // Useful once there's a team. TODO(Phase 5): managers only.
-        binding.cardTechnicians.isVisible = d.hoursPerTechnician.size > 1
+        // Comparing technicians is for managers and admins, and only once there's a team.
+        binding.cardTechnicians.isVisible = TeamSession.role(this).canSeeEverything && d.hoursPerTechnician.size > 1
         if (binding.cardTechnicians.isVisible) renderColumns(techniciansProducer, d.hoursPerTechnician) { technicianLabels = it }
 
         renderRetainers(d)
@@ -220,8 +221,8 @@ class InsightsActivity : AppCompatActivity() {
         val f = viewModel.filter.value
         dialog.actFilterClient.setText(clients.firstOrNull { it.id == f.clientId }?.name ?: getString(R.string.filter_all), false)
         dialog.actFilterTechnician.setText(f.technician?.substringBefore('@') ?: getString(R.string.filter_all), false)
-        // Only worth showing once more than one technician has visits. TODO(Phase 5): managers only.
-        dialog.tilFilterTechnician.isVisible = technicians.size > 1
+        // Managers and admins only, and only once more than one technician has visits.
+        dialog.tilFilterTechnician.isVisible = TeamSession.role(this).canSeeEverything && technicians.size > 1
 
         var clientId = f.clientId
         var technician = f.technician

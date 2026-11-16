@@ -41,7 +41,7 @@ class Store(dbFile: File) {
         }
     }
 
-    enum class Kind(val table: String) { VISITS("visits"), CLIENTS("clients") }
+    enum class Kind(val table: String) { VISITS("visits"), CLIENTS("clients"), TASKS("tasks") }
 
     private val connection: Connection
 
@@ -124,6 +124,24 @@ class Store(dbFile: File) {
         return stamp
     }
 
+    /**
+     * Restricts what a technician receives ([onlyFor] = their user id): their own visits, and
+     * tasks they created or were assigned. Clients are shared with the whole company.
+     */
+    private fun visibilityClause(kind: Kind, onlyFor: String?): String = when {
+        onlyFor == null || kind == Kind.CLIENTS -> ""
+        kind == Kind.VISITS -> "AND created_by = ? "
+        else -> "AND (created_by = ? OR json_extract(data, '$.assigneeId') = ?) "
+    }
+
+    /** The user id a task is assigned to, or null. */
+    @Synchronized
+    fun taskAssignee(tenantId: String, id: String): String? =
+        connection.prepareStatement("SELECT json_extract(data, '$.assigneeId') FROM tasks WHERE tenant_id = ? AND id = ?").use { ps ->
+            ps.setString(1, tenantId); ps.setString(2, id)
+            ps.executeQuery().use { rs -> if (rs.next()) rs.getString(1) else null }
+        }
+
     /** Ownership of an existing record: who created it (null for rows that predate tracking) and who last wrote it. */
     data class Ownership(val createdBy: String?, val updatedBy: String)
 
@@ -136,14 +154,20 @@ class Store(dbFile: File) {
         }
 
     @Synchronized
-    fun changesSince(kind: Kind, tenantId: String, since: Long, limit: Int = 500): List<Record> =
+    fun changesSince(kind: Kind, tenantId: String, since: Long, limit: Int = 500, onlyFor: String? = null): List<Record> =
         connection.prepareStatement(
             "SELECT id, data, server_updated_at, updated_by FROM ${kind.table} " +
-                "WHERE tenant_id = ? AND server_updated_at > ? ORDER BY server_updated_at LIMIT ?"
+                "WHERE tenant_id = ? AND server_updated_at > ? " + visibilityClause(kind, onlyFor) +
+                "ORDER BY server_updated_at LIMIT ?"
         ).use { ps ->
-            ps.setString(1, tenantId)
-            ps.setLong(2, since)
-            ps.setInt(3, limit)
+            var i = 1
+            ps.setString(i++, tenantId)
+            ps.setLong(i++, since)
+            if (onlyFor != null && kind != Kind.CLIENTS) {
+                ps.setString(i++, onlyFor)
+                if (kind == Kind.TASKS) ps.setString(i++, onlyFor)
+            }
+            ps.setInt(i, limit)
             ps.executeQuery().use { rs ->
                 buildList {
                     while (rs.next()) add(Record(rs.getString(1), JSONObject(rs.getString(2)), rs.getLong(3), rs.getString(4)))

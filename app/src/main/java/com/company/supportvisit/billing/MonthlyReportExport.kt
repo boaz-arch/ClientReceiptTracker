@@ -10,6 +10,7 @@ import android.text.StaticLayout
 import android.text.TextDirectionHeuristics
 import android.text.TextPaint
 import com.company.supportvisit.R
+import com.company.supportvisit.team.Branding
 import com.company.supportvisit.ui.labelRes
 import com.company.supportvisit.utils.CsvExporter
 import com.company.supportvisit.utils.DateUtils
@@ -80,7 +81,7 @@ object MonthlyReportExport {
 
         fun finish() {
             page?.let { p ->
-                val footer = context.getString(R.string.pdf_footer, context.getString(R.string.company_footer), pageNo)
+                val footer = Branding.pageFooter(context, pageNo)
                 draw(p, footer, small, M, H - M - 12f, CONTENT, Layout.Alignment.ALIGN_CENTER)
                 doc.finishPage(p)
             }
@@ -105,6 +106,31 @@ object MonthlyReportExport {
         }
 
         newPage()
+        // Company header: logo on the start side, name and details beside it.
+        val logo = Branding.logo(context)
+        val companyName = Branding.companyName(context)
+        val details = Branding.detailsLine(context)
+        if (logo != null || companyName.isNotEmpty()) {
+            var textX = M
+            var logoBottom = y
+            if (logo != null) {
+                val scale = minOf(120f / logo.width, 48f / logo.height, 1f)
+                val w = logo.width * scale
+                val h = logo.height * scale
+                val rtl = context.resources.configuration.layoutDirection == android.view.View.LAYOUT_DIRECTION_RTL
+                val left = if (rtl) W - M - w else M
+                page!!.canvas.drawBitmap(logo, null, android.graphics.RectF(left, y, left + w, y + h), Paint(Paint.FILTER_BITMAP_FLAG))
+                logo.recycle()
+                if (!rtl) textX = M + w + 12f
+                logoBottom = y + h
+            }
+            val textWidth = CONTENT - (if (logo != null) 132f else 0f)
+            if (companyName.isNotEmpty()) text(companyName, paint(13f, bold = true), 2f, textWidth, textX)
+            if (details.isNotEmpty()) text(details, small, 2f, textWidth, textX)
+            y = maxOf(y, logoBottom) + 6f
+            page!!.canvas.drawLine(M, y, M + CONTENT, y, Paint().apply { color = Color.LTGRAY; strokeWidth = 0.8f })
+            y += 16f
+        }
         text(context.getString(R.string.monthly_report_title), title, 6f)
         text(context.getString(R.string.monthly_report_subtitle, report.client.name, monthLabel(report)), bold, 14f)
 

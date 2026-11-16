@@ -8,7 +8,7 @@ object AccountPurge {
     private val log = LoggerFactory.getLogger("supportvisit.purge")
 
     /** Returns how many accounts were purged. */
-    fun run(store: Store, files: FileStore, now: Long = System.currentTimeMillis()): Int {
+    fun run(store: Store, files: FileStore, team: TeamStore? = null, accounts: AccountStore? = null, now: Long = System.currentTimeMillis()): Int {
         val due = store.dueDeletions(now)
         due.forEach { request ->
             var removed = 0
@@ -19,6 +19,9 @@ object AccountPurge {
                     removed++
                 }
             }
+            // The person leaves the company and their sign-in account is deleted.
+            team?.deleteMember(request.tenantId, request.userId)
+            accounts?.deleteUser(request.userId)
             store.cancelDeletion(request.tenantId, request.userId)
             log.info("Account purged: {} visit(s) removed, keepShared={}", removed, request.keepShared)
         }

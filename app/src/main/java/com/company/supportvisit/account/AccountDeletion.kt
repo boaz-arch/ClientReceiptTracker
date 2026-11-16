@@ -3,7 +3,7 @@ package com.company.supportvisit.account
 import android.content.Context
 import androidx.work.WorkManager
 import com.company.supportvisit.app
-import com.company.supportvisit.graph.MicrosoftAuthManager
+import com.company.supportvisit.auth.AuthSession
 import com.company.supportvisit.remote.ServerApi
 import com.company.supportvisit.settings.ServerSettings
 import com.company.supportvisit.sync.SyncScheduler
@@ -35,11 +35,11 @@ object AccountDeletion {
 
         var purgeAt: Long? = null
         ServerSettings.serverUrl(context)?.let { url ->
-            val api = ServerApi(url, MicrosoftAuthManager.getApiToken())
+            val api = ServerApi(url, AuthSession.getApiToken())
             purgeAt = withContext(Dispatchers.IO) { api.requestDeletion(keepShared) }
         }
         wipeLocalData(context)
-        runCatching { MicrosoftAuthManager.signOut() }
+        runCatching { AuthSession.signOut() }
         // Remembered (outside the wiped data) only to tell the user the date on the next start.
         purgeAt?.let { context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putLong(KEY_PURGE_AT, it).apply() }
         return purgeAt
@@ -47,14 +47,14 @@ object AccountDeletion {
 
     suspend fun status(context: Context): DeletionStatus? {
         val url = ServerSettings.serverUrl(context) ?: return null
-        val api = ServerApi(url, MicrosoftAuthManager.getApiToken())
+        val api = ServerApi(url, AuthSession.getApiToken())
         return withContext(Dispatchers.IO) { api.deletionStatus() }
     }
 
     /** Cancels the deletion and downloads the account's data again. */
     suspend fun restore(context: Context) {
         val url = ServerSettings.serverUrl(context) ?: return
-        val api = ServerApi(url, MicrosoftAuthManager.getApiToken())
+        val api = ServerApi(url, AuthSession.getApiToken())
         withContext(Dispatchers.IO) { api.cancelDeletion() }
         ServerSettings.setVisitsCursor(context, 0)
         ServerSettings.setClientsCursor(context, 0)

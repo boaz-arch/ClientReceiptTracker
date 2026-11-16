@@ -10,14 +10,14 @@ import com.company.supportvisit.app
 import com.company.supportvisit.data.SyncError
 import com.company.supportvisit.data.SyncStatus
 import com.company.supportvisit.data.VisitEntity
-import com.company.supportvisit.graph.AuthRequiredException
-import com.company.supportvisit.graph.DriveService
+import com.company.supportvisit.auth.AuthRequiredException
+import com.company.supportvisit.auth.AuthSession
 import com.company.supportvisit.graph.GraphException
-import com.company.supportvisit.graph.MailService
-import com.company.supportvisit.graph.MicrosoftAuthManager
+import com.company.supportvisit.remote.RecordMapper
 import com.company.supportvisit.remote.ServerApi
 import com.company.supportvisit.repository.VisitRepository
 import com.company.supportvisit.settings.ServerSettings
+import com.company.supportvisit.team.Branding
 import com.company.supportvisit.utils.DateUtils
 import com.company.supportvisit.utils.PdfReportGenerator
 import kotlinx.coroutines.Dispatchers
@@ -26,9 +26,9 @@ import java.io.File
 import java.io.IOException
 
 /**
- * 1. For every visit of this device not yet EMAILED: upload photos and PDF (to the Support
- *    Visit server, or OneDrive if none is configured), then email the report. Each step is
- *    saved before the next, so a retry never repeats a finished step.
+ * 1. For every visit of this device not yet EMAILED: upload photos and PDF to the Support
+ *    Visit server, then have the server email the report. Each step is saved before the next,
+ *    so a retry never repeats a finished step.
  * 2. Push changed visits and clients to the server and pull everyone else's changes.
  */
 class VisitSyncWorker(
@@ -38,8 +38,6 @@ class VisitSyncWorker(
 
     private val repository: VisitRepository = context.app.visitRepository
 
-    /** Created lazily: tokens are only requested for the work that needs them. */
-    private var graphToken: String? = null
     private var serverApi: ServerApi? = null
 
     private val serverUrl: String? = ServerSettings.serverUrl(context)
@@ -89,10 +87,10 @@ class VisitSyncWorker(
     private fun retryOrSucceed(): Result =
         if (runAttemptCount + 1 < MAX_ATTEMPTS) Result.retry() else Result.success()
 
-    private suspend fun graph(): String = graphToken ?: MicrosoftAuthManager.getAccessToken().also { graphToken = it }
-
-    private suspend fun server(): ServerApi =
-        serverApi ?: ServerApi(serverUrl!!, MicrosoftAuthManager.getApiToken()).also { serverApi = it }
+    private fun server(): ServerApi {
+        if (serverUrl == null) throw IllegalStateException("No server configured")
+        return serverApi ?: ServerApi(serverUrl, AuthSession.getApiToken()).also { serverApi = it }
+    }
 
     private suspend fun sendVisit(start: VisitEntity) {
         var visit = start
@@ -100,7 +98,7 @@ class VisitSyncWorker(
         if (visit.syncStatus == SyncStatus.PENDING) {
             val pdf = ensurePdf(visit)
             visit = visit.copy(pdfPath = pdf.absolutePath)
-            visit = if (serverUrl != null) uploadToServer(visit, pdf) else uploadToOneDrive(visit, pdf)
+            visit = uploadToServer(visit, pdf)
             visit = visit.copy(syncStatus = SyncStatus.PDF_UPLOADED)
             repository.update(visit)
         }
@@ -108,15 +106,19 @@ class VisitSyncWorker(
         if (visit.syncStatus == SyncStatus.PDF_UPLOADED) {
             val pdf = ensurePdf(visit)
             visit = visit.copy(pdfPath = pdf.absolutePath)
-            val attach = MailService.canAttach(pdf)
-            val token = graph()
+            val api = server()
+            val recipients = (listOfNotNull(visit.clientEmail, visit.technicianEmail) + Branding.extraRecipients(applicationContext))
+                .map { it.trim() }.filter { it.isNotEmpty() }.distinctBy { it.lowercase() }
             withContext(Dispatchers.IO) {
-                MailService.sendMail(
-                    token = token,
-                    subject = applicationContext.getString(R.string.email_subject, visit.clientName),
-                    body = emailBody(visit, attached = attach),
-                    recipients = listOfNotNull(visit.clientEmail, visit.technicianEmail),
-                    pdfFile = pdf.takeIf { attach }
+                // The server only emails visits it knows, so make sure this one is there.
+                api.putVisit(RecordMapper.visitToJson(visit))
+                api.emailVisit(
+                    visitId = visit.id,
+                    to = recipients,
+                    subject = Branding.emailSubject(applicationContext, visit),
+                    // The server attaches the PDF, or adds a link when it is too big.
+                    body = Branding.emailBody(applicationContext, visit, attached = true),
+                    fileName = pdf.name
                 )
             }
             repository.markEmailed(visit)
@@ -139,22 +141,6 @@ class VisitSyncWorker(
         return visit.copy(pdfLink = link)
     }
 
-    private suspend fun uploadToOneDrive(start: VisitEntity, pdf: File): VisitEntity {
-        var visit = start
-        val token = graph()
-        val folder = "SupportVisits/${visit.visitDate.take(7)}/${pdf.nameWithoutExtension}"
-        visit.photos.forEachIndexed { index, photo ->
-            if (photo.remoteUrl != null || photo.localPath == null) return@forEachIndexed
-            val url = withContext(Dispatchers.IO) {
-                DriveService.upload(token, "$folder/photo-${index + 1}.jpg", File(photo.localPath), "image/jpeg")
-            }
-            visit = visit.copy(photos = visit.photos.toMutableList().also { it[index] = photo.copy(remoteUrl = url) })
-            repository.update(visit)
-        }
-        val link = withContext(Dispatchers.IO) { DriveService.upload(token, "$folder/${pdf.name}", pdf, "application/pdf") }
-        return visit.copy(pdfLink = link)
-    }
-
     /** Uses the local PDF if it still exists, otherwise regenerates it from the saved data. */
     private suspend fun ensurePdf(visit: VisitEntity): File = withContext(Dispatchers.IO) {
         visit.pdfPath?.let(::File)?.takeIf { it.exists() }?.let { return@withContext it }
@@ -169,24 +155,16 @@ class VisitSyncWorker(
         )
     }
 
-    private fun emailBody(visit: VisitEntity, attached: Boolean): String {
-        val body = applicationContext.getString(
-            R.string.email_body,
-            visit.clientName,
-            DateUtils.formatForDisplay(visit.visitDate),
-            visit.startTime,
-            visit.endTime,
-            visit.workDescription,
-            ""
-        ).trimEnd()
-        return if (attached) body else body + "\n\n" + applicationContext.getString(R.string.email_report_too_large)
-    }
-
     /** Maps an exception to a user-facing error and whether it's worth retrying. */
     private fun classify(e: Exception): Pair<SyncError, Boolean> = when (e) {
         is AuthRequiredException -> SyncError.SIGN_IN_REQUIRED to false
         is GraphException -> when {
-            e.code == 401 -> SyncError.SIGN_IN_REQUIRED to false
+            // Session ended, or not in a company (yet / any more): sign in again.
+            e.code == 401 -> {
+                AuthSession.clear()
+                SyncError.SIGN_IN_REQUIRED to false
+            }
+            e.code == 403 || e.code == 409 -> SyncError.SIGN_IN_REQUIRED to false
             e.isRetryable -> SyncError.SERVER to true
             else -> SyncError.SERVER to false
         }

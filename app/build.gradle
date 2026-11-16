@@ -1,5 +1,3 @@
-import groovy.json.JsonSlurper
-
 plugins {
     id 'com.android.application'
     id 'com.google.devtools.ksp'
@@ -12,29 +10,7 @@ if (localPropertiesFile.exists()) {
     localPropertiesFile.withInputStream { localProperties.load(it) }
 }
 
-// msal_config.json is not committed (it holds the app registration IDs).
-// Copy msal_config.example.json to app/src/main/res/raw/msal_config.json and fill it in.
-def msalConfigFile = file("src/main/res/raw/msal_config.json")
-
-// The BrowserTabActivity redirect path in the manifest must match the signature hash in
-// msal_config.json's redirect_uri. Read it from there so there is a single source of truth;
-// MSAL_SIGNATURE_HASH in local.properties overrides it.
-def msalSignatureHash = localProperties.getProperty("MSAL_SIGNATURE_HASH", "")
-def msalClientId = ""
-if (msalConfigFile.exists()) {
-    def msalConfig = new JsonSlurper().parse(msalConfigFile)
-    msalClientId = msalConfig.client_id?.toString() ?: ""
-    if (msalSignatureHash.isEmpty()) {
-        def redirectUri = msalConfig.redirect_uri?.toString() ?: ""
-        msalSignatureHash = URLDecoder.decode(
-                redirectUri.substring(redirectUri.lastIndexOf('/') + 1), "UTF-8"
-        )
-    }
-}
-
-// Scope of the Support Visit server API ("Expose an API" in the app registration).
-def apiScope = localProperties.getProperty("API_SCOPE", msalClientId ? "api://$msalClientId/access_as_user" : "")
-// Default server URL; an admin can change it in Settings. Empty = not configured.
+// The Support Visit server the app talks to (sign-in, sync, email). Empty = not configured.
 def defaultServerUrl = localProperties.getProperty("SUPPORT_SERVER_URL", System.getenv("SUPPORT_SERVER_URL") ?: "")
 
 android {
@@ -53,9 +29,6 @@ android {
         versionCode 1
         versionName "1.0"
 
-        manifestPlaceholders = [msalSignatureHash: msalSignatureHash]
-
-        buildConfigField("String", "API_SCOPE", "\"$apiScope\"")
         buildConfigField("String", "DEFAULT_SERVER_URL", "\"$defaultServerUrl\"")
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
@@ -90,21 +63,6 @@ ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
 }
 
-def checkMsalConfig = tasks.register("checkMsalConfig") {
-    def config = msalConfigFile
-    doLast {
-        if (!config.exists()) {
-            throw new GradleException(
-                    "Missing app/src/main/res/raw/msal_config.json. " +
-                    "Copy msal_config.example.json there and fill in your Azure app registration " +
-                    "(see README.md > Microsoft sign-in setup)."
-            )
-        }
-    }
-}
-
-tasks.named("preBuild") { dependsOn(checkMsalConfig) }
-
 dependencies {
 
     implementation 'androidx.core:core-ktx:1.13.1'
@@ -115,6 +73,8 @@ dependencies {
     implementation 'androidx.recyclerview:recyclerview:1.3.2'
     implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
     implementation 'androidx.exifinterface:exifinterface:1.3.7'
+    // Optional app lock (fingerprint / face / screen lock).
+    implementation 'androidx.biometric:biometric:1.1.0'
 
     // Charts for the dashboard (Maven Central, Material theming, maintained).
     implementation 'com.patrykandpatrick.vico:views:2.5.2'
@@ -131,8 +91,6 @@ dependencies {
     implementation 'androidx.work:work-runtime-ktx:2.11.0'
 
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
-
-    implementation 'com.microsoft.identity.client:msal:8.0.2'
 
     implementation 'com.github.gcacace:signature-pad:1.3.1'
 

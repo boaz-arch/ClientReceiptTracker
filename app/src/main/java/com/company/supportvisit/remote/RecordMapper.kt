@@ -3,6 +3,7 @@ package com.company.supportvisit.remote
 import com.company.supportvisit.data.ClientEntity
 import com.company.supportvisit.data.JsonCodec
 import com.company.supportvisit.data.SyncStatus
+import com.company.supportvisit.data.TaskEntity
 import com.company.supportvisit.data.VisitEntity
 import com.company.supportvisit.data.VisitPhoto
 import com.company.supportvisit.data.VisitType
@@ -92,6 +93,41 @@ object RecordMapper {
             notes = json.optString("notes"),
             remoteDirty = false,
             updatedAt = json.optLong("updatedAt", 0L)
+        )
+    }
+
+    fun taskToJson(t: TaskEntity): JSONObject = JSONObject()
+        .put("id", t.id)
+        .put("title", t.title)
+        .put("notes", t.notes)
+        .put("dueDate", t.dueDate ?: JSONObject.NULL)
+        .put("clientId", t.clientId ?: JSONObject.NULL)
+        .put("assigneeId", t.assigneeId ?: JSONObject.NULL)
+        .put("assigneeName", t.assigneeName ?: JSONObject.NULL)
+        .put("createdById", t.createdById ?: JSONObject.NULL)
+        .put("createdByName", t.createdByName ?: JSONObject.NULL)
+        .put("done", t.done)
+        .put("doneAt", t.doneAt ?: JSONObject.NULL)
+        .put("createdAt", t.createdAt)
+        .put("updatedAt", t.updatedAt)
+
+    fun jsonToTask(json: JSONObject): TaskEntity? {
+        val id = json.optString("id").ifBlank { return null }
+        return TaskEntity(
+            id = id,
+            title = json.optString("title"),
+            notes = json.optString("notes"),
+            dueDate = json.optStringOrNull("dueDate"),
+            clientId = json.optStringOrNull("clientId"),
+            assigneeId = json.optStringOrNull("assigneeId"),
+            assigneeName = json.optStringOrNull("assigneeName"),
+            createdById = json.optStringOrNull("createdById"),
+            createdByName = json.optStringOrNull("createdByName"),
+            done = json.optBoolean("done"),
+            doneAt = if (!json.has("doneAt") || json.isNull("doneAt")) null else json.optLong("doneAt"),
+            createdAt = json.optLong("createdAt", 0L),
+            updatedAt = json.optLong("updatedAt", 0L),
+            remoteDirty = false
         )
     }
 
