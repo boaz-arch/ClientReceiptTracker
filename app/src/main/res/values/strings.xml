@@ -306,4 +306,20 @@
     <string name="retainer_short">%1$s / %2$s h</string>
     <string name="type_legend_line">%1$s: %2$d (%3$d%%)</string>
 
+
+    <!-- Home and Insights -->
+    <string name="greeting_name">Hi, %1$s</string>
+    <string name="greeting_guest">Welcome</string>
+    <string name="this_month">This month</string>
+    <string name="kpi_amount_short">Billable</string>
+    <string name="insights_title">Insights</string>
+    <string name="filters">Filters</string>
+    <string name="filter_all_clients">All clients</string>
+    <string name="apply">Apply</string>
+    <string name="clear">Clear</string>
+    <plurals name="unsent_banner">
+        <item quantity="one">1 visit is waiting to send</item>
+        <item quantity="other">%1$d visits are waiting to send</item>
+    </plurals>
+
 </resources>

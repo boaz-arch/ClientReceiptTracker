@@ -19,7 +19,9 @@ import com.company.supportvisit.utils.DateUtils
 
 class VisitAdapter(
     private val onClick: (VisitEntity) -> Unit,
-    private val onRetry: (VisitEntity) -> Unit
+    private val onRetry: (VisitEntity) -> Unit,
+    /** Compact rows (no description, less padding) for summaries like the home screen. */
+    private val compact: Boolean = false
 ) : ListAdapter<VisitEntity, VisitAdapter.ViewHolder>(DIFF) {
 
     class ViewHolder(val binding: ItemVisitBinding) : RecyclerView.ViewHolder(binding.root)
@@ -39,6 +41,12 @@ class VisitAdapter(
                 visit.endTime
             )
             tvDescription.text = visit.workDescription
+            if (compact) {
+                tvDescription.visibility = View.GONE
+                val pad = (12 * root.resources.displayMetrics.density).toInt()
+                (tvClientName.parent.parent as View).setPadding(pad * 4 / 3, pad, pad * 4 / 3, pad)
+                (root.layoutParams as? ViewGroup.MarginLayoutParams)?.bottomMargin = pad / 2
+            }
 
             chipStatus.setText(visit.syncStatus.labelRes)
             chipStatus.chipBackgroundColor =

@@ -59,6 +59,8 @@
 
         <activity android:name=".MonthlyReportActivity" />
 
+        <activity android:name=".InsightsActivity" />
+
         <!-- The path is the app's signature hash, read from msal_config.json at build time. -->
         <activity
             android:name="com.microsoft.identity.client.BrowserTabActivity"

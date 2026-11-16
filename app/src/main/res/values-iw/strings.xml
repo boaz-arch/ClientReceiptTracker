@@ -303,4 +303,21 @@
     <string name="retainer_short">%1$s / %2$s ש׳</string>
     <string name="type_legend_line">%1$s: %2$d (%3$d%%)</string>
 
+
+    <!-- Home and Insights -->
+    <string name="greeting_name">שלום, %1$s</string>
+    <string name="greeting_guest">ברוכים הבאים</string>
+    <string name="this_month">החודש</string>
+    <string name="kpi_amount_short">לחיוב</string>
+    <string name="insights_title">תובנות</string>
+    <string name="filters">סינון</string>
+    <string name="filter_all_clients">כל הלקוחות</string>
+    <string name="apply">החלה</string>
+    <string name="clear">ניקוי</string>
+    <plurals name="unsent_banner">
+        <item quantity="one">ביקור אחד ממתין לשליחה</item>
+        <item quantity="two">שני ביקורים ממתינים לשליחה</item>
+        <item quantity="other">%1$d ביקורים ממתינים לשליחה</item>
+    </plurals>
+
 </resources>

@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Insights: all charts, with date range and filters. -->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="16dp"
+        android:paddingTop="24dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="32dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/insights_title"
+            android:textAlignment="viewStart"
+            android:textSize="24sp"
+            android:textStyle="bold" />
+
+        <!-- Filters -->
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:scrollbars="none">
+
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/chipRange"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:checkedChip="@id/chipThisMonth"
+                app:selectionRequired="true"
+                app:singleLine="true"
+                app:singleSelection="true">
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chipThisMonth"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/range_this_month" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chipLastMonth"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/range_last_month" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chipQuarter"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/range_quarter" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chipCustom"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/range_custom" />
+
+            </com.google.android.material.chip.ChipGroup>
+
+        </HorizontalScrollView>
+
+        <Button
+            android:id="@+id/btnFilters"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="start"
+            android:text="@string/filter_all_clients"
+            app:icon="@drawable/ic_tune" />
+
+        <!-- KPIs -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:background="@drawable/bg_card"
+            android:baselineAligned="false"
+            android:orientation="horizontal"
+            android:padding="16dp">
+
+            <LinearLayout style="@style/StatColumn">
+                <TextView android:id="@+id/tvKpiVisits" style="@style/KpiValue" />
+                <TextView style="@style/KpiLabel" android:text="@string/kpi_visits" />
+            </LinearLayout>
+
+            <LinearLayout style="@style/StatColumn">
+                <TextView android:id="@+id/tvKpiHours" style="@style/KpiValue" />
+                <TextView style="@style/KpiLabel" android:text="@string/kpi_hours" />
+            </LinearLayout>
+
+            <LinearLayout android:id="@+id/colKpiAmount" style="@style/StatColumn">
+                <TextView android:id="@+id/tvKpiAmount" style="@style/KpiValue" />
+                <TextView style="@style/KpiLabel" android:text="@string/kpi_amount_short" />
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tvEmptyPeriod"
+            style="@style/ChartEmpty"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_card" />
+
+        <!-- Hours per client -->
+        <LinearLayout android:id="@+id/cardClients" style="@style/ChartCard">
+            <TextView style="@style/ChartTitle" android:text="@string/chart_hours_per_client" />
+            <com.patrykandpatrick.vico.views.cartesian.CartesianChartView
+                android:id="@+id/chartClients"
+                android:layout_width="match_parent"
+                android:layout_height="240dp"
+                app:chartStyle="@style/ChartColumns"
+                app:scrollEnabled="false"
+                app:zoomEnabled="false" />
+        </LinearLayout>
+
+        <!-- Visits and hours per week -->
+        <LinearLayout android:id="@+id/cardWeeks" style="@style/ChartCard">
+            <TextView style="@style/ChartTitle" android:text="@string/chart_weekly" />
+            <com.patrykandpatrick.vico.views.cartesian.CartesianChartView
+                android:id="@+id/chartWeeks"
+                android:layout_width="match_parent"
+                android:layout_height="220dp"
+                app:chartStyle="@style/ChartLines"
+                app:scrollEnabled="false"
+                app:zoomEnabled="false" />
+            <TextView
+                android:id="@+id/tvWeeksLegend"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="@string/chart_weekly_legend"
+                android:textAlignment="viewStart"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <!-- Hours per technician (Phase 5: managers only) -->
+        <LinearLayout android:id="@+id/cardTechnicians" style="@style/ChartCard">
+            <TextView style="@style/ChartTitle" android:text="@string/chart_hours_per_technician" />
+            <com.patrykandpatrick.vico.views.cartesian.CartesianChartView
+                android:id="@+id/chartTechnicians"
+                android:layout_width="match_parent"
+                android:layout_height="200dp"
+                app:chartStyle="@style/ChartColumns"
+                app:scrollEnabled="false"
+                app:zoomEnabled="false" />
+        </LinearLayout>
+
+        <!-- Support package usage -->
+        <LinearLayout android:id="@+id/cardRetainers" style="@style/ChartCard">
+            <TextView style="@style/ChartTitle" android:text="@string/chart_retainers" />
+            <LinearLayout
+                android:id="@+id/retainerContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+        </LinearLayout>
+
+        <!-- Visits by type -->
+        <LinearLayout android:id="@+id/cardTypes" style="@style/ChartCard">
+            <TextView style="@style/ChartTitle" android:text="@string/chart_visit_types" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+                <com.company.supportvisit.ui.DonutChartView
+                    android:id="@+id/donutTypes"
+                    android:layout_width="140dp"
+                    android:layout_height="140dp" />
+                <LinearLayout
+                    android:id="@+id/typeLegend"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical" />
+            </LinearLayout>
+        </LinearLayout>
+
+    </LinearLayout>
+
+</ScrollView>
