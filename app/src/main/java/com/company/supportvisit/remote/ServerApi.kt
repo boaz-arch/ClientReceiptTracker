@@ -14,7 +14,14 @@ import java.io.File
 data class ChangesPage(val items: List<JSONObject>, val cursor: Long, val hasMore: Boolean)
 
 /** Info about the signed-in caller, as the server sees it. */
-data class ServerIdentity(val tenantId: String, val email: String)
+data class ServerIdentity(
+    val tenantId: String,
+    val email: String,
+    val userId: String = "",
+    val role: String = "TECHNICIAN",
+    val plan: String = "FREE",
+    val memberCount: Int = 1
+)
 
 /**
  * Client for the Support Visit server (see /server). [token] is an access token for the
@@ -27,8 +34,74 @@ class ServerApi(baseUrl: String, private val token: String) {
 
     fun me(): ServerIdentity {
         val json = getJson("$base/api/v1/me")
-        return ServerIdentity(json.optString("tenantId"), json.optString("email"))
+        return ServerIdentity(
+            tenantId = json.optString("tenantId"),
+            email = json.optString("email"),
+            userId = json.optString("userId"),
+            role = json.optString("role", "TECHNICIAN"),
+            plan = json.optString("plan", "FREE"),
+            memberCount = json.optInt("memberCount", 1)
+        )
     }
+
+    // region Team and company
+
+    fun members(): List<JSONObject> = items(getJson("$base/api/v1/members"))
+
+    fun removedMembers(): List<JSONObject> = items(getJson("$base/api/v1/members/removed"))
+
+    fun setRole(userId: String, role: String) {
+        send("PUT", "$base/api/v1/members/${seg(userId)}/role", JSONObject().put("role", role))
+    }
+
+    fun removeMember(userId: String) = send("DELETE", "$base/api/v1/members/${seg(userId)}", null)
+
+    fun restoreMember(userId: String) = send("POST", "$base/api/v1/members/${seg(userId)}/restore", JSONObject())
+
+    fun company(): JSONObject = getJson("$base/api/v1/company")
+
+    fun putCompany(changes: JSONObject): JSONObject = JSONObject(send("PUT", "$base/api/v1/company", changes))
+
+    fun uploadLogo(file: File) {
+        val request = Request.Builder().url("$base/api/v1/company/logo")
+            .put(file.asRequestBody("image/png".toMediaType())).build()
+        GraphHttp.execute(request, token)
+    }
+
+    /** Downloads the company logo into [target]; false if there is none. */
+    fun downloadLogo(target: File): Boolean {
+        val request = Request.Builder().url("$base/api/v1/company/logo")
+            .header("Authorization", "Bearer $token").get().build()
+        return GraphHttp.client.newCall(request).execute().use { r ->
+            if (!r.isSuccessful) return@use false
+            target.parentFile?.mkdirs()
+            r.body?.byteStream()?.use { input -> target.outputStream().use { input.copyTo(it) } }
+            true
+        }
+    }
+
+    fun sendCrash(report: JSONObject) = send("POST", "$base/api/v1/crashes", report)
+
+    fun sendEvents(names: List<String>) = send("POST", "$base/api/v1/events", JSONObject().put("events", org.json.JSONArray(names)))
+
+    fun taskChanges(since: Long) = changes("tasks", since)
+
+    fun putTask(json: JSONObject) = put("tasks", json)
+
+    private fun items(json: JSONObject): List<JSONObject> {
+        val a = json.optJSONArray("items") ?: return emptyList()
+        return (0 until a.length()).mapNotNull { a.optJSONObject(it) }
+    }
+
+    private fun seg(value: String) = java.net.URLEncoder.encode(value, "UTF-8").replace("+", "%20")
+
+    private fun send(method: String, url: String, body: JSONObject?): String {
+        val requestBody = body?.toString()?.toRequestBody(jsonType)
+        val request = Request.Builder().url(url).method(method, requestBody ?: if (method == "DELETE") null else ByteArray(0).toRequestBody(null)).build()
+        return GraphHttp.execute(request, token)
+    }
+
+    // endregion
 
     /** Pending account deletion for the signed-in user, if any. */
     fun deletionStatus(): com.company.supportvisit.account.DeletionStatus {

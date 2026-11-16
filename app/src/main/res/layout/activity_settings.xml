@@ -115,19 +115,7 @@
             android:textColor="?attr/colorError"
             app:strokeColor="?attr/colorError" />
 
-        <Button
-            android:id="@+id/btnChangeLogin"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/change_login_info"/>
 
-        <Button
-            android:id="@+id/btnLogout"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/logout"/>
 
         <TextView
             android:layout_width="match_parent"

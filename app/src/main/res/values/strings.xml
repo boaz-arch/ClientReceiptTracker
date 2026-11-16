@@ -87,19 +87,7 @@
     <string name="sign_in_cancelled">Sign-in cancelled</string>
     <string name="sign_in_failed">Microsoft sign-in failed. Check your connection and try again.</string>
     <string name="sign_out_failed">Could not disconnect the Microsoft account</string>
-    <string name="change_login_info">Change Login Info</string>
-    <string name="logout">Logout</string>
 
-    <!-- Local login -->
-    <string name="hint_username">Username</string>
-    <string name="hint_password">Password</string>
-    <string name="login">Login</string>
-    <string name="invalid_credentials">Invalid username or password</string>
-    <string name="hint_new_username">New Username</string>
-    <string name="hint_new_password">New Password</string>
-    <string name="save_changes">Save Changes</string>
-    <string name="complete_all_fields">Complete all fields</string>
-    <string name="login_updated">Login updated</string>
 
     <!-- PDF report -->
     <string name="pdf_title">Support Visit Report</string>
@@ -320,6 +308,30 @@
     <plurals name="unsent_banner">
         <item quantity="one">1 visit is waiting to send</item>
         <item quantity="other">%1$d visits are waiting to send</item>
+    </plurals>
+
+    <!-- Tasks -->
+    <string name="tasks_title">Tasks</string>
+    <string name="tasks_filter_mine">Mine</string>
+    <string name="tasks_filter_assigned">Assigned by me</string>
+    <string name="tasks_filter_all">Everyone</string>
+    <string name="tasks_filter_done">Done</string>
+    <string name="tasks_empty">Nothing here. Add a task to get started.</string>
+    <string name="add_task">Add task</string>
+    <string name="edit_task">Edit task</string>
+    <string name="task_mark_done">Mark as done</string>
+    <string name="hint_task_title">What needs doing?</string>
+    <string name="hint_due_date">Due date</string>
+    <string name="label_assignee">Assigned to</string>
+    <string name="me">Me</string>
+    <string name="none">None</string>
+    <string name="error_task_title">Please write what needs doing</string>
+    <string name="task_for">For %1$s</string>
+    <string name="task_from">From %1$s</string>
+    <string name="home_tasks">Tasks</string>
+    <plurals name="home_tasks_open">
+        <item quantity="one">1 open</item>
+        <item quantity="other">%1$d open</item>
     </plurals>
 
 </resources>

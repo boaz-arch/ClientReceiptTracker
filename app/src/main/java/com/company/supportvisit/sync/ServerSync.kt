@@ -33,6 +33,20 @@ object ServerSync {
                 visits.markRemoteSynced(visit)
             }
 
+            // Tasks: push changes, then pull (the server returns only tasks this member may see).
+            val tasks = context.app.taskRepository
+            tasks.getRemoteDirty().forEach { task ->
+                api.putTask(RecordMapper.taskToJson(task))
+                tasks.markRemoteSynced(task)
+            }
+            var taskCursor = ServerSettings.tasksCursor(context)
+            do {
+                val page = api.taskChanges(taskCursor)
+                tasks.mergeRemote(page.items.filterNot { it.optBoolean("deleted") }.mapNotNull(RecordMapper::jsonToTask))
+                taskCursor = page.cursor
+                ServerSettings.setTasksCursor(context, taskCursor)
+            } while (page.hasMore)
+
             var clientCursor = ServerSettings.clientsCursor(context)
             do {
                 val page = api.clientChanges(clientCursor)

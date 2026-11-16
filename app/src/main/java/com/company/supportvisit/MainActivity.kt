@@ -13,10 +13,8 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.company.supportvisit.account.AccountDeletion
 import com.company.supportvisit.dashboard.DashboardViewModel
 import com.company.supportvisit.databinding.ActivityMainBinding
-import com.company.supportvisit.graph.AuthManager
 import com.company.supportvisit.graph.MicrosoftAuthManager
 import com.company.supportvisit.ui.applySystemBarInsets
-import com.company.supportvisit.utils.AppConfig
 import com.company.supportvisit.utils.DateUtils
 import com.company.supportvisit.utils.Money
 import kotlinx.coroutines.launch
@@ -42,12 +40,6 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        if (AppConfig.LOGIN_ENABLED && !AuthManager.isLoggedIn()) {
-            startActivity(Intent(this, LoginActivity::class.java))
-            finish()
-            return
-        }
-
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.root.applySystemBarInsets()
@@ -63,6 +55,7 @@ class MainActivity : AppCompatActivity() {
         val openInsights = { startActivity(Intent(this, InsightsActivity::class.java)) }
         binding.btnInsights.setOnClickListener { openInsights() }
         binding.cardMonth.setOnClickListener { openInsights() }
+        binding.btnTasks.setOnClickListener { startActivity(Intent(this, TasksActivity::class.java)) }
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -74,6 +67,14 @@ class MainActivity : AppCompatActivity() {
                         } else {
                             getString(R.string.greeting_name, email.substringBefore("@"))
                         }
+                    }
+                }
+                launch {
+                    val me = com.company.supportvisit.team.TeamSession.userId(this@MainActivity)
+                    app.taskRepository.observeTasks().collect { tasks ->
+                        val open = tasks.count { !it.done && (me.isBlank() || it.assigneeId == me || (it.assigneeId == null && it.createdById == me)) }
+                        binding.btnTasks.text = if (open == 0) getString(R.string.home_tasks)
+                        else getString(R.string.home_tasks) + " · " + resources.getQuantityString(R.plurals.home_tasks_open, open, open)
                     }
                 }
                 launch {

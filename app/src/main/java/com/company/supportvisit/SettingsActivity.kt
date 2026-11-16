@@ -16,12 +16,10 @@ import com.company.supportvisit.databinding.ActivitySettingsBinding
 import com.company.supportvisit.databinding.DialogDeleteAccountBinding
 import com.company.supportvisit.utils.DateUtils
 import androidx.appcompat.app.AlertDialog
-import com.company.supportvisit.graph.AuthManager
 import com.company.supportvisit.graph.MicrosoftAuthManager
 import com.company.supportvisit.settings.ThemeManager
 import com.company.supportvisit.sync.SyncScheduler
 import com.company.supportvisit.ui.SignInHelper
-import com.company.supportvisit.utils.AppConfig
 import com.company.supportvisit.utils.CsvExporter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -64,19 +62,6 @@ class SettingsActivity : AppCompatActivity() {
         binding.btnDeleteAccount.setOnClickListener { confirmDeleteAccount() }
         binding.btnDisconnectMicrosoft.setOnClickListener { disconnectMicrosoft() }
 
-        // Local login buttons only make sense when the local login screen is enabled.
-        val localLoginVisibility = if (AppConfig.LOGIN_ENABLED) View.VISIBLE else View.GONE
-        binding.btnChangeLogin.visibility = localLoginVisibility
-        binding.btnLogout.visibility = localLoginVisibility
-
-        binding.btnChangeLogin.setOnClickListener {
-            startActivity(Intent(this, ChangeLoginActivity::class.java))
-        }
-        binding.btnLogout.setOnClickListener {
-            AuthManager.logout()
-            startActivity(Intent(this, LoginActivity::class.java))
-            finishAffinity()
-        }
     }
 
     private fun applyThemeMode(mode: Int) {

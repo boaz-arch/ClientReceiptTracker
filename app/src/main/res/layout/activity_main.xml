@@ -164,6 +164,14 @@
 
         </LinearLayout>
 
+        <Button
+            android:id="@+id/btnTasks"
+            style="@style/HomeLink"
+            android:layout_width="match_parent"
+            android:layout_weight="0"
+            android:layout_marginTop="4dp"
+            android:text="@string/home_tasks" />
+
     </LinearLayout>
 
 </androidx.core.widget.NestedScrollView>

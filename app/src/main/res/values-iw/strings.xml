@@ -84,19 +84,7 @@
     <string name="sign_in_cancelled">ההתחברות בוטלה</string>
     <string name="sign_in_failed">ההתחברות ל-Microsoft נכשלה. בדוק את החיבור ונסה שוב.</string>
     <string name="sign_out_failed">לא ניתן לנתק את חשבון Microsoft</string>
-    <string name="change_login_info">שינוי פרטי התחברות</string>
-    <string name="logout">התנתקות</string>
 
-    <!-- Local login -->
-    <string name="hint_username">שם משתמש</string>
-    <string name="hint_password">סיסמה</string>
-    <string name="login">התחברות</string>
-    <string name="invalid_credentials">שם משתמש או סיסמה שגויים</string>
-    <string name="hint_new_username">שם משתמש חדש</string>
-    <string name="hint_new_password">סיסמה חדשה</string>
-    <string name="save_changes">שמירת שינויים</string>
-    <string name="complete_all_fields">יש למלא את כל השדות</string>
-    <string name="login_updated">פרטי ההתחברות עודכנו</string>
 
     <!-- PDF report -->
     <string name="pdf_title">דוח ביקור תמיכה</string>
@@ -318,6 +306,31 @@
         <item quantity="one">ביקור אחד ממתין לשליחה</item>
         <item quantity="two">שני ביקורים ממתינים לשליחה</item>
         <item quantity="other">%1$d ביקורים ממתינים לשליחה</item>
+    </plurals>
+
+    <!-- Tasks -->
+    <string name="tasks_title">משימות</string>
+    <string name="tasks_filter_mine">שלי</string>
+    <string name="tasks_filter_assigned">שהקציתי</string>
+    <string name="tasks_filter_all">כולם</string>
+    <string name="tasks_filter_done">בוצעו</string>
+    <string name="tasks_empty">אין כאן כלום. הוסיפו משימה כדי להתחיל.</string>
+    <string name="add_task">הוספת משימה</string>
+    <string name="edit_task">עריכת משימה</string>
+    <string name="task_mark_done">סימון כבוצע</string>
+    <string name="hint_task_title">מה צריך לעשות?</string>
+    <string name="hint_due_date">תאריך יעד</string>
+    <string name="label_assignee">משויך אל</string>
+    <string name="me">אני</string>
+    <string name="none">ללא</string>
+    <string name="error_task_title">נא לכתוב מה צריך לעשות</string>
+    <string name="task_for">עבור %1$s</string>
+    <string name="task_from">מאת %1$s</string>
+    <string name="home_tasks">משימות</string>
+    <plurals name="home_tasks_open">
+        <item quantity="one">אחת פתוחה</item>
+        <item quantity="two">2 פתוחות</item>
+        <item quantity="other">%1$d פתוחות</item>
     </plurals>
 
 </resources>
