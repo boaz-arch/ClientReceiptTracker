@@ -7,8 +7,12 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
+import android.util.Patterns
 import com.company.supportvisit.databinding.ActivityTeamMembersBinding
+import com.company.supportvisit.databinding.DialogInviteBinding
 import com.company.supportvisit.databinding.ItemMemberBinding
+import com.company.supportvisit.graph.GraphException
+import java.util.Locale
 import com.company.supportvisit.remote.ServerApi
 import com.company.supportvisit.team.Role
 import com.company.supportvisit.team.TeamRepository
@@ -38,6 +42,7 @@ class TeamMembersActivity : AppCompatActivity() {
             return
         }
         binding.swipeRefresh.setOnRefreshListener { load() }
+        binding.btnInvite.setOnClickListener { invite() }
         load()
     }
 
@@ -47,15 +52,73 @@ class TeamMembersActivity : AppCompatActivity() {
             val result = runCatching {
                 withContext(Dispatchers.IO) {
                     val api = TeamRepository.api(this@TeamMembersActivity) ?: error("No server")
-                    api.members() to api.removedMembers()
+                    Triple(api.members(), api.removedMembers(), api.invites())
                 }
             }
             binding.swipeRefresh.isRefreshing = false
-            result.onSuccess { (active, removed) -> show(active, removed) }
-                .onFailure {
-                    Log.w(TAG, "Loading members failed")
-                    binding.tvError.isVisible = true
+            result.onSuccess { (active, removed, invites) ->
+                show(active, removed)
+                showInvites(invites)
+            }.onFailure {
+                Log.w(TAG, "Loading members failed")
+                binding.tvError.isVisible = true
+            }
+        }
+    }
+
+    /** People join by signing in with the invited email address and accepting. */
+    private fun invite() {
+        val dialog = DialogInviteBinding.inflate(layoutInflater)
+        AlertDialog.Builder(this)
+            .setTitle(R.string.invite_member)
+            .setView(dialog.root)
+            .setNegativeButton(R.string.cancel, null)
+            .setPositiveButton(R.string.invite_send) { _, _ ->
+                val email = dialog.etEmail.text.toString().trim()
+                if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+                    Toast.makeText(this, R.string.error_invalid_email, Toast.LENGTH_LONG).show()
+                    return@setPositiveButton
                 }
+                val role = when (dialog.rgRole.checkedRadioButtonId) {
+                    R.id.rbAdmin -> Role.ADMIN
+                    R.id.rbManager -> Role.MANAGER
+                    else -> Role.TECHNICIAN
+                }
+                lifecycleScope.launch {
+                    val result = runCatching {
+                        withContext(Dispatchers.IO) {
+                            TeamRepository.api(this@TeamMembersActivity)!!.invite(email, role.name, Locale.getDefault().language)
+                        }
+                    }
+                    val message = result.fold(
+                        onSuccess = { emailed -> getString(if (emailed) R.string.invite_sent else R.string.invite_saved_not_emailed, email) },
+                        onFailure = { e ->
+                            getString(if ((e as? GraphException)?.code == 409) R.string.invite_already_member else R.string.member_change_failed)
+                        }
+                    )
+                    Toast.makeText(this@TeamMembersActivity, message, Toast.LENGTH_LONG).show()
+                    load()
+                }
+            }
+            .show()
+    }
+
+    private fun showInvites(invites: List<JSONObject>) {
+        binding.headerInvites.isVisible = invites.isNotEmpty()
+        binding.listInvites.removeAllViews()
+        invites.forEach { inv ->
+            val row = ItemMemberBinding.inflate(layoutInflater, binding.listInvites, true)
+            val email = inv.optString("email")
+            row.tvName.text = email
+            row.tvEmail.isVisible = false
+            row.tvRole.text = roleLabel(Role.from(inv.optString("role")))
+            row.root.setOnClickListener {
+                AlertDialog.Builder(this)
+                    .setTitle(email)
+                    .setNegativeButton(R.string.cancel, null)
+                    .setPositiveButton(R.string.invite_cancel) { _, _ -> act { it.cancelInvite(email) } }
+                    .show()
+            }
         }
     }
 

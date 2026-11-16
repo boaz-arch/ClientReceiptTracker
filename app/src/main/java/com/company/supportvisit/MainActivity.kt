@@ -13,7 +13,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.company.supportvisit.account.AccountDeletion
 import com.company.supportvisit.dashboard.DashboardViewModel
 import com.company.supportvisit.databinding.ActivityMainBinding
-import com.company.supportvisit.graph.MicrosoftAuthManager
+import com.company.supportvisit.auth.AuthSession
 import com.company.supportvisit.team.TeamSession
 import com.company.supportvisit.ui.applySystemBarInsets
 import com.company.supportvisit.utils.DateUtils
@@ -63,8 +63,8 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
-                    if (MicrosoftAuthManager.refreshAccount() != null) checkPendingDeletion()
-                    MicrosoftAuthManager.accountEmail.collect { email ->
+                    if (AuthSession.refreshAccount() != null) checkPendingDeletion()
+                    AuthSession.accountEmail.collect { email ->
                         binding.tvUser.text = if (email.isNullOrBlank()) {
                             getString(R.string.greeting_guest)
                         } else {
@@ -142,7 +142,7 @@ class MainActivity : AppCompatActivity() {
             .setNegativeButton(R.string.restore_account_keep_deleting) { _, _ ->
                 lifecycleScope.launch {
                     AccountDeletion.wipeLocalData(this@MainActivity)
-                    runCatching { MicrosoftAuthManager.signOut() }
+                    runCatching { AuthSession.signOut() }
                 }
             }
             .show()

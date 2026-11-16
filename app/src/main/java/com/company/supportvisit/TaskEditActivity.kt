@@ -10,7 +10,7 @@ import androidx.lifecycle.lifecycleScope
 import com.company.supportvisit.data.ClientEntity
 import com.company.supportvisit.data.TaskEntity
 import com.company.supportvisit.databinding.ActivityTaskEditBinding
-import com.company.supportvisit.graph.MicrosoftAuthManager
+import com.company.supportvisit.auth.AuthSession
 import com.company.supportvisit.sync.SyncScheduler
 import com.company.supportvisit.team.TeamRepository
 import com.company.supportvisit.team.TeamSession
@@ -115,7 +115,7 @@ class TaskEditActivity : AppCompatActivity() {
             return
         }
         val myId = TeamSession.userId(this)
-        val myName = MicrosoftAuthManager.accountEmail.value?.substringBefore('@').orEmpty()
+        val myName = AuthSession.accountEmail.value?.substringBefore('@').orEmpty()
         val target = assignee?.takeIf { it.userId.isNotBlank() && it.userId != myId }
         val task = (existing ?: TaskEntity(id = "", title = title, createdById = myId, createdByName = myName)).copy(
             title = title,

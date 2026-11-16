@@ -3,7 +3,7 @@ package com.company.supportvisit
 import android.app.Application
 import android.content.Context
 import com.company.supportvisit.data.AppDatabase
-import com.company.supportvisit.graph.MicrosoftAuthManager
+import com.company.supportvisit.auth.AuthSession
 import com.company.supportvisit.repository.ClientRepository
 import com.company.supportvisit.repository.TaskRepository
 import com.company.supportvisit.team.TeamRepository
@@ -37,11 +37,11 @@ class SupportVisitApp : Application() {
         TeamSession.load(this)
         AppLock.install(this)
 
-        MicrosoftAuthManager.init(this)
+        AuthSession.init(this)
 
         appScope.launch {
             visitRepository.migrateLegacyIfNeeded()
-            if (MicrosoftAuthManager.refreshAccount() != null) TeamRepository.refresh(this@SupportVisitApp)
+            if (AuthSession.refreshAccount() != null) TeamRepository.refresh(this@SupportVisitApp)
         }
 
         // Picks up anything left unsent from a previous session (runs once online).

@@ -211,6 +211,12 @@ class TeamApiTest {
             .toString()
         assertEquals(HttpStatusCode.OK, client.post("/api/v1/reports/email") { bearerAuth(p.token("boss@a.test")); setBody(body("application/pdf")) }.status)
         assertEquals("Report.pdf", mailer.sent.last().attachments.single().name)
+        // A CSV can't pose as something else: its extension comes from the checked type.
+        val csv = JSONObject().put("to", org.json.JSONArray(listOf("client@example.com"))).put("subject", "March")
+            .put("attachments", org.json.JSONArray().put(JSONObject().put("name", "invoice.pdf.exe").put("contentType", "text/csv")
+                .put("data", java.util.Base64.getEncoder().encodeToString("a,b\n1,2\n".toByteArray())))).toString()
+        assertEquals(HttpStatusCode.OK, client.post("/api/v1/reports/email") { bearerAuth(p.token("boss@a.test")); setBody(csv) }.status)
+        assertEquals("invoice_pdf.csv", mailer.sent.last().attachments.single().name)
         assertEquals(HttpStatusCode.BadRequest,
             client.post("/api/v1/reports/email") { bearerAuth(p.token("boss@a.test")); setBody(body("application/x-msdownload")) }.status)
     }

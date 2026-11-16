@@ -132,5 +132,11 @@ object TeamSession {
         _company.value = CompanyProfile.from(json)
     }
 
+    /** Signed out: this phone is no longer part of the company. */
+    fun clear(context: Context) {
+        prefs(context).edit { remove(KEY_USER_ID); remove(KEY_ROLE); remove(KEY_PLAN); remove(KEY_MEMBERS) }
+        _role.value = role(context)
+    }
+
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 }

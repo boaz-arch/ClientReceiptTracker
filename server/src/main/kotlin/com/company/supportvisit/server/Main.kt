@@ -84,8 +84,10 @@ fun Application.module(config: Config, mailer: Mailer) {
     // Per client address: sign-in emails and code checks (on top of the per-email limits).
     val startLimiter = WindowLimiter(max = 20, windowMs = 3_600_000)
     val verifyLimiter = WindowLimiter(max = 40, windowMs = 3_600_000)
-    // Whole server: protects the sending address even from many addresses at once.
-    val globalStartLimiter = WindowLimiter(max = 500, windowMs = 3_600_000)
+    // Whole server: warns early, and refuses only far above normal use, so a flood can't
+    // easily lock everyone out (per-email and per-address limits do the real work).
+    val globalStartWarn = WindowLimiter(max = 500, windowMs = 3_600_000)
+    val globalStartLimiter = WindowLimiter(max = 5000, windowMs = 3_600_000)
 
     // Carry out account deletions whose grace period has ended: at start-up, then every hour.
     launch {
@@ -196,6 +198,7 @@ fun Application.module(config: Config, mailer: Mailer) {
             post("/auth/start") {
                 startLimiter.check(call.clientKey())
                 globalStartLimiter.check("all")
+                runCatching { globalStartWarn.check("all") }.onFailure { log.warn("Unusually many sign-in emails this hour") }
                 val body = JSONObject(call.receiveText())
                 val email = AccountStore.normalizeEmail(body.optString("email"))
                 val code = accounts.startLogin(email)
@@ -503,7 +506,7 @@ fun Application.module(config: Config, mailer: Mailer) {
                 val company = team.company(c.tenantId)
                 val fromName = senderName(company)
                 val replyTo = company.optString("email").takeIf { runCatching { AccountStore.normalizeEmail(it) }.isSuccess } ?: c.email
-                val attachName = body.optString("fileName").takeIf { FileStore.isSafeName(it) && it.endsWith(".pdf") } ?: "report.pdf"
+                val attachName = body.optString("fileName").takeIf { FileStore.isSafeName(it) && it.lowercase().endsWith(".pdf") } ?: "report.pdf"
                 val attach = pdf.length() <= MAX_ATTACHMENT_BYTES
                 val finalText = if (attach) text else {
                     // Too big to attach: a 30-day signed link instead.
@@ -535,10 +538,11 @@ fun Application.module(config: Config, mailer: Mailer) {
                 var total = 0L
                 val attachments = (0 until list.length()).map { i ->
                     val a = list.getJSONObject(i)
-                    val name = a.optString("name")
                     val type = a.optString("contentType")
-                    require(FileStore.isSafeName(name)) { "Invalid file name" }
                     require(type in setOf("application/pdf", "text/csv")) { "Only PDF and CSV" }
+                    // The extension always matches the checked type, whatever name was sent.
+                    val base = a.optString("name").substringBeforeLast('.').replace(Regex("[^\\p{L}\\p{N}_-]+"), "_").trim('_').take(80)
+                    val name = base.ifEmpty { "report" } + if (type == "application/pdf") ".pdf" else ".csv"
                     val bytes = java.util.Base64.getDecoder().decode(a.optString("data"))
                     total += bytes.size
                     require(total <= MAX_ATTACHMENT_BYTES) { "Attachments too large" }

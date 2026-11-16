@@ -16,7 +16,7 @@ import com.company.supportvisit.data.ClientEntity
 import com.company.supportvisit.data.DraftEntity
 import com.company.supportvisit.data.PartItem
 import com.company.supportvisit.data.VisitType
-import com.company.supportvisit.graph.MicrosoftAuthManager
+import com.company.supportvisit.auth.AuthSession
 import com.company.supportvisit.repository.NewVisitInput
 import com.company.supportvisit.settings.BillingSettings
 import com.company.supportvisit.sync.SyncScheduler
@@ -269,7 +269,7 @@ class NewVisitViewModel(application: Application) : AndroidViewModel(application
                     ),
                     signature = signature,
                     technicianSignature = technicianSignature,
-                    technicianEmail = MicrosoftAuthManager.accountEmail.value
+                    technicianEmail = AuthSession.accountEmail.value
                 )
                 SyncScheduler.enqueue(getApplication())
                 _state.update { it.copy(isSubmitting = false, isSubmitted = true, message = R.string.visit_saved) }

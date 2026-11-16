@@ -33,6 +33,13 @@
                 android:textAlignment="viewStart"
                 android:textColor="@color/text_secondary" />
 
+            <Button
+                android:id="@+id/btnInvite"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:layout_marginTop="16dp"
+                android:text="@string/invite_member" />
+
             <TextView
                 android:id="@+id/tvError"
                 android:layout_width="match_parent"
@@ -47,6 +54,18 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
+                android:orientation="vertical" />
+
+            <TextView
+                android:id="@+id/headerInvites"
+                style="@style/SettingsSectionHeader"
+                android:text="@string/invites_pending"
+                android:visibility="gone" />
+
+            <LinearLayout
+                android:id="@+id/listInvites"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
                 android:orientation="vertical" />
 
             <TextView

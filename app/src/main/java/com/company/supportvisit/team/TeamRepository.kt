@@ -2,7 +2,7 @@ package com.company.supportvisit.team
 
 import android.content.Context
 import android.util.Log
-import com.company.supportvisit.graph.MicrosoftAuthManager
+import com.company.supportvisit.auth.AuthSession
 import com.company.supportvisit.remote.ServerApi
 import com.company.supportvisit.settings.BillingSettings
 import com.company.supportvisit.settings.FormSettings
@@ -119,6 +119,7 @@ object TeamRepository {
 
     suspend fun api(context: Context): ServerApi? {
         val url = ServerSettings.serverUrl(context) ?: return null
-        return ServerApi(url, MicrosoftAuthManager.getApiToken())
+        if (!AuthSession.isSignedIn) return null
+        return ServerApi(url, AuthSession.getApiToken())
     }
 }

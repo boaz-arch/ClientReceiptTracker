@@ -69,24 +69,9 @@
             android:name=".TaskEditActivity"
             android:windowSoftInputMode="adjustResize" />
 
-        <!-- The path is the app's signature hash, read from msal_config.json at build time. -->
         <activity
-            android:name="com.microsoft.identity.client.BrowserTabActivity"
-            android:exported="true">
-
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-
-                <data
-                    android:scheme="msauth"
-                    android:host="${applicationId}"
-                    android:path="/${msalSignatureHash}" />
-            </intent-filter>
-
-        </activity>
+            android:name=".SignInActivity"
+            android:windowSoftInputMode="adjustResize" />
 
     </application>
 

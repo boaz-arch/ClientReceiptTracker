@@ -19,7 +19,7 @@ import com.company.supportvisit.data.SyncStatus
 import com.company.supportvisit.data.VisitEntity
 import com.company.supportvisit.data.partsTotal
 import com.company.supportvisit.databinding.ActivityVisitDetailsBinding
-import com.company.supportvisit.graph.MicrosoftAuthManager
+import com.company.supportvisit.auth.AuthSession
 import com.company.supportvisit.remote.ServerApi
 import com.company.supportvisit.settings.ServerSettings
 import com.company.supportvisit.sync.SyncScheduler
@@ -149,7 +149,7 @@ class VisitDetailsActivity : AppCompatActivity() {
             val target = try {
                 val serverUrl = ServerSettings.serverUrl(this@VisitDetailsActivity)
                 if (serverUrl != null && link.startsWith("$serverUrl/")) {
-                    val api = ServerApi(serverUrl, MicrosoftAuthManager.getApiToken(this@VisitDetailsActivity))
+                    val api = ServerApi(serverUrl, AuthSession.getApiToken())
                     withContext(Dispatchers.IO) { api.temporaryLink(link) }
                 } else {
                     link
