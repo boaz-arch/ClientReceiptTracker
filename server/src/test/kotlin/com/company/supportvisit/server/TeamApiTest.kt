@@ -2,6 +2,7 @@ package com.company.supportvisit.server
 
 import io.ktor.client.HttpClient
 import io.ktor.client.request.bearerAuth
+import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.put
@@ -21,22 +22,42 @@ class TeamApiTest {
     private val dataDir: File = Files.createTempDirectory("svteam").toFile()
     private val config = Config(
         port = 0, dataDir = dataDir, clientId = "client", allowedTenants = emptySet(),
-        publicBaseUrl = "https://example.test/sv", linkSecret = "x".repeat(40), proTenants = setOf("t-env")
+        publicBaseUrl = "https://example.test/sv", linkSecret = "x".repeat(40), proTenants = setOf("t-env"),
+        adminEmails = setOf("boss@a.test")
     )
+    /** Tokens: "<tenant>:<email>[:ga]" — ":ga" marks a Microsoft 365 Global Administrator. */
     private val fakeVerify: (String) -> Caller = { token ->
-        val (tenant, email) = token.split(':')
-        Caller(tenant, "oid-$email", email, email.substringBefore('@'))
+        val parts = token.split(':')
+        val email = parts[1]
+        Caller(parts[0], "oid-$email", email, email.substringBefore('@'),
+            if (parts.getOrNull(2) == "ga") setOf(Caller.GLOBAL_ADMIN_ROLE) else emptySet())
     }
 
     private suspend fun HttpClient.me(token: String) = JSONObject(get("/api/v1/me") { bearerAuth(token) }.bodyAsText())
 
     @Test
-    fun `first member is admin, later ones technicians`() = testApplication {
+    fun `only an invited admin or a Microsoft 365 global admin becomes the first admin`() = testApplication {
         application { module(config, fakeVerify) }
-        assertEquals("ADMIN", client.me("t1:boss@a.test").getString("role"))
+        // An ordinary user signing in first does NOT get admin.
+        assertEquals("TECHNICIAN", client.me("t3:random@c.test").getString("role"))
+        assertEquals("ADMIN", client.me("t3:it@c.test:ga").getString("role"), "global admin of the tenant")
+        assertEquals("ADMIN", client.me("t4:first@d.test:ga").getString("role"))
+        assertEquals("TECHNICIAN", client.me("t4:second@d.test:ga").getString("role"), "only while the company has no admin")
+        assertEquals("ADMIN", client.me("t1:boss@a.test").getString("role"), "invited through ADMIN_EMAILS")
         assertEquals("TECHNICIAN", client.me("t1:tech@a.test").getString("role"))
-        assertEquals("ADMIN", client.me("t2:other@b.test").getString("role"), "each company has its own first admin")
         assertEquals(2, client.me("t1:boss@a.test").getInt("memberCount"))
+    }
+
+    @Test
+    fun `removed members are blocked until an admin restores them`() = testApplication {
+        application { module(config, fakeVerify) }
+        client.me("t1:boss@a.test")
+        client.me("t1:leaver@a.test")
+        assertEquals(HttpStatusCode.OK, client.delete("/api/v1/members/oid-leaver@a.test") { bearerAuth("t1:boss@a.test") }.status)
+        assertEquals(HttpStatusCode.Forbidden, client.get("/api/v1/me") { bearerAuth("t1:leaver@a.test") }.status)
+        assertEquals(HttpStatusCode.Forbidden, client.get("/api/v1/visits?since=0") { bearerAuth("t1:leaver@a.test") }.status)
+        assertEquals(HttpStatusCode.OK, client.post("/api/v1/members/oid-leaver@a.test/restore") { bearerAuth("t1:boss@a.test") }.status)
+        assertEquals("TECHNICIAN", client.me("t1:leaver@a.test").getString("role"))
     }
 
     @Test
@@ -95,7 +116,7 @@ class TeamApiTest {
     fun `plan grants, crash reports and events`() = testApplication {
         application { module(config, fakeVerify) }
         assertEquals("FREE", client.me("t1:boss@a.test").getString("plan"))
-        assertEquals("PRO", client.me("t-env:boss@e.test").getString("plan"), "granted through PRO_TENANT_IDS")
+        assertEquals("PRO", client.me("t-env:someone@e.test").getString("plan"), "granted through PRO_TENANT_IDS")
         TeamStore(File(dataDir, "supportvisit.db")).grantPro("t1", "family")
         assertEquals("PRO", client.me("t1:boss@a.test").getString("plan"))
 

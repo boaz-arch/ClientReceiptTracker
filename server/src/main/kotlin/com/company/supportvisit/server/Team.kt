@@ -32,7 +32,9 @@ data class Member(
  * Company-level data: members and roles, company profile (branding, email template), plan
  * grants, crash reports and anonymous usage events. Every query is scoped by tenant.
  */
-class TeamStore(dbFile: File) {
+class ForbiddenException(message: String) : Exception(message)
+
+class TeamStore(dbFile: File, private val adminEmails: Set<String> = emptySet()) {
 
     private val connection: Connection
 
@@ -51,6 +53,13 @@ class TeamStore(dbFile: File) {
                 )
                 """.trimIndent()
             )
+            val hasStatus = st.executeQuery("PRAGMA table_info(members)").use { rs ->
+                var found = false
+                while (rs.next()) if (rs.getString("name") == "status") found = true
+                found
+            }
+            if (!hasStatus) st.execute("ALTER TABLE members ADD COLUMN status TEXT NOT NULL DEFAULT 'ACTIVE'")
+            st.execute("CREATE TABLE IF NOT EXISTS admin_invites (email TEXT PRIMARY KEY, created_at INTEGER NOT NULL)")
             st.execute("CREATE TABLE IF NOT EXISTS company (tenant_id TEXT PRIMARY KEY, data TEXT NOT NULL, updated_at INTEGER NOT NULL)")
             st.execute("CREATE TABLE IF NOT EXISTS plan_grants (tenant_id TEXT PRIMARY KEY, note TEXT NOT NULL, granted_at INTEGER NOT NULL)")
             st.execute(
@@ -74,9 +83,15 @@ class TeamStore(dbFile: File) {
 
     // region Members
 
-    /** Registers or refreshes the caller; the first member of a company becomes ADMIN. */
+    /**
+     * Registers or refreshes the caller. Removed members are refused. A new member becomes ADMIN
+     * only while the company has no admin and they are either a Global Administrator of their
+     * Microsoft 365 tenant or invited as admin by the server operator; everyone else starts as
+     * TECHNICIAN.
+     */
     @Synchronized
     fun touch(caller: Caller, now: Long = System.currentTimeMillis()): Member {
+        if (isRemoved(caller.tenantId, caller.userId)) throw ForbiddenException("member_removed")
         member(caller.tenantId, caller.userId)?.let { existing ->
             connection.prepareStatement(
                 "UPDATE members SET email = ?, name = ?, last_seen_at = ? WHERE tenant_id = ? AND user_id = ?"
@@ -86,7 +101,9 @@ class TeamStore(dbFile: File) {
             }
             return existing.copy(email = caller.email, name = caller.name, lastSeenAt = now)
         }
-        val role = if (memberCount(caller.tenantId) == 0) Role.ADMIN else Role.TECHNICIAN
+        val noAdminYet = members(caller.tenantId).none { it.role == Role.ADMIN }
+        val trusted = caller.isTenantAdmin || isInvitedAdmin(caller.email)
+        val role = if (noAdminYet && trusted) Role.ADMIN else Role.TECHNICIAN
         connection.prepareStatement(
             "INSERT INTO members (tenant_id, user_id, email, name, role, joined_at, last_seen_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
         ).use { ps ->
@@ -99,21 +116,21 @@ class TeamStore(dbFile: File) {
 
     @Synchronized
     fun member(tenantId: String, userId: String): Member? =
-        connection.prepareStatement("SELECT * FROM members WHERE tenant_id = ? AND user_id = ?").use { ps ->
+        connection.prepareStatement("SELECT * FROM members WHERE tenant_id = ? AND user_id = ? AND status = 'ACTIVE'").use { ps ->
             ps.setString(1, tenantId); ps.setString(2, userId)
             ps.executeQuery().use { rs -> if (rs.next()) rs.toMember() else null }
         }
 
     @Synchronized
     fun members(tenantId: String): List<Member> =
-        connection.prepareStatement("SELECT * FROM members WHERE tenant_id = ? ORDER BY name COLLATE NOCASE").use { ps ->
+        connection.prepareStatement("SELECT * FROM members WHERE tenant_id = ? AND status = 'ACTIVE' ORDER BY name COLLATE NOCASE").use { ps ->
             ps.setString(1, tenantId)
             ps.executeQuery().use { rs -> buildList { while (rs.next()) add(rs.toMember()) } }
         }
 
     @Synchronized
     fun memberCount(tenantId: String): Int =
-        connection.prepareStatement("SELECT COUNT(*) FROM members WHERE tenant_id = ?").use { ps ->
+        connection.prepareStatement("SELECT COUNT(*) FROM members WHERE tenant_id = ? AND status = 'ACTIVE'").use { ps ->
             ps.setString(1, tenantId); ps.executeQuery().use { rs -> rs.next(); rs.getInt(1) }
         }
 
@@ -130,10 +147,53 @@ class TeamStore(dbFile: File) {
         return true
     }
 
+    /** Blocks the member: they can't sign in to the company again until re-added. */
     @Synchronized
     fun removeMember(tenantId: String, userId: String) {
-        connection.prepareStatement("DELETE FROM members WHERE tenant_id = ? AND user_id = ?").use { ps ->
+        val target = member(tenantId, userId) ?: return
+        if (target.role == Role.ADMIN && members(tenantId).count { it.role == Role.ADMIN } <= 1) {
+            throw IllegalArgumentException("A company needs at least one admin")
+        }
+        connection.prepareStatement("UPDATE members SET status = 'REMOVED' WHERE tenant_id = ? AND user_id = ?").use { ps ->
             ps.setString(1, tenantId); ps.setString(2, userId); ps.executeUpdate()
+        }
+    }
+
+    /** Lets a removed member back in (as technician). */
+    @Synchronized
+    fun restoreMember(tenantId: String, userId: String): Boolean =
+        connection.prepareStatement(
+            "UPDATE members SET status = 'ACTIVE', role = 'TECHNICIAN' WHERE tenant_id = ? AND user_id = ? AND status = 'REMOVED'"
+        ).use { ps -> ps.setString(1, tenantId); ps.setString(2, userId); ps.executeUpdate() > 0 }
+
+    @Synchronized
+    fun removedMembers(tenantId: String): List<Member> =
+        connection.prepareStatement("SELECT * FROM members WHERE tenant_id = ? AND status = 'REMOVED'").use { ps ->
+            ps.setString(1, tenantId)
+            ps.executeQuery().use { rs -> buildList { while (rs.next()) add(rs.toMember()) } }
+        }
+
+    @Synchronized
+    private fun isRemoved(tenantId: String, userId: String): Boolean =
+        connection.prepareStatement("SELECT 1 FROM members WHERE tenant_id = ? AND user_id = ? AND status = 'REMOVED'").use { ps ->
+            ps.setString(1, tenantId); ps.setString(2, userId); ps.executeQuery().use { it.next() }
+        }
+
+    /** Server operator invites someone to become their company's first admin. */
+    @Synchronized
+    fun inviteAdmin(email: String) {
+        connection.prepareStatement("INSERT OR REPLACE INTO admin_invites (email, created_at) VALUES (?, ?)").use { ps ->
+            ps.setString(1, email.trim().lowercase()); ps.setLong(2, System.currentTimeMillis()); ps.executeUpdate()
+        }
+    }
+
+    @Synchronized
+    private fun isInvitedAdmin(email: String): Boolean {
+        val e = email.trim().lowercase()
+        if (e.isEmpty()) return false
+        if (e in adminEmails) return true
+        return connection.prepareStatement("SELECT 1 FROM admin_invites WHERE email = ?").use { ps ->
+            ps.setString(1, e); ps.executeQuery().use { it.next() }
         }
     }
 
@@ -150,7 +210,9 @@ class TeamStore(dbFile: File) {
     /** Fields an admin may set. Anything else in the request is ignored. */
     private val companyFields = listOf(
         "name", "address", "companyNumber", "phone", "email", "website",
-        "emailRecipients", "emailSubjectTemplate", "emailBodyTemplate", "hasLogo"
+        "emailRecipients", "emailSubjectTemplate", "emailBodyTemplate", "hasLogo",
+        // Company-wide app settings (report sections, billing) pushed by an admin.
+        "settings"
     )
 
     @Synchronized

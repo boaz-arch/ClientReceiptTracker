@@ -25,8 +25,11 @@ class AccountDeletionTest {
         purgeIntervalMs = 3_600_000
     )
     private val fakeVerify: (String) -> Caller = { token ->
-        val (tenant, email) = token.split(':')
-        Caller(tenant, "oid-$email", email, email)
+        val parts = token.split(':')
+        if (parts.size !in 2..3) throw AuthException("bad")
+        val email = parts[1]
+        Caller(parts[0], "oid-$email", email, email,
+            if (parts.getOrNull(2) == "ga") setOf(Caller.GLOBAL_ADMIN_ROLE) else emptySet())
     }
 
     private fun visit(id: String, tech: String) =
@@ -85,14 +88,14 @@ class AccountDeletionTest {
     @Test
     fun `tombstones reach other phones through the change feed`() = testApplication {
         application { module(config, fakeVerify) }
-        client.get("/api/v1/me") { bearerAuth("t9:x@b.c") } // the reader is the admin
+        client.get("/api/v1/me") { bearerAuth("t9:x@b.c:ga") } // the reader is the admin
         client.put("/api/v1/visits/v9") { bearerAuth("t9:a@b.c"); setBody(visit("v9", "a@b.c")) }
-        val cursor = JSONObject(client.get("/api/v1/visits?since=0") { bearerAuth("t9:x@b.c") }.bodyAsText()).getLong("cursor")
+        val cursor = JSONObject(client.get("/api/v1/visits?since=0") { bearerAuth("t9:x@b.c:ga") }.bodyAsText()).getLong("cursor")
 
         val store = Store(File(dataDir, "supportvisit.db"))
         store.tombstone(Store.Kind.VISITS, "t9", "v9")
 
-        val items = JSONObject(client.get("/api/v1/visits?since=$cursor") { bearerAuth("t9:x@b.c") }.bodyAsText())
+        val items = JSONObject(client.get("/api/v1/visits?since=$cursor") { bearerAuth("t9:x@b.c:ga") }.bodyAsText())
             .getJSONArray("items")
         assertEquals(1, items.length())
         assertTrue(items.getJSONObject(0).getBoolean("deleted"))
@@ -101,7 +104,7 @@ class AccountDeletionTest {
     @Test
     fun `phones cannot write tombstones or overwrite another user's visit`() = testApplication {
         application { module(config, fakeVerify) }
-        client.get("/api/v1/me") { bearerAuth("t5:x@a.test") } // the reader is the admin
+        client.get("/api/v1/me") { bearerAuth("t5:x@a.test:ga") } // the reader is the admin
         client.put("/api/v1/visits/v5") { bearerAuth("t5:owner@a.test"); setBody(visit("v5", "owner@a.test")) }
 
         // A coworker tries to overwrite it, and to push a fake tombstone.
@@ -114,7 +117,7 @@ class AccountDeletionTest {
         client.put("/api/v1/visits/v5") {
             bearerAuth("t5:owner@a.test"); setBody(JSONObject(visit("v5", "owner@a.test")).put("deleted", true).toString())
         }
-        val item = JSONObject(client.get("/api/v1/visits?since=0") { bearerAuth("t5:x@a.test") }.bodyAsText())
+        val item = JSONObject(client.get("/api/v1/visits?since=0") { bearerAuth("t5:x@a.test:ga") }.bodyAsText())
             .getJSONArray("items").getJSONObject(0)
         assertFalse(item.optBoolean("deleted"))
         assertEquals("Acme", item.getString("clientName"))

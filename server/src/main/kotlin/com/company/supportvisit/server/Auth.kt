@@ -14,8 +14,17 @@ data class Caller(
     val tenantId: String,
     val userId: String,
     val email: String,
-    val name: String
-)
+    val name: String,
+    /** Entra directory role template ids of the user (the "wids" claim). */
+    val directoryRoles: Set<String> = emptySet()
+) {
+    /** Global Administrator of their Microsoft 365 tenant. */
+    val isTenantAdmin: Boolean get() = GLOBAL_ADMIN_ROLE in directoryRoles
+
+    companion object {
+        const val GLOBAL_ADMIN_ROLE = "62e90394-69f5-4237-9190-012177145e10"
+    }
+}
 
 class AuthException(message: String) : Exception(message)
 
@@ -49,7 +58,8 @@ object TokenRules {
         val email = listOf("preferred_username", "upn", "email", "unique_name")
             .firstNotNullOfOrNull { jwt.getClaim(it).asString()?.takeIf { v -> v.contains('@') } }
             .orEmpty()
-        return Caller(tid, oid, email.lowercase(), jwt.getClaim("name").asString().orEmpty())
+        val wids = jwt.getClaim("wids").asList(String::class.java).orEmpty().map { it.lowercase() }.toSet()
+        return Caller(tid, oid, email.lowercase(), jwt.getClaim("name").asString().orEmpty(), wids)
     }
 }
 

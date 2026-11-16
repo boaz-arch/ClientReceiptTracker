@@ -20,7 +20,7 @@ class FileStore(dataDir: File, private val maxBytes: Long) {
         fun isSafeId(id: String) = SAFE_ID.matches(id)
 
         fun contentTypeFor(name: String): String = when (name.substringAfterLast('.').lowercase()) {
-            "company-logo" -> "image/*"
+            "logo" -> "image/*"
             "pdf" -> "application/pdf"
             "jpg", "jpeg" -> "image/jpeg"
             "png" -> "image/png"
@@ -33,10 +33,13 @@ class FileStore(dataDir: File, private val maxBytes: Long) {
         return File(File(File(root, tenantId), visitId), name)
     }
 
+    /** Company assets live outside the visit files, so no visit id can collide with them. */
+    private val companyRoot = File(dataDir, "company").apply { mkdirs() }
+
     /** The company logo (PNG or JPEG, max 2 MB). */
     fun companyLogo(tenantId: String): File {
         require(isSafeId(tenantId)) { "Invalid path" }
-        return File(File(root, tenantId), "company-logo")
+        return File(File(companyRoot, tenantId), "logo")
     }
 
     fun saveCompanyLogo(tenantId: String, input: InputStream) {

@@ -41,13 +41,14 @@ fun main(args: Array<String>) {
             Store.backup(File(dataDir, "supportvisit.db"), File(args.getOrNull(1) ?: error("usage: backup <file>")))
             return
         }
-        "grant-pro", "revoke-pro", "grants", "crashes" -> {
+        "grant-pro", "revoke-pro", "grants", "crashes", "invite-admin" -> {
             val team = TeamStore(File(File(System.getenv("DATA_DIR") ?: "/data"), "supportvisit.db"))
             when (args[0]) {
                 "grant-pro" -> team.grantPro(args.getOrNull(1)?.lowercase() ?: error("usage: grant-pro <tenantId> [note]"), args.drop(2).joinToString(" "))
                 "revoke-pro" -> team.revokePro(args.getOrNull(1)?.lowercase() ?: error("usage: revoke-pro <tenantId>"))
                 "grants" -> team.grants().forEach { (tenant, note) -> println("$tenant  $note") }
                 "crashes" -> println(team.recentCrashes().toString(2))
+                "invite-admin" -> team.inviteAdmin(args.getOrNull(1) ?: error("usage: invite-admin <email>"))
             }
             return
         }
@@ -72,7 +73,7 @@ fun Application.module(config: Config, verify: (String) -> Caller) {
     val store = Store(File(config.dataDir, "supportvisit.db"))
     val files = FileStore(config.dataDir, config.maxUploadBytes)
     val signer = LinkSigner(config.linkSecret)
-    val team = TeamStore(File(config.dataDir, "supportvisit.db"))
+    val team = TeamStore(File(config.dataDir, "supportvisit.db"), config.adminEmails)
 
     // Purge accounts whose grace period has ended: at start-up, then every hour.
     launch {
@@ -93,6 +94,9 @@ fun Application.module(config: Config, verify: (String) -> Caller) {
     install(StatusPages) {
         exception<AuthException> { call, e ->
             call.respondJson(HttpStatusCode.Unauthorized, JSONObject().put("error", "unauthorized").put("message", e.message))
+        }
+        exception<ForbiddenException> { call, e ->
+            call.respondJson(HttpStatusCode.Forbidden, JSONObject().put("error", e.message))
         }
         exception<IllegalArgumentException> { call, e ->
             call.respondJson(HttpStatusCode.BadRequest, JSONObject().put("error", "bad_request").put("message", e.message))
@@ -150,6 +154,17 @@ fun Application.module(config: Config, verify: (String) -> Caller) {
                     .getOrElse { throw IllegalArgumentException("Unknown role") }
                 if (!team.setRole(c.tenantId, call.parameters["userId"].orEmpty(), role)) return@put call.notFound()
                 call.respondJson(HttpStatusCode.OK, JSONObject().put("role", role.name))
+            }
+            get("/members/removed") {
+                val (c, m) = call.member()
+                if (!m.role.canManageCompany) return@get call.forbidden("admins_only")
+                call.respondJson(HttpStatusCode.OK, JSONObject().put("items", JSONArray(team.removedMembers(c.tenantId).map { it.toJson() })))
+            }
+            post("/members/{userId}/restore") {
+                val (c, m) = call.member()
+                if (!m.role.canManageCompany) return@post call.forbidden("admins_only")
+                if (!team.restoreMember(c.tenantId, call.parameters["userId"].orEmpty())) return@post call.notFound()
+                call.respondJson(HttpStatusCode.OK, JSONObject().put("restored", true))
             }
             delete("/members/{userId}") {
                 val (c, m) = call.member()

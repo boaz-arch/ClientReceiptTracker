@@ -29,10 +29,13 @@ class ApiTest {
         linkSecret = "x".repeat(40)
     )
 
-    /** Tokens in tests are just "<tenant>:<email>". */
+    /** Tokens in tests are "<tenant>:<email>[:ga]" (":ga" = Microsoft 365 Global Administrator). */
     private val fakeVerify: (String) -> Caller = { token ->
-        val (tenant, email) = token.split(':').also { if (it.size != 2) throw AuthException("bad") }
-        Caller(tenant, "oid-$email", email, email)
+        val parts = token.split(':')
+        if (parts.size !in 2..3) throw AuthException("bad")
+        val email = parts[1]
+        Caller(parts[0], "oid-$email", email, email,
+            if (parts.getOrNull(2) == "ga") setOf(Caller.GLOBAL_ADMIN_ROLE) else emptySet())
     }
 
     @Test
@@ -40,18 +43,18 @@ class ApiTest {
         application { module(config, fakeVerify) }
 
         // The reader signs in first, so they are the company's admin and see everyone's visits.
-        client.get("/api/v1/me") { bearerAuth("tenant-a:boss@a.test") }
+        client.get("/api/v1/me") { bearerAuth("tenant-a:boss@a.test:ga") }
         val visit = JSONObject().put("id", "v1").put("clientName", "Acme \"HQ\"")
         val put = client.put("/api/v1/visits/v1") { bearerAuth("tenant-a:tech@a.test"); setBody(visit.toString()) }
         assertEquals(HttpStatusCode.OK, put.status)
 
-        val mine = JSONObject(client.get("/api/v1/visits?since=0") { bearerAuth("tenant-a:boss@a.test") }.bodyAsText())
+        val mine = JSONObject(client.get("/api/v1/visits?since=0") { bearerAuth("tenant-a:boss@a.test:ga") }.bodyAsText())
         assertEquals(1, mine.getJSONArray("items").length())
         assertEquals("Acme \"HQ\"", mine.getJSONArray("items").getJSONObject(0).getString("clientName"))
 
         // Since the returned cursor, nothing new.
         val cursor = mine.getLong("cursor")
-        val again = JSONObject(client.get("/api/v1/visits?since=$cursor") { bearerAuth("tenant-a:boss@a.test") }.bodyAsText())
+        val again = JSONObject(client.get("/api/v1/visits?since=$cursor") { bearerAuth("tenant-a:boss@a.test:ga") }.bodyAsText())
         assertEquals(0, again.getJSONArray("items").length())
 
         // Another company sees nothing.
