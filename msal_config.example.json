@@ -8,8 +8,7 @@
     {
       "type": "AAD",
       "audience": {
-        "type": "AzureADMyOrg",
-        "tenant_id": "YOUR_TENANT_ID"
+        "type": "AzureADMultipleOrgs"
       }
     }
   ]

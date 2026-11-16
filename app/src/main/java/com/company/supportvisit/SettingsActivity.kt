@@ -17,6 +17,7 @@ import com.company.supportvisit.databinding.DialogDeleteAccountBinding
 import com.company.supportvisit.utils.DateUtils
 import androidx.appcompat.app.AlertDialog
 import com.company.supportvisit.graph.MicrosoftAuthManager
+import com.company.supportvisit.security.AppLock
 import com.company.supportvisit.settings.ThemeManager
 import com.company.supportvisit.sync.SyncScheduler
 import com.company.supportvisit.team.TeamRepository
@@ -65,6 +66,20 @@ class SettingsActivity : AppCompatActivity() {
         binding.tvVersion.text = runCatching {
             getString(R.string.app_version, packageManager.getPackageInfo(packageName, 0).versionName)
         }.getOrDefault("")
+
+        binding.switchAppLock.isChecked = AppLock.isEnabled(this)
+        binding.switchAppLock.setOnCheckedChangeListener { view, checked ->
+            if (checked == AppLock.isEnabled(this)) return@setOnCheckedChangeListener
+            if (!AppLock.isAvailable(this)) {
+                view.isChecked = false
+                Toast.makeText(this, R.string.app_lock_unavailable, Toast.LENGTH_LONG).show()
+                return@setOnCheckedChangeListener
+            }
+            // Check they can unlock before turning it on (and before turning it off).
+            AppLock.confirm(this) { ok ->
+                if (ok) AppLock.setEnabled(this, checked) else view.isChecked = !checked
+            }
+        }
 
         binding.btnExportCsv.setOnClickListener { exportCsv() }
 

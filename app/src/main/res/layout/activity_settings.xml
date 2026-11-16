@@ -105,6 +105,26 @@
 
         <TextView
             style="@style/SettingsSectionHeader"
+            android:text="@string/security_settings" />
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/switchAppLock"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:minHeight="48dp"
+            android:text="@string/app_lock" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/app_lock_summary"
+            android:textAlignment="viewStart"
+            android:textColor="@color/text_secondary"
+            android:textSize="13sp" />
+
+        <TextView
+            style="@style/SettingsSectionHeader"
             android:text="@string/export_data" />
 
         <Button

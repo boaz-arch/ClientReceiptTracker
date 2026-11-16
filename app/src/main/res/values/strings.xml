@@ -369,6 +369,16 @@
     <string name="role_manager">Manager</string>
     <string name="role_technician">Technician</string>
     <string name="app_version">Version %1$s</string>
+    <string name="close">Close</string>
+    <string name="security_settings">Security</string>
+    <string name="app_lock">Lock the app with fingerprint or face</string>
+    <string name="app_lock_summary">Asks again after a minute in the background</string>
+    <string name="app_lock_unavailable">Set up a fingerprint, face or screen lock on this phone first.</string>
+    <string name="app_lock_prompt_title">Unlock the app</string>
+    <string name="admin_consent_title">Approval needed</string>
+    <string name="admin_consent_share">Send link to admin</string>
+    <string name="admin_consent_share_subject">Please approve our visit reports app</string>
+    <string name="admin_consent_share_text">Hi, to let our team sign in to the visit reports app, a Microsoft 365 admin needs to approve it once. Open this link and choose Accept:\n%1$s</string>
     <string name="pdf_page">Page %1$d</string>
     <string name="pdf_company_number">Company no. %1$s</string>
     <plurals name="home_tasks_open">

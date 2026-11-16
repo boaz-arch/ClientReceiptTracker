@@ -9,6 +9,7 @@ import com.company.supportvisit.repository.TaskRepository
 import com.company.supportvisit.team.TeamRepository
 import com.company.supportvisit.team.TeamSession
 import com.company.supportvisit.repository.VisitRepository
+import com.company.supportvisit.security.AppLock
 import com.company.supportvisit.settings.ThemeManager
 import com.company.supportvisit.sync.SyncScheduler
 import kotlinx.coroutines.CoroutineScope
@@ -34,6 +35,7 @@ class SupportVisitApp : Application() {
 
         ThemeManager.applySaved(this)
         TeamSession.load(this)
+        AppLock.install(this)
 
         MicrosoftAuthManager.init(this)
 

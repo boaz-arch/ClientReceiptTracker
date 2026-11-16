@@ -368,6 +368,16 @@
     <string name="role_manager">מנהל</string>
     <string name="role_technician">טכנאי</string>
     <string name="app_version">גרסה %1$s</string>
+    <string name="close">סגירה</string>
+    <string name="security_settings">אבטחה</string>
+    <string name="app_lock">נעילת האפליקציה בטביעת אצבע או בזיהוי פנים</string>
+    <string name="app_lock_summary">תתבקשו שוב אחרי דקה ברקע</string>
+    <string name="app_lock_unavailable">יש להגדיר קודם טביעת אצבע, זיהוי פנים או נעילת מסך בטלפון.</string>
+    <string name="app_lock_prompt_title">ביטול נעילת האפליקציה</string>
+    <string name="admin_consent_title">נדרש אישור</string>
+    <string name="admin_consent_share">שליחת קישור למנהל</string>
+    <string name="admin_consent_share_subject">בקשה לאישור אפליקציית דוחות הביקור</string>
+    <string name="admin_consent_share_text">שלום, כדי שהצוות יוכל להתחבר לאפליקציית דוחות הביקור, מנהל Microsoft 365 צריך לאשר אותה פעם אחת. יש לפתוח את הקישור ולבחור Accept:\n%1$s</string>
     <string name="pdf_page">עמוד %1$d</string>
     <string name="pdf_company_number">ח.פ. %1$s</string>
     <plurals name="home_tasks_open">
