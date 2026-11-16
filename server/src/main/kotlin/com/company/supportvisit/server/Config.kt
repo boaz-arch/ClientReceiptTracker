@@ -17,7 +17,9 @@ data class Config(
     val maxUploadBytes: Long = 25L * 1024 * 1024,
     /** How long a deleted account can still be restored. */
     val deletionGraceMs: Long = 14L * 24 * 60 * 60 * 1000,
-    val purgeIntervalMs: Long = 60L * 60 * 1000
+    val purgeIntervalMs: Long = 60L * 60 * 1000,
+    /** Optional: tenants given Pro for free via the environment (in addition to `grant-pro`). */
+    val proTenants: Set<String> = emptySet()
 ) {
     companion object {
         fun fromEnv(env: Map<String, String> = System.getenv()): Config {
@@ -30,6 +32,8 @@ data class Config(
                 allowedTenants = env["ALLOWED_TENANT_IDS"].orEmpty()
                     .split(',').map { it.trim().lowercase() }.filter { it.isNotEmpty() }.toSet(),
                 publicBaseUrl = required("PUBLIC_BASE_URL").trimEnd('/'),
+                proTenants = env["PRO_TENANT_IDS"].orEmpty()
+                    .split(',').map { it.trim().lowercase() }.filter { it.isNotEmpty() }.toSet(),
                 linkSecret = required("LINK_SECRET").also {
                     require(it.length >= 32) { "LINK_SECRET must be at least 32 characters" }
                 }

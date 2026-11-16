@@ -20,6 +20,7 @@ class FileStore(dataDir: File, private val maxBytes: Long) {
         fun isSafeId(id: String) = SAFE_ID.matches(id)
 
         fun contentTypeFor(name: String): String = when (name.substringAfterLast('.').lowercase()) {
+            "company-logo" -> "image/*"
             "pdf" -> "application/pdf"
             "jpg", "jpeg" -> "image/jpeg"
             "png" -> "image/png"
@@ -30,6 +31,23 @@ class FileStore(dataDir: File, private val maxBytes: Long) {
     fun file(tenantId: String, visitId: String, name: String): File {
         require(isSafeId(tenantId) && isSafeId(visitId) && isSafeName(name)) { "Invalid file path" }
         return File(File(File(root, tenantId), visitId), name)
+    }
+
+    /** The company logo (PNG or JPEG, max 2 MB). */
+    fun companyLogo(tenantId: String): File {
+        require(isSafeId(tenantId)) { "Invalid path" }
+        return File(File(root, tenantId), "company-logo")
+    }
+
+    fun saveCompanyLogo(tenantId: String, input: InputStream) {
+        val target = companyLogo(tenantId)
+        target.parentFile.mkdirs()
+        val bytes = input.readNBytes(2 * 1024 * 1024 + 1)
+        require(bytes.size <= 2 * 1024 * 1024) { "Logo too large" }
+        val png = bytes.size > 4 && bytes[0] == 0x89.toByte() && bytes[1] == 'P'.code.toByte()
+        val jpeg = bytes.size > 3 && bytes[0] == 0xFF.toByte() && bytes[1] == 0xD8.toByte()
+        require(png || jpeg) { "Logo must be PNG or JPEG" }
+        target.writeBytes(bytes)
     }
 
     /** Deletes every file of a visit (PDF and photos). */

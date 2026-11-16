@@ -85,6 +85,7 @@ class AccountDeletionTest {
     @Test
     fun `tombstones reach other phones through the change feed`() = testApplication {
         application { module(config, fakeVerify) }
+        client.get("/api/v1/me") { bearerAuth("t9:x@b.c") } // the reader is the admin
         client.put("/api/v1/visits/v9") { bearerAuth("t9:a@b.c"); setBody(visit("v9", "a@b.c")) }
         val cursor = JSONObject(client.get("/api/v1/visits?since=0") { bearerAuth("t9:x@b.c") }.bodyAsText()).getLong("cursor")
 
@@ -100,6 +101,7 @@ class AccountDeletionTest {
     @Test
     fun `phones cannot write tombstones or overwrite another user's visit`() = testApplication {
         application { module(config, fakeVerify) }
+        client.get("/api/v1/me") { bearerAuth("t5:x@a.test") } // the reader is the admin
         client.put("/api/v1/visits/v5") { bearerAuth("t5:owner@a.test"); setBody(visit("v5", "owner@a.test")) }
 
         // A coworker tries to overwrite it, and to push a fake tombstone.

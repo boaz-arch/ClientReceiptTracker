@@ -39,6 +39,8 @@ class ApiTest {
     fun `visits are stored per tenant and returned as changes`() = testApplication {
         application { module(config, fakeVerify) }
 
+        // The reader signs in first, so they are the company's admin and see everyone's visits.
+        client.get("/api/v1/me") { bearerAuth("tenant-a:boss@a.test") }
         val visit = JSONObject().put("id", "v1").put("clientName", "Acme \"HQ\"")
         val put = client.put("/api/v1/visits/v1") { bearerAuth("tenant-a:tech@a.test"); setBody(visit.toString()) }
         assertEquals(HttpStatusCode.OK, put.status)
