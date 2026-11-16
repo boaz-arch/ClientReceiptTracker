@@ -17,6 +17,8 @@ import kotlinx.coroutines.withContext
  */
 object ServerSync {
 
+    private const val FULL_TASK_SYNC_MS = 24L * 60 * 60 * 1000
+
     private val lock = Mutex()
 
     suspend fun pushAndPull(context: Context, api: ServerApi) = lock.withLock {
@@ -39,13 +41,27 @@ object ServerSync {
                 api.putTask(RecordMapper.taskToJson(task))
                 tasks.markRemoteSynced(task)
             }
-            var taskCursor = ServerSettings.tasksCursor(context)
+            // Once a day re-read every visible task from the start, so tasks this member can no
+            // longer see (reassigned to someone else, or they lost access) leave this phone too.
+            val now = System.currentTimeMillis()
+            val fullTaskSync = now - ServerSettings.tasksFullSyncAt(context) > FULL_TASK_SYNC_MS
+            var taskCursor = if (fullTaskSync) 0L else ServerSettings.tasksCursor(context)
+            val seenTaskIds = HashSet<String>()
             do {
                 val page = api.taskChanges(taskCursor)
-                tasks.mergeRemote(page.items.filterNot { it.optBoolean("deleted") }.mapNotNull(RecordMapper::jsonToTask))
+                val (deleted, live) = page.items.partition { it.optBoolean("deleted") }
+                // Server tombstones win over local edits: the task is gone for everyone.
+                deleted.forEach { tasks.deleteLocal(it.optString("id")) }
+                val remote = live.mapNotNull(RecordMapper::jsonToTask)
+                remote.forEach { seenTaskIds += it.id }
+                tasks.mergeRemote(remote)
                 taskCursor = page.cursor
                 ServerSettings.setTasksCursor(context, taskCursor)
             } while (page.hasMore)
+            if (fullTaskSync) {
+                tasks.pruneNotVisible(seenTaskIds)
+                ServerSettings.setTasksFullSyncAt(context, now)
+            }
 
             var clientCursor = ServerSettings.clientsCursor(context)
             do {

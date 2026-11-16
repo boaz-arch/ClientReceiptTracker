@@ -40,4 +40,9 @@ class TaskRepository(private val dao: TaskDao) {
     }
 
     suspend fun deleteLocal(id: String) = dao.deleteById(id)
+
+    /** After a full pull: drops synced tasks the server no longer shows this member. */
+    suspend fun pruneNotVisible(visibleIds: Set<String>) {
+        dao.getAll().filter { !it.remoteDirty && it.id !in visibleIds }.forEach { dao.deleteById(it.id) }
+    }
 }

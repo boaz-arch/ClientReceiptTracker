@@ -60,6 +60,12 @@
         <activity android:name=".TasksActivity" />
 
         <activity
+            android:name=".CompanySetupActivity"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity android:name=".TeamMembersActivity" />
+
+        <activity
             android:name=".TaskEditActivity"
             android:windowSoftInputMode="adjustResize" />
 

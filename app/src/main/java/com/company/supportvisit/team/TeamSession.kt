@@ -87,12 +87,22 @@ object TeamSession {
     val company: StateFlow<CompanyProfile> = _company.asStateFlow()
 
     fun load(context: Context) {
-        val p = prefs(context)
-        _role.value = Role.from(p.getString(KEY_ROLE, null))
-        _company.value = CompanyProfile.from(p.getString(KEY_COMPANY, null)?.let { runCatching { JSONObject(it) }.getOrNull() })
+        _role.value = role(context)
+        _company.value = company(context)
     }
 
-    fun role(context: Context): Role = Role.from(prefs(context).getString(KEY_ROLE, null))
+    /**
+     * The member's role. A phone that has never joined a company (no server, or not signed in yet)
+     * is a one-person business, so it gets every admin screen.
+     */
+    fun role(context: Context): Role {
+        val p = prefs(context)
+        if (p.getString(KEY_USER_ID, null).isNullOrBlank()) return Role.ADMIN
+        return Role.from(p.getString(KEY_ROLE, null))
+    }
+
+    /** True when this phone is part of a company on the server (not working alone). */
+    fun isTeamMember(context: Context): Boolean = userId(context).isNotBlank()
 
     fun userId(context: Context): String = prefs(context).getString(KEY_USER_ID, "").orEmpty()
 

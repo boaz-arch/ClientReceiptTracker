@@ -97,6 +97,9 @@ interface TaskDao {
     @Query("SELECT * FROM tasks WHERE remoteDirty = 1")
     suspend fun getRemoteDirty(): List<TaskEntity>
 
+    @Query("SELECT * FROM tasks")
+    suspend fun getAll(): List<TaskEntity>
+
     @Upsert
     suspend fun upsert(task: TaskEntity)
 

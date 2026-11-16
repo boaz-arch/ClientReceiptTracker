@@ -19,6 +19,9 @@ import androidx.appcompat.app.AlertDialog
 import com.company.supportvisit.graph.MicrosoftAuthManager
 import com.company.supportvisit.settings.ThemeManager
 import com.company.supportvisit.sync.SyncScheduler
+import com.company.supportvisit.team.TeamRepository
+import com.company.supportvisit.team.TeamSession
+import androidx.core.view.isVisible
 import com.company.supportvisit.ui.SignInHelper
 import com.company.supportvisit.utils.CsvExporter
 import kotlinx.coroutines.Dispatchers
@@ -56,12 +59,36 @@ class SettingsActivity : AppCompatActivity() {
             startActivity(Intent(this, ReportSettingsActivity::class.java))
         }
 
+        binding.btnCompanyProfile.setOnClickListener { startActivity(Intent(this, CompanySetupActivity::class.java)) }
+        binding.btnTeamMembers.setOnClickListener { startActivity(Intent(this, TeamMembersActivity::class.java)) }
+
+        binding.tvVersion.text = runCatching {
+            getString(R.string.app_version, packageManager.getPackageInfo(packageName, 0).versionName)
+        }.getOrDefault("")
+
         binding.btnExportCsv.setOnClickListener { exportCsv() }
 
         binding.btnConnectMicrosoft.setOnClickListener { connectMicrosoft() }
         binding.btnDeleteAccount.setOnClickListener { confirmDeleteAccount() }
         binding.btnDisconnectMicrosoft.setOnClickListener { disconnectMicrosoft() }
 
+    }
+
+    override fun onResume() {
+        super.onResume()
+        applyRole()
+        // Coming back from Billing or Customize report: share the admin's choices with the team.
+        lifecycleScope.launch { TeamRepository.pushSettings(this@SettingsActivity) }
+    }
+
+    /** Company, billing and report screens belong to admins; a phone working alone is its own admin. */
+    private fun applyRole() {
+        val admin = TeamSession.role(this).canManageCompany
+        binding.sectionCompany.isVisible = admin
+        binding.btnTeamMembers.isVisible = admin && TeamSession.isTeamMember(this)
+        binding.headerReportSettings.isVisible = admin
+        binding.btnBillingSettings.isVisible = admin
+        binding.btnCustomizeReport.isVisible = admin
     }
 
     private fun applyThemeMode(mode: Int) {
@@ -140,6 +167,7 @@ class SettingsActivity : AppCompatActivity() {
             // Visits that failed for lack of a session can go now.
             app.visitRepository.retryAllFailed()
             SyncScheduler.enqueue(this@SettingsActivity)
+            if (TeamRepository.refresh(this@SettingsActivity)) applyRole()
         }
     }
 

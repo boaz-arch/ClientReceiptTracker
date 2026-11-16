@@ -18,6 +18,7 @@ import com.company.supportvisit.graph.MicrosoftAuthManager
 import com.company.supportvisit.remote.ServerApi
 import com.company.supportvisit.repository.VisitRepository
 import com.company.supportvisit.settings.ServerSettings
+import com.company.supportvisit.team.Branding
 import com.company.supportvisit.utils.DateUtils
 import com.company.supportvisit.utils.PdfReportGenerator
 import kotlinx.coroutines.Dispatchers
@@ -113,9 +114,11 @@ class VisitSyncWorker(
             withContext(Dispatchers.IO) {
                 MailService.sendMail(
                     token = token,
-                    subject = applicationContext.getString(R.string.email_subject, visit.clientName),
-                    body = emailBody(visit, attached = attach),
-                    recipients = listOfNotNull(visit.clientEmail, visit.technicianEmail),
+                    subject = Branding.emailSubject(applicationContext, visit),
+                    body = Branding.emailBody(applicationContext, visit, attached = attach),
+                    recipients = (listOfNotNull(visit.clientEmail, visit.technicianEmail) +
+                        Branding.extraRecipients(applicationContext))
+                        .map { it.trim() }.filter { it.isNotEmpty() }.distinctBy { it.lowercase() },
                     pdfFile = pdf.takeIf { attach }
                 )
             }
@@ -167,19 +170,6 @@ class VisitSyncWorker(
         PdfReportGenerator.createReport(
             applicationContext, visit, signature, File(applicationContext.filesDir, "pdfs"), technicianSignature
         )
-    }
-
-    private fun emailBody(visit: VisitEntity, attached: Boolean): String {
-        val body = applicationContext.getString(
-            R.string.email_body,
-            visit.clientName,
-            DateUtils.formatForDisplay(visit.visitDate),
-            visit.startTime,
-            visit.endTime,
-            visit.workDescription,
-            ""
-        ).trimEnd()
-        return if (attached) body else body + "\n\n" + applicationContext.getString(R.string.email_report_too_large)
     }
 
     /** Maps an exception to a user-facing error and whether it's worth retrying. */

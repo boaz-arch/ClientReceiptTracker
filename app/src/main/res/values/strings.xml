@@ -4,7 +4,6 @@
     <string name="app_name">Support Visit Manager</string>
 
     <!-- Branding: replaced by the company profile in a later phase. -->
-    <string name="company_footer" translatable="false">Livnelavan LTD</string>
 
     <!-- Home -->
     <string name="dashboard_title">Dashboard</string>
@@ -329,6 +328,49 @@
     <string name="task_for">For %1$s</string>
     <string name="task_from">From %1$s</string>
     <string name="home_tasks">Tasks</string>
+    <!-- Company and team -->
+    <string name="company_settings">Company</string>
+    <string name="company_profile">Company profile</string>
+    <string name="company_profile_intro">Your company name, details and logo appear on every report.</string>
+    <string name="company_logo">Company logo</string>
+    <string name="company_logo_none">No logo yet</string>
+    <string name="company_logo_set">Logo</string>
+    <string name="company_logo_pick">Choose image</string>
+    <string name="company_logo_failed">That image could not be read. Please try another one.</string>
+    <string name="remove">Remove</string>
+    <string name="company_name">Company name</string>
+    <string name="company_name_required">Please enter the company name</string>
+    <string name="company_number">Company number</string>
+    <string name="company_address">Address</string>
+    <string name="company_phone">Phone</string>
+    <string name="company_email">Email</string>
+    <string name="company_website">Website</string>
+    <string name="company_email_section">Report email</string>
+    <string name="company_recipients">Also send every report to</string>
+    <string name="company_recipients_help">Separate addresses with commas</string>
+    <string name="company_subject_template">Subject</string>
+    <string name="company_body_template">Message</string>
+    <string name="company_template_help">You can use {client}, {date}, {time}, {hours}, {technician}, {description} and {company}.</string>
+    <string name="default_email_subject_template">Support visit report - {client}</string>
+    <string name="default_email_body_template">Hello,\n\nAttached is the report for the support visit on {date} ({time}).\n\nWork done:\n{description}\n\nRegards,\n{company}</string>
+    <string name="company_saved">Saved</string>
+    <string name="error_invalid_email_named">%1$s is not a valid email address</string>
+    <string name="team_members">Team members</string>
+    <string name="team_members_intro">People join by signing in with their work account. Tap someone to change their role or remove them.</string>
+    <string name="team_removed">Removed</string>
+    <string name="member_you">%1$s (you)</string>
+    <string name="member_restore">Let back in</string>
+    <string name="member_restore_message">They will be able to sign in and sync again, as a technician.</string>
+    <string name="member_remove">Remove</string>
+    <string name="member_remove_title">Remove %1$s?</string>
+    <string name="member_remove_message">They will no longer be able to sync with the company. Reports they already sent stay.</string>
+    <string name="member_change_failed">That change did not go through. A company always needs at least one admin.</string>
+    <string name="role_admin">Admin</string>
+    <string name="role_manager">Manager</string>
+    <string name="role_technician">Technician</string>
+    <string name="app_version">Version %1$s</string>
+    <string name="pdf_page">Page %1$d</string>
+    <string name="pdf_company_number">Company no. %1$s</string>
     <plurals name="home_tasks_open">
         <item quantity="one">1 open</item>
         <item quantity="other">%1$d open</item>

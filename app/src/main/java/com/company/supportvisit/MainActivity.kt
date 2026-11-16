@@ -14,6 +14,7 @@ import com.company.supportvisit.account.AccountDeletion
 import com.company.supportvisit.dashboard.DashboardViewModel
 import com.company.supportvisit.databinding.ActivityMainBinding
 import com.company.supportvisit.graph.MicrosoftAuthManager
+import com.company.supportvisit.team.TeamSession
 import com.company.supportvisit.ui.applySystemBarInsets
 import com.company.supportvisit.utils.DateUtils
 import com.company.supportvisit.utils.Money
@@ -36,6 +37,8 @@ class MainActivity : AppCompatActivity() {
     private val viewModel: DashboardViewModel by viewModels()
 
     private var deletionPromptShown = false
+
+    private var companySetupShown = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -70,7 +73,7 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
                 launch {
-                    val me = com.company.supportvisit.team.TeamSession.userId(this@MainActivity)
+                    val me = TeamSession.userId(this@MainActivity)
                     app.taskRepository.observeTasks().collect { tasks ->
                         val open = tasks.count { !it.done && (me.isBlank() || it.assigneeId == me || (it.assigneeId == null && it.createdById == me)) }
                         binding.btnTasks.text = if (open == 0) getString(R.string.home_tasks)
@@ -95,6 +98,16 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         viewModel.refresh()
+        maybeAskForCompanySetup()
+    }
+
+    /** The first admin of a new company sets up its name and logo before the team starts reporting. */
+    private fun maybeAskForCompanySetup() {
+        if (companySetupShown) return
+        if (!TeamSession.isTeamMember(this) || !TeamSession.role(this).canManageCompany) return
+        if (TeamSession.company(this).isConfigured) return
+        companySetupShown = true
+        startActivity(Intent(this, CompanySetupActivity::class.java))
     }
 
 

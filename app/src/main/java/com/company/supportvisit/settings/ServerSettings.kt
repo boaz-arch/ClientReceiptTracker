@@ -27,6 +27,10 @@ object ServerSettings {
 
     fun setTasksCursor(context: Context, value: Long) = prefs(context).edit { putLong(KEY_TASKS_CURSOR, value) }
 
+    fun tasksFullSyncAt(context: Context): Long = prefs(context).getLong("tasks_full_sync_at", 0L)
+
+    fun setTasksFullSyncAt(context: Context, value: Long) = prefs(context).edit { putLong("tasks_full_sync_at", value) }
+
     fun clientsCursor(context: Context): Long = prefs(context).getLong(KEY_CLIENTS_CURSOR, 0L)
 
     fun setClientsCursor(context: Context, value: Long) = prefs(context).edit { putLong(KEY_CLIENTS_CURSOR, value) }

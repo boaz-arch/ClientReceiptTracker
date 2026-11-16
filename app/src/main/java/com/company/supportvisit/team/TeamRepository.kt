@@ -10,6 +10,7 @@ import com.company.supportvisit.settings.ServerSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import java.io.File
 
 /**
  * Loads the member's role and plan and the company profile from the server, and keeps the
@@ -18,14 +19,27 @@ import org.json.JSONObject
 object TeamRepository {
 
     private const val TAG = "TeamRepository"
+    private const val KEY_PUSHED = "pushed_settings"
 
     /** Refreshes role, plan, company profile and logo. Silent on failure (cached values stay). */
     suspend fun refresh(context: Context): Boolean = withContext(Dispatchers.IO) {
         val api = api(context) ?: return@withContext false
         try {
+            // What this phone set up while working alone (before it ever reached the server).
+            val wasSolo = !TeamSession.isTeamMember(context)
+            val localProfile = TeamSession.company(context)
             val me = api.me()
             TeamSession.saveMe(context, me.userId, me.role, me.plan, me.memberCount)
-            val company = api.company()
+            var company = api.company()
+            // The first admin brings their company profile and logo along instead of starting over.
+            if (wasSolo && localProfile.isConfigured && !CompanyProfile.from(company).isConfigured &&
+                TeamSession.role(context).canManageCompany
+            ) {
+                val logo = TeamSession.logoTarget(context)
+                if (localProfile.hasLogo && logo.exists()) api.uploadLogo(logo)
+                company = api.putCompany(localProfile.toJson().put("hasLogo", localProfile.hasLogo && logo.exists())
+                    .put("settings", currentSettings(context)))
+            }
             TeamSession.saveCompany(context, company)
             val profile = CompanyProfile.from(company)
             // Small file: refreshed each time so a new logo shows up everywhere.
@@ -39,21 +53,41 @@ object TeamRepository {
         }
     }
 
-    /** Admin: saves the company profile (and the logo, if a new one was picked). */
-    suspend fun saveCompany(context: Context, profile: CompanyProfile, newLogo: java.io.File?) = withContext(Dispatchers.IO) {
-        val api = api(context) ?: throw IllegalStateException("No server")
-        if (newLogo != null) api.uploadLogo(newLogo)
-        val saved = api.putCompany(profile.toJson().put("settings", currentSettings(context)))
-        TeamSession.saveCompany(context, saved)
-        if (newLogo != null) api.downloadLogo(TeamSession.logoTarget(context))
-    }
+    /**
+     * Admin: saves the company profile and, if one was picked, the new logo (already resized PNG).
+     * Always kept on this phone; also sent to the server when the phone is part of a team.
+     * [removeLogo] clears the logo on this phone (the server keeps its copy until replaced).
+     */
+    suspend fun saveCompany(context: Context, profile: CompanyProfile, newLogo: File?, removeLogo: Boolean = false) =
+        withContext(Dispatchers.IO) {
+            val target = TeamSession.logoTarget(context)
+            if (newLogo != null) {
+                target.parentFile?.mkdirs()
+                newLogo.copyTo(target, overwrite = true)
+            } else if (removeLogo) {
+                target.delete()
+            }
+            val hasLogo = target.exists()
+            val json = profile.toJson().put("hasLogo", hasLogo).put("settings", currentSettings(context))
+            val api = if (TeamSession.isTeamMember(context)) api(context) else null
+            if (api == null) {
+                TeamSession.saveCompany(context, json)
+                return@withContext
+            }
+            if (newLogo != null) api.uploadLogo(target)
+            TeamSession.saveCompany(context, api.putCompany(json))
+        }
 
     /** Admin: pushes this phone's report and billing settings to the whole company. */
     suspend fun pushSettings(context: Context) = withContext(Dispatchers.IO) {
-        if (!TeamSession.role(context).canManageCompany) return@withContext
+        if (!TeamSession.role(context).canManageCompany || !TeamSession.isTeamMember(context)) return@withContext
+        val settings = currentSettings(context)
+        val prefs = context.getSharedPreferences("team", Context.MODE_PRIVATE)
+        if (prefs.getString(KEY_PUSHED, null) == settings.toString()) return@withContext
         val api = api(context) ?: return@withContext
         try {
-            TeamSession.saveCompany(context, api.putCompany(JSONObject().put("settings", currentSettings(context))))
+            TeamSession.saveCompany(context, api.putCompany(JSONObject().put("settings", settings)))
+            prefs.edit().putString(KEY_PUSHED, settings.toString()).apply()
         } catch (e: Exception) {
             Log.w(TAG, "Pushing settings failed")
         }

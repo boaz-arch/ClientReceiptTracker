@@ -331,15 +331,9 @@
             android:layout_marginTop="12dp"
             android:visibility="gone" />
 
-        <TextView
+        <Space
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="32dp"
-            android:gravity="center"
-            android:paddingBottom="40dp"
-            android:text="@string/company_footer"
-            android:textColor="@color/text_muted"
-            android:textSize="12sp" />
+            android:layout_height="40dp" />
 
     </LinearLayout>
 
