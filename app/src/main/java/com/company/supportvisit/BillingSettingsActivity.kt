@@ -13,6 +13,7 @@ import com.company.supportvisit.settings.FormSettings
 import com.company.supportvisit.settings.InvoiceProviderId
 import com.company.supportvisit.settings.SecretStore
 import com.company.supportvisit.ui.applySystemBarInsets
+import com.company.supportvisit.ui.setUpBackBar
 import kotlinx.coroutines.launch
 
 /** Settings > Billing: currency, VAT, prices on the client PDF, invoice provider and its API key. */
@@ -27,6 +28,7 @@ class BillingSettingsActivity : AppCompatActivity() {
         binding = ActivityBillingSettingsBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.root.applySystemBarInsets()
+        setUpBackBar()
 
         // Two independent switches, both off by default: billing on visit reports, and billing on
         // monthly reports & invoices. Rates, currency and VAT show when either is on.

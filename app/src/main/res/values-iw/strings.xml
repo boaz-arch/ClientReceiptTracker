@@ -432,4 +432,6 @@
     <string name="pro_feature_title">יכולת Pro</string>
     <string name="pro_feature_message">זה חלק ממסלול Pro. צרו איתנו קשר כדי לשדרג את החברה.</string>
 
+    <string name="nav_back">חזרה</string>
+    <string name="press_back_again_to_exit">יש ללחוץ שוב על חזרה כדי לצאת</string>
 </resources>

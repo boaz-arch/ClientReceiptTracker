@@ -17,6 +17,7 @@ import com.company.supportvisit.team.CompanyProfile
 import com.company.supportvisit.team.TeamRepository
 import com.company.supportvisit.team.TeamSession
 import com.company.supportvisit.ui.applySystemBarInsets
+import com.company.supportvisit.ui.setUpBackBar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -43,6 +44,7 @@ class CompanySetupActivity : AppCompatActivity() {
         binding = ActivityCompanySetupBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.root.applySystemBarInsets()
+        setUpBackBar()
 
         if (!TeamSession.role(this).canManageCompany) {
             finish()

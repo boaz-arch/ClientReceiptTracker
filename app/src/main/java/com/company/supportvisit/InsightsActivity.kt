@@ -28,6 +28,7 @@ import com.company.supportvisit.databinding.ItemRetainerRowBinding
 import com.company.supportvisit.team.TeamSession
 import com.company.supportvisit.ui.DonutChartView
 import com.company.supportvisit.ui.applySystemBarInsets
+import com.company.supportvisit.ui.setUpBackBar
 import com.company.supportvisit.ui.labelRes
 import com.company.supportvisit.utils.Money
 import com.google.android.material.datepicker.MaterialDatePicker
@@ -66,6 +67,7 @@ class InsightsActivity : AppCompatActivity() {
         binding = ActivityInsightsBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.root.applySystemBarInsets()
+        setUpBackBar()
 
         binding.chartClients.useLabels { clientLabels }
         binding.chartWeeks.useLabels { weekLabels }

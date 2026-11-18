@@ -1,6 +1,7 @@
 package com.company.supportvisit
 
 import com.company.supportvisit.ui.applySystemBarInsets
+import com.company.supportvisit.ui.setUpBackBar
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
@@ -47,6 +48,7 @@ class SettingsActivity : AppCompatActivity() {
         binding = ActivitySettingsBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.root.applySystemBarInsets()
+        setUpBackBar(R.string.settings)
 
         val modes = mapOf(
             R.id.btnLightMode to AppCompatDelegate.MODE_NIGHT_NO,

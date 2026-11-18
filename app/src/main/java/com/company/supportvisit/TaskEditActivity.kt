@@ -15,6 +15,7 @@ import com.company.supportvisit.sync.SyncScheduler
 import com.company.supportvisit.team.TeamRepository
 import com.company.supportvisit.team.TeamSession
 import com.company.supportvisit.ui.applySystemBarInsets
+import com.company.supportvisit.ui.setUpBackBar
 import com.company.supportvisit.utils.DateUtils
 import com.google.android.material.datepicker.MaterialDatePicker
 import kotlinx.coroutines.Dispatchers
@@ -42,6 +43,7 @@ class TaskEditActivity : AppCompatActivity() {
         binding = ActivityTaskEditBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.root.applySystemBarInsets()
+        setUpBackBar()
 
         val me = Person(TeamSession.userId(this), getString(R.string.me))
         people = listOf(me)

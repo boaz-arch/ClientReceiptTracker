@@ -6,6 +6,7 @@ import com.company.supportvisit.databinding.ActivityReportSettingsBinding
 import com.company.supportvisit.settings.FormSettings
 import com.company.supportvisit.settings.FormSettings.Section
 import com.company.supportvisit.ui.applySystemBarInsets
+import com.company.supportvisit.ui.setUpBackBar
 import com.google.android.material.switchmaterial.SwitchMaterial
 
 /** Settings > Customize report: choose which optional sections the visit report has. */
@@ -19,6 +20,7 @@ class ReportSettingsActivity : AppCompatActivity() {
         binding = ActivityReportSettingsBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.root.applySystemBarInsets()
+        setUpBackBar()
 
         bind(binding.switchVisitType, Section.VISIT_TYPE)
         bind(binding.switchPhotos, Section.PHOTOS)

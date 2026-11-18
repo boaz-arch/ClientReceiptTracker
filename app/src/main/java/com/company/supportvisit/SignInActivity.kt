@@ -19,6 +19,7 @@ import com.company.supportvisit.settings.ServerSettings
 import com.company.supportvisit.sync.SyncScheduler
 import com.company.supportvisit.team.TeamRepository
 import com.company.supportvisit.ui.applySystemBarInsets
+import com.company.supportvisit.ui.setUpBackBar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -39,6 +40,7 @@ class SignInActivity : AppCompatActivity() {
         binding = ActivitySignInBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.root.applySystemBarInsets()
+        setUpBackBar()
 
         binding.btnSendCode.setOnClickListener { sendCode() }
         binding.etEmail.setOnEditorActionListener { _, action, _ -> (action == EditorInfo.IME_ACTION_SEND).also { if (it) sendCode() } }

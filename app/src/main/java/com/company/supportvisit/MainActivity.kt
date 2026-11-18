@@ -4,7 +4,9 @@ import android.content.Intent
 import com.company.supportvisit.plans.Feature
 import com.company.supportvisit.plans.PlanManager
 import android.os.Bundle
+import android.os.SystemClock
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -48,6 +50,7 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.root.applySystemBarInsets()
+        setUpPressBackTwiceToExit()
 
         binding.tvToday.text = LocalDate.now().format(DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL))
 
@@ -99,6 +102,25 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    /** Back on the home screen asks for a second press within 2 seconds before leaving the app. */
+    private fun setUpPressBackTwiceToExit() {
+        var lastBackAt = 0L
+        var hint: Toast? = null
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                val now = SystemClock.elapsedRealtime()
+                if (now - lastBackAt < EXIT_WINDOW_MS) {
+                    hint?.cancel()
+                    finish()
+                } else {
+                    lastBackAt = now
+                    hint = Toast.makeText(this@MainActivity, R.string.press_back_again_to_exit, Toast.LENGTH_SHORT)
+                        .also { it.show() }
+                }
+            }
+        })
     }
 
     override fun onResume() {
@@ -154,4 +176,7 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
+    private companion object {
+        const val EXIT_WINDOW_MS = 2_000L
+    }
 }

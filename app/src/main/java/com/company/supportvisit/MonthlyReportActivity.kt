@@ -25,6 +25,7 @@ import com.company.supportvisit.settings.BillingSettings
 import com.company.supportvisit.team.TeamRepository
 import com.company.supportvisit.ui.SignInHelper
 import com.company.supportvisit.ui.applySystemBarInsets
+import com.company.supportvisit.ui.setUpBackBar
 import com.company.supportvisit.utils.Money
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -52,6 +53,7 @@ class MonthlyReportActivity : AppCompatActivity() {
         binding = ActivityMonthlyReportBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.root.applySystemBarInsets()
+        setUpBackBar()
 
         // Nothing to export until a client's report is loaded.
         listOf(binding.btnSharePdf, binding.btnShareCsv, binding.btnEmailClient, binding.btnCreateInvoice)

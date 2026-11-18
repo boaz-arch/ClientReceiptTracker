@@ -19,6 +19,7 @@ import com.company.supportvisit.databinding.ItemTaskBinding
 import com.company.supportvisit.sync.SyncScheduler
 import com.company.supportvisit.team.TeamSession
 import com.company.supportvisit.ui.applySystemBarInsets
+import com.company.supportvisit.ui.setUpBackBar
 import com.company.supportvisit.utils.DateUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
@@ -51,6 +52,7 @@ class TasksActivity : AppCompatActivity() {
         binding = ActivityTasksBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.root.applySystemBarInsets()
+        setUpBackBar()
 
         binding.rvTasks.layoutManager = LinearLayoutManager(this)
         binding.rvTasks.adapter = adapter

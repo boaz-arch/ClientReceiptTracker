@@ -25,6 +25,7 @@ import com.company.supportvisit.settings.ServerSettings
 import com.company.supportvisit.sync.SyncScheduler
 import com.company.supportvisit.ui.SignInHelper
 import com.company.supportvisit.ui.applySystemBarInsets
+import com.company.supportvisit.ui.setUpBackBar
 import com.company.supportvisit.ui.labelRes
 import com.company.supportvisit.ui.messageRes
 import com.company.supportvisit.utils.DateUtils
@@ -45,6 +46,7 @@ class VisitDetailsActivity : AppCompatActivity() {
         binding = ActivityVisitDetailsBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.root.applySystemBarInsets()
+        setUpBackBar()
 
         val visitId = intent.getStringExtra(EXTRA_VISIT_ID)
         if (visitId == null) {

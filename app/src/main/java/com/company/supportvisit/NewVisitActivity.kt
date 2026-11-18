@@ -35,6 +35,7 @@ import com.company.supportvisit.ui.NewVisitUiState
 import com.company.supportvisit.ui.NewVisitViewModel
 import com.company.supportvisit.ui.VisitForm
 import com.company.supportvisit.ui.applySystemBarInsets
+import com.company.supportvisit.ui.setUpBackBar
 import com.company.supportvisit.ui.labelRes
 import com.company.supportvisit.utils.DateUtils
 import com.company.supportvisit.utils.Money
@@ -76,6 +77,7 @@ class NewVisitActivity : AppCompatActivity() {
         binding = ActivityNewVisitBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.root.applySystemBarInsets()
+        setUpBackBar()
 
         setupTimePickers()
         setupClientPicker()
