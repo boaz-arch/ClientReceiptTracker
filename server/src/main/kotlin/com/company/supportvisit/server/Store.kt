@@ -145,6 +145,14 @@ class Store(dbFile: File) {
     /** Ownership of an existing record: who created it (null for rows that predate tracking) and who last wrote it. */
     data class Ownership(val createdBy: String?, val updatedBy: String)
 
+    /** The stored JSON of one record, or null. */
+    @Synchronized
+    fun dataOf(kind: Kind, tenantId: String, id: String): JSONObject? =
+        connection.prepareStatement("SELECT data FROM ${kind.table} WHERE tenant_id = ? AND id = ?").use { ps ->
+            ps.setString(1, tenantId); ps.setString(2, id)
+            ps.executeQuery().use { rs -> if (rs.next()) JSONObject(rs.getString(1)) else null }
+        }
+
     /** Null when the record doesn't exist. */
     @Synchronized
     fun ownershipOf(kind: Kind, tenantId: String, id: String): Ownership? =
@@ -242,8 +250,10 @@ class Store(dbFile: File) {
      * Replaces a record with a tombstone ({"id", "deleted": true}) so every phone that pulls
      * changes removes its copy; the record's content is gone from the server.
      */
-    fun tombstone(kind: Kind, tenantId: String, id: String) {
-        upsert(kind, tenantId, id, JSONObject().put("id", id).put("deleted", true), SYSTEM_DELETION)
+    fun tombstone(kind: Kind, tenantId: String, id: String, keep: Map<String, Any?> = emptyMap()) {
+        val data = JSONObject().put("id", id).put("deleted", true)
+        keep.forEach { (k, v) -> if (v != null) data.put(k, v) }
+        upsert(kind, tenantId, id, data, SYSTEM_DELETION)
     }
 
     private fun java.sql.ResultSet.toDeletion() = DeletionRequest(

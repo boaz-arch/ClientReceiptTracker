@@ -479,4 +479,8 @@
     <string name="task_hours">%1$s שעות</string>
     <string name="timer_running">טיימר פועל</string>
     <string name="timer_running_on">טיימר פועל במשימה %1$s מאז %2$s. יש להקיש כדי לפתוח.</string>
+    <string name="delete_task">מחיקת משימה</string>
+    <string name="delete_task_title">למחוק את המשימה?</string>
+    <string name="delete_task_message">„%1$s” והשעות שנרשמו עליה יימחקו אצל כולם.</string>
+    <string name="task_deleted">המשימה נמחקה</string>
 </resources>

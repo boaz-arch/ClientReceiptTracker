@@ -165,6 +165,9 @@ class ServerApi(baseUrl: String, private val token: String) {
 
     fun putTask(json: JSONObject) = put("tasks", json)
 
+    /** Deletes a task for everyone (its creator or a manager/admin). */
+    fun deleteTask(id: String) = send("DELETE", "$base/api/v1/tasks/${seg(id)}", null)
+
     private fun items(json: JSONObject): List<JSONObject> {
         val a = json.optJSONArray("items") ?: return emptyList()
         return (0 until a.length()).mapNotNull { a.optJSONObject(it) }

@@ -1,5 +1,6 @@
 package com.company.supportvisit
 
+import com.company.supportvisit.repository.TaskDeletions
 import android.app.TimePickerDialog
 import android.content.Context
 import android.content.Intent
@@ -81,6 +82,8 @@ class TaskEditActivity : AppCompatActivity() {
         binding.btnSave.setOnClickListener { save() }
         binding.btnTimer.setOnClickListener { toggleTimer() }
         binding.btnAddTime.setOnClickListener { showAddTimeDialog() }
+        binding.btnDeleteTask.setOnClickListener { confirmDeleteTask() }
+        binding.btnDeleteTask.isVisible = false
         renderTime(null)
 
         lifecycleScope.launch {
@@ -93,6 +96,7 @@ class TaskEditActivity : AppCompatActivity() {
                 existing = app.taskRepository.getTask(id)
                 existing?.let(::fill)
                 renderTime(existing)
+                binding.btnDeleteTask.isVisible = existing?.let(::canDelete) == true
             }
             loadTeam(me)
         }
@@ -190,6 +194,29 @@ class TaskEditActivity : AppCompatActivity() {
         return saved
     }
 
+    /** Its creator, or a manager/admin (a phone on its own counts as its admin). */
+    private fun canDelete(task: TaskEntity): Boolean =
+        task.createdById.isNullOrBlank() || task.createdById == TeamSession.userId(this) ||
+            TeamSession.role(this).canSeeEverything
+
+    private fun confirmDeleteTask() {
+        val task = existing ?: return
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.delete_task_title)
+            .setMessage(getString(R.string.delete_task_message, task.title))
+            .setPositiveButton(R.string.delete) { _, _ ->
+                lifecycleScope.launch {
+                    TaskDeletions.request(this@TaskEditActivity, task.id)
+                    app.taskRepository.deleteLocal(task.id)
+                    SyncScheduler.enqueue(this@TaskEditActivity)
+                    Toast.makeText(this@TaskEditActivity, R.string.task_deleted, Toast.LENGTH_SHORT).show()
+                    finish()
+                }
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
     // --- Time spent ---
 
     private fun toggleTimer() {
@@ -279,7 +306,7 @@ class TaskEditActivity : AppCompatActivity() {
             .setPositiveButton(R.string.delete) { _, _ ->
                 lifecycleScope.launch {
                     val task = existing ?: return@launch
-                    app.taskRepository.deleteTimeEntry(task.id, entry.id)
+                    app.taskRepository.deleteTimeEntry(task.id, entry.id, myId, TeamSession.role(this@TaskEditActivity).canManageCompany)
                     SyncScheduler.enqueue(this@TaskEditActivity)
                     reloadTime()
                 }

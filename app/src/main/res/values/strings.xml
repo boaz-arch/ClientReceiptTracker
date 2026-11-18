@@ -481,4 +481,8 @@
     <string name="task_hours">%1$s h</string>
     <string name="timer_running">Timer running</string>
     <string name="timer_running_on">Timer running on %1$s since %2$s. Tap to open.</string>
+    <string name="delete_task">Delete task</string>
+    <string name="delete_task_title">Delete this task?</string>
+    <string name="delete_task_message">“%1$s” and the hours logged on it will be deleted for everyone.</string>
+    <string name="task_deleted">Task deleted</string>
 </resources>

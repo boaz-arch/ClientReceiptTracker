@@ -144,6 +144,34 @@ class TeamApiTest {
     }
 
     @Test
+    fun `a task is deleted by its creator or a manager, for everyone, and stays deleted`() = testApplication {
+        application { module(testConfig(dataDir), mailer) }
+        val p = People(client, mailer)
+        p.company("boss@a.test")
+        val dana = p.join("boss@a.test", "dana@a.test")
+        p.join("boss@a.test", "omer@a.test")
+        val omer = p.token("omer@a.test")
+        val task = JSONObject().put("id", "t1").put("title", "Replace router").put("assigneeId", dana).toString()
+        client.put("/api/v1/tasks/t1") { bearerAuth(omer); setBody(task) }
+
+        assertEquals(HttpStatusCode.Forbidden, client.delete("/api/v1/tasks/t1") { bearerAuth(p.token("dana@a.test")) }.status,
+            "the assignee didn't create it")
+        assertEquals(HttpStatusCode.OK, client.delete("/api/v1/tasks/t1") { bearerAuth(omer) }.status)
+        assertEquals(HttpStatusCode.NotFound, client.delete("/api/v1/tasks/nope") { bearerAuth(omer) }.status)
+
+        // The assignee's phone learns about it, and an old unsent edit can't bring it back.
+        val items = JSONObject(client.get("/api/v1/tasks?since=0") { bearerAuth(p.token("dana@a.test")) }.bodyAsText()).getJSONArray("items")
+        assertEquals(1, items.length())
+        assertTrue(items.getJSONObject(0).getBoolean("deleted"))
+        assertTrue(!items.getJSONObject(0).has("title"))
+        assertEquals(HttpStatusCode.Gone, client.put("/api/v1/tasks/t1") { bearerAuth(p.token("dana@a.test")); setBody(task) }.status)
+
+        // A manager may delete anyone's task.
+        client.put("/api/v1/tasks/t2") { bearerAuth(omer); setBody(task.replace("t1", "t2")) }
+        assertEquals(HttpStatusCode.OK, client.delete("/api/v1/tasks/t2") { bearerAuth(p.token("boss@a.test")) }.status)
+    }
+
+    @Test
     fun `only admins change the company profile and roles and the last admin stays`() = testApplication {
         application { module(testConfig(dataDir), mailer) }
         val p = People(client, mailer)

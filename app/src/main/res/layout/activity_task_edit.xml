@@ -148,6 +148,17 @@
             android:layout_marginTop="20dp"
             android:text="@string/save" />
 
+        <!-- Only for the task's creator or a manager. -->
+        <Button
+            android:id="@+id/btnDeleteTask"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/delete_task"
+            android:textColor="?attr/colorError"
+            android:visibility="gone" />
+
     </LinearLayout>
 
 </ScrollView>

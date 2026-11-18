@@ -449,13 +449,42 @@ fun Application.module(config: Config, mailer: Mailer) {
                     if (kind == Store.Kind.TASKS) {
                         // Tasks: the creator, the assignee, or a manager/admin may change them.
                         val owner = store.ownershipOf(kind, c.tenantId, id)
+                        // A deleted task stays deleted (a phone with an older unsent edit drops its copy).
+                        if (owner?.updatedBy == Store.SYSTEM_DELETION) {
+                            return@put call.respondJson(HttpStatusCode.Gone, JSONObject().put("error", "deleted"))
+                        }
                         val allowed = owner == null || m.role.canSeeEverything || owner.createdBy == c.userId ||
                             store.taskAssignee(c.tenantId, id) == c.userId
                         if (!allowed) return@put call.forbidden("not_your_task")
+                        // Hours logged on the task: each person changes only their own entries.
+                        if (!m.role.canSeeEverything) {
+                            val stored = store.dataOf(kind, c.tenantId, id)?.optJSONArray("timeEntries")
+                            if (!TaskTimeRules.allowed(stored, body.optJSONArray("timeEntries"), c.userId)) {
+                                return@put call.forbidden("not_your_time")
+                            }
+                        }
                     }
                     val stamp = store.upsert(kind, c.tenantId, id, body, c.email.ifBlank { c.userId }, createdBy = c.userId)
                     call.respondJson(HttpStatusCode.OK, JSONObject().put("id", id).put("serverUpdatedAt", stamp))
                 }
+            }
+
+            /*
+             * Deletes a task for everyone: its creator or a manager/admin may. The task becomes a
+             * tombstone that still names the assignee, so their phone removes it on the next sync.
+             */
+            delete("/tasks/{id}") {
+                val (c, m) = call.member()
+                val id = call.parameters["id"].orEmpty()
+                require(FileStore.isSafeId(id)) { "Invalid id" }
+                val owner = store.ownershipOf(Store.Kind.TASKS, c.tenantId, id) ?: return@delete call.notFound()
+                if (owner.updatedBy == Store.SYSTEM_DELETION) {
+                    return@delete call.respondJson(HttpStatusCode.OK, JSONObject().put("deleted", true))
+                }
+                if (owner.createdBy != c.userId && !m.role.canSeeEverything) return@delete call.forbidden("not_your_task")
+                store.tombstone(Store.Kind.TASKS, c.tenantId, id, mapOf("assigneeId" to store.taskAssignee(c.tenantId, id)))
+                log.info("Task deleted")
+                call.respondJson(HttpStatusCode.OK, JSONObject().put("deleted", true))
             }
 
             put("/visits/{id}/files/{name}") {

@@ -1,5 +1,7 @@
 package com.company.supportvisit.sync
 
+import com.company.supportvisit.graph.GraphException
+import com.company.supportvisit.repository.TaskDeletions
 import com.company.supportvisit.notifications.Notifier
 import com.company.supportvisit.team.TeamSession
 import android.content.Context
@@ -39,10 +41,29 @@ object ServerSync {
 
             // Tasks: push changes, then pull (the server returns only tasks this member may see).
             val tasks = context.app.taskRepository
-            tasks.getRemoteDirty().forEach { task ->
-                api.putTask(RecordMapper.taskToJson(task))
-                tasks.markRemoteSynced(task)
+            TaskDeletions.pending(context).forEach { id ->
+                try {
+                    api.deleteTask(id)
+                } catch (e: GraphException) {
+                    // 404: never reached the server; 403: not ours to delete (it comes back on the
+                    // next full sync); 410: already deleted. Anything else is retried later.
+                    if (e.code != 404 && e.code != 403 && e.code != 410) throw e
+                }
+                TaskDeletions.done(context, id)
             }
+            tasks.getRemoteDirty().forEach { task ->
+                try {
+                    api.putTask(RecordMapper.taskToJson(task))
+                    tasks.markRemoteSynced(task)
+                } catch (e: GraphException) {
+                    when (e.code) {
+                        410 -> tasks.deleteLocal(task.id) // deleted by someone else meanwhile
+                        403 -> tasks.markRemoteSynced(task) // not allowed: the server's copy wins on the next full sync
+                        else -> throw e
+                    }
+                }
+            }
+            val waitingToDelete = TaskDeletions.pending(context)
             // Once a day re-read every visible task from the start, so tasks this member can no
             // longer see (reassigned to someone else, or they lost access) leave this phone too.
             val now = System.currentTimeMillis()
@@ -57,7 +78,7 @@ object ServerSync {
                 val (deleted, live) = page.items.partition { it.optBoolean("deleted") }
                 // Server tombstones win over local edits: the task is gone for everyone.
                 deleted.forEach { tasks.deleteLocal(it.optString("id")) }
-                val remote = live.mapNotNull(RecordMapper::jsonToTask)
+                val remote = live.mapNotNull(RecordMapper::jsonToTask).filterNot { it.id in waitingToDelete }
                 remote.forEach { seenTaskIds += it.id }
                 val added = tasks.mergeRemote(remote)
                 if (!firstTaskSync) {
