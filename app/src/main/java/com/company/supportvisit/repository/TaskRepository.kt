@@ -55,9 +55,12 @@ class TaskRepository(private val dao: TaskDao) {
         save(task.copy(timeEntries = (task.timeEntries + entry).sortedBy { it.start }))
     }
 
-    suspend fun deleteTimeEntry(taskId: String, entryId: String) {
+    /** Removes one logged time: your own, or anyone's if you manage the company. */
+    suspend fun deleteTimeEntry(taskId: String, entryId: String, userId: String?, canManage: Boolean) {
         val task = dao.getById(taskId) ?: return
-        save(task.copy(timeEntries = task.timeEntries.filterNot { it.id == entryId }))
+        val entry = task.timeEntries.firstOrNull { it.id == entryId } ?: return
+        if (entry.userId != userId && !canManage) return
+        save(task.copy(timeEntries = task.timeEntries - entry))
     }
 
     suspend fun setDone(task: TaskEntity, done: Boolean) =
