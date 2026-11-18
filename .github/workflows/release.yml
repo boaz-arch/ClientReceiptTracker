@@ -1,0 +1,97 @@
+name: Release
+
+# Push a tag like v1.2.3 to build a signed release:
+#   git tag v1.2.3 && git push origin v1.2.3
+# The version name is 1.2.3 and the version code 10203 (major*10000 + minor*100 + patch).
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build, e.g. 1.2.3 (no GitHub Release is created for manual runs)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Work out the version
+        id: version
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+        run: |
+          raw="${INPUT_VERSION:-${GITHUB_REF_NAME#v}}"
+          if [[ ! "$raw" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            echo "Version must look like 1.2.3 (got '$raw')" >&2; exit 1
+          fi
+          code=$(( BASH_REMATCH[1] * 10000 + BASH_REMATCH[2] * 100 + BASH_REMATCH[3] ))
+          echo "name=$raw" >> "$GITHUB_OUTPUT"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+
+      - name: Check the signing secrets
+        env:
+          KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+          SERVER_URL: ${{ secrets.SUPPORT_SERVER_URL }}
+        run: |
+          missing=()
+          [[ -n "$KEYSTORE_BASE64" ]] || missing+=(SIGNING_KEYSTORE_BASE64)
+          [[ -n "$SERVER_URL" ]] || missing+=(SUPPORT_SERVER_URL)
+          if (( ${#missing[@]} )); then
+            echo "Missing GitHub secrets: ${missing[*]} (see docs/RELEASE.md)" >&2; exit 1
+          fi
+
+      - name: Restore the upload keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+        run: echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload.jks"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: |
+            17
+            21
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Test and build the signed AAB and APK
+        env:
+          SUPPORT_SERVER_URL: ${{ secrets.SUPPORT_SERVER_URL }}
+          SIGNING_STORE_FILE: ${{ runner.temp }}/upload.jks
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: >
+          ./gradlew --no-daemon
+          -PversionName=${{ steps.version.outputs.name }}
+          -PversionCode=${{ steps.version.outputs.code }}
+          :app:testReleaseUnitTest :app:bundleRelease :app:assembleRelease
+
+      - name: Collect the files
+        run: |
+          mkdir dist
+          v="${{ steps.version.outputs.name }}"
+          cp app/build/outputs/bundle/release/app-release.aab "dist/SupportVisit-$v.aab"
+          cp app/build/outputs/apk/release/app-release.apk "dist/SupportVisit-$v.apk"
+          # Needed to read crash reports from this version (R8 renames classes).
+          cp app/build/outputs/mapping/release/mapping.txt "dist/mapping-$v.txt"
+          rm -f "$RUNNER_TEMP/upload.jks"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ steps.version.outputs.name }}
+          path: dist/
+          retention-days: 90
+
+      - name: Create the GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --title "Support Visit $GITHUB_REF_NAME" --generate-notes

@@ -1,168 +1,88 @@
-# Support Visit App
+# Support Visit
 
-Android application my dad asked me to make for managing customer visits. The app creates visit reports, stores visit history, and tracks completed field-service activities.
-The app was build with the help of AI.
+Android app for IT support and field-service teams to record client visits, collect signatures and
+send PDF reports, with a small server that syncs a company's phones. Made for Livnelavan LTD; it was
+built with the help of AI.
 
-## Overview
+## What it does
 
-Support Visit App helps service technicians and field representatives document customer visits, maintain service records, and access historical reports from a mobile device.
+- **Visits:** client, date and times, visit type, work description, parts, photos, client and
+  technician signatures → a branded PDF emailed to the client.
+- **Offline first:** everything is saved on the phone first and sent when there's a connection.
+- **Clients:** contacts, hourly rates and monthly support packages.
+- **Billing:** hours × rate, monthly client reports (PDF, CSV), invoice drafts in Green Invoice.
+- **Insights:** dashboard and charts by client, week, visit type and technician.
+- **Teams:** sign in with an emailed code; companies with admin, manager and technician roles;
+  invitations; shared to-do list; company branding on every report.
+- **Privacy & security:** HTTPS only, per-company data separation, optional app lock, no Google
+  backup of local data, anonymous crash reports that can be turned off, account deletion with a
+  14-day restore window.
+- Hebrew and English (RTL), light and dark mode.
 
-The application enables users to:
-- Create service visit reports
-- Record customer information
-- Document work performed
-- Store visit history locally
-- View previous visits
-- Search visit records
-- Open detailed visit information
-- Associate PDF reports with visits
+## Architecture
 
-
-## Features
-
-  ### Visit Management
-  - Create new service visit records
-  - Record visit date and time
-  - Record customer details
-  - Record work descriptions
-  - Store customer email information
-  
-  ### Visit History
-  - View all previous visits
-  - Search visits by:
-    - Client name
-    - Visit date
-    - Work description
-  - Refresh visit records
-  - Open detailed visit information
-  
-  ### Visit Details
-  Each visit contains:
-  - Client Name
-  - Visit Date
-  - Start Time
-  - End Time
-  - Work Description
-  - Client Email
-  - PDF Report Link
-  
-  ### Local Storage
-  Visit data is stored locally as JSON:
-    visits.json
-  
-  ### PDF Support
-  Each visit has a PDF report link for easy access to service documentation.
-
-
-## Technology Stack
-  ### Language
-  - Kotlin
-  
-  ### Frameworks & Libraries
-  - Android SDK
-  - AndroidX
-  - RecyclerView
-  - ViewBinding
-  - Kotlin Coroutines
-  - Lifecycle Components
-  
-  ### Data Storage
-  - JSON
-  - Internal App Storage
-  
-  
-  ## Data Models
-  
-  ### Visit
-  ```kotlin
-  data class Visit(
-      val clientName: String,
-      val visitDate: String,
-      val startTime: String,
-      val endTime: String,
-      val workDescription: String,
-      val clientEmail: String,
-      val pdfLink: String
-  )
-  ```
-  
-  ### VisitRequest
-  ```kotlin
-  data class VisitRequest(
-      val clientName: String,
-      val visitDate: String,
-      val startTime: String,
-      val endTime: String,
-      val workDescription: String,
-      val clientEmail: String
-  )
-  ```
-  
-
-## Microsoft sign-in setup
-
-`app/src/main/res/raw/msal_config.json` holds your Azure app registration IDs, so it is **not** committed.
-To build the app:
-
-1. Copy `msal_config.example.json` (repo root) to `app/src/main/res/raw/msal_config.json`.
-2. Fill in `client_id`, `tenant_id` and `redirect_uri` from your app registration in the Azure portal
-   (Microsoft Entra ID > App registrations > your app > Authentication > Android platform).
-3. The build fails with a clear message if the file is missing.
-
-> **Upgrading an old clone:** the file used to be committed. When you pull the commit that
-> stopped tracking it, git deletes your local copy. Restore it with
-> `git show f750465:app/src/main/res/raw/msal_config.json > app/src/main/res/raw/msal_config.json`
-> (or recreate it from the example).
-
-## Team server
-
-Visits, clients, PDFs and photos are shared through the Support Visit server in [`server/`](server/).
-See [docs/SERVER_SETUP.md](docs/SERVER_SETUP.md) for the Azure, server and reverse-proxy setup.
-
-## User Workflow
-
-  ### Create Visit
-  1. Open the application
-  2. Enter customer information
-  3. Enter visit details
-  4. Save the visit
-  5. Generate or attach a report
-  
-  ### View Past Visits
-  1. Open "Past Visits"
-  2. Browse visit records
-  3. Search by customer, date, or description
-  4. Open a visit to view details
-  5. Access the associated PDF report
-  
-
-## Example JSON Storage
-```json
-[
-  {
-    "clientName": "ABC Industries",
-    "visitDate": "2026-07-28",
-    "startTime": "09:00",
-    "endTime": "11:00",
-    "workDescription": "Performed printer maintenance and replaced toner cartridge.",
-    "clientEmail": "support@abc.com",
-    "pdfLink": "https://example.com/report.pdf"
-  }
-]
+```
+app/      Android app (Kotlin, ViewBinding, minSdk 26)
+  data/         Room database (visits, clients, tasks, drafts) — the phone's source of truth
+  repository/   VisitRepository, ClientRepository, TaskRepository, merge of server changes
+  sync/         WorkManager worker: upload files, have the server email reports, push/pull changes
+  remote/       ServerApi (HTTP client for the server) and JSON mapping
+  auth/         Email-code sign-in session
+  team/         Company, role and branding (TeamSession, TeamRepository)
+  billing/      Billing, monthly reports, InvoiceProvider (Green Invoice)
+  dashboard/    Statistics behind the Insights charts
+  plans/        PlanManager: Free/Pro limits (off by default)
+  telemetry/    Crash reports and anonymous usage counters (opt-out)
+  ui/, *Activity.kt   Screens and ViewModels
+server/   Kotlin/Ktor + SQLite server: sign-in, companies, sync, files, report email
+docs/     Server setup, release, Play Store, privacy policy and terms
 ```
 
+Each phone keeps working on its own database; the server is shared by the company's phones and holds
+files behind short-lived signed links.
 
-## Error Handling
-The application includes safeguards against:
+## Getting started (development)
 
-- Missing storage files
-- Empty JSON files
-- Invalid JSON data
-- Missing visit properties
-- Corrupted visit records
+1. Install Android Studio (JDK 17+).
+2. Create `local.properties` in the project root (Android Studio adds `sdk.dir`) and point the app
+   at a server:
+   ```properties
+   SUPPORT_SERVER_URL=https://apps.example.com/supportvisit
+   ```
+   Debug builds also accept `http://` for a test server on your network; release builds need https.
+3. Run the `app` configuration.
 
-This helps ensure the application remains stable when loading historical records.
+Server: see [docs/SERVER_SETUP.md](docs/SERVER_SETUP.md). Run its tests with
+`./gradlew -p server test`.
 
-## Company
-Was made for Livnelavan LTD
+## Setting up a new customer company
 
+Nothing to configure on the server per customer:
+
+1. They install the app and sign in with their work email.
+2. The first person creates the company and becomes its admin.
+3. In Settings → Company profile: name, logo, address, company number, email template.
+4. In Settings → Team members: invite technicians and managers by email.
+5. Optional: Settings → Billing for rates and the invoicing connection.
+6. To give the company Pro: `~/SupportVisit/start.sh grant-pro <company-id>` on the server
+   (`start.sh companies` lists the ids).
+
+## Working on the code
+
+- Branch from `main`, open a pull request, merge when CI is green. Don't push to `main` directly.
+- CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs lint, unit tests, the debug build,
+  the shrunk release build and the server tests on every push and pull request.
+- Database changes need a new Room version and migration; schemas are kept in `app/schemas/`.
+- Every user-facing string goes in `values/strings.xml` **and** `values-iw/strings.xml`.
+
+## Releases
+
+Tag `vX.Y.Z` on `main` and push the tag; GitHub Actions builds the signed AAB/APK and creates a
+GitHub Release. One-time signing setup and details: [docs/RELEASE.md](docs/RELEASE.md).
+Publishing on Google Play: [docs/PLAY_STORE.md](docs/PLAY_STORE.md).
+
+## Legal
+
+Drafts to be reviewed by a lawyer: [privacy policy](docs/PRIVACY_POLICY.md) and
+[terms of use](docs/TERMS.md). The server publishes them at `/legal/privacy` and `/legal/terms`, and
+the app links to them from Settings → Privacy.
