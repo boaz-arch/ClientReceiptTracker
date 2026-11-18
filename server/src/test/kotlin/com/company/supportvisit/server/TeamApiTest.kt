@@ -194,6 +194,8 @@ class TeamApiTest {
         assertTrue(isLoopback("/0:0:0:0:0:0:0:1"))
         assertTrue(!isLoopback("10.10.0.5"))
         assertTrue(!isLoopback("81.218.149.33"))
+        assertTrue(isTrustedProxy("172.17.0.1", setOf("172.17.0.1")), "a configured Docker gateway")
+        assertTrue(!isTrustedProxy("172.17.0.1", emptySet()))
     }
 
     @Test

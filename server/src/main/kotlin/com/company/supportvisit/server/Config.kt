@@ -37,7 +37,12 @@ data class Config(
     /** The same for a company's first 7 days, unless it has Pro. */
     val newCompanyMailDailyLimit: Int = 20,
     /** Report emails per day for the whole server. */
-    val mailGlobalDailyLimit: Int = 2000
+    val mailGlobalDailyLimit: Int = 2000,
+    /**
+     * Proxy addresses whose X-Forwarded-For header is believed (loopback always is), e.g. the
+     * Docker bridge gateway 172.17.0.1 when the server runs in a container behind Apache.
+     */
+    val trustedProxies: Set<String> = emptySet()
 ) {
     companion object {
         fun fromEnv(env: Map<String, String> = System.getenv()): Config {
@@ -67,7 +72,8 @@ data class Config(
                 proTenants = list("PRO_TENANT_IDS"),
                 mailDailyLimit = env["MAIL_DAILY_LIMIT"]?.toIntOrNull() ?: 200,
                 newCompanyMailDailyLimit = env["MAIL_NEW_COMPANY_DAILY_LIMIT"]?.toIntOrNull() ?: 20,
-                mailGlobalDailyLimit = env["MAIL_GLOBAL_DAILY_LIMIT"]?.toIntOrNull() ?: 2000
+                mailGlobalDailyLimit = env["MAIL_GLOBAL_DAILY_LIMIT"]?.toIntOrNull() ?: 2000,
+                trustedProxies = list("TRUSTED_PROXIES")
             )
         }
     }

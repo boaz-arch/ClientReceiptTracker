@@ -158,11 +158,12 @@ fun Application.module(config: Config, mailer: Mailer) {
     /**
      * The client address. Behind Apache (on this machine) the real address is the LAST
      * X-Forwarded-For entry, which Apache appends; earlier entries can be forged by the client.
-     * The header is trusted only when the connection itself comes from the local proxy.
+     * The header is trusted only when the connection itself comes from the proxy: loopback, or
+     * an address listed in TRUSTED_PROXIES (e.g. the Docker gateway).
      */
     fun ApplicationCall.clientKey(): String {
         val remote = request.local.remoteAddress
-        if (!isLoopback(remote)) return remote
+        if (!isTrustedProxy(remote, config.trustedProxies)) return remote
         return request.headers["X-Forwarded-For"]?.substringAfterLast(',')?.trim()?.takeIf { it.isNotEmpty() } ?: remote
     }
 
@@ -652,6 +653,9 @@ private suspend fun ApplicationCall.notFound() =
 private suspend fun ApplicationCall.respondJson(status: HttpStatusCode, body: JSONObject) {
     respondText(body.toString(), ContentType.Application.Json, status)
 }
+
+internal fun isTrustedProxy(address: String, trusted: Set<String>): Boolean =
+    isLoopback(address) || address.removePrefix("/").lowercase() in trusted
 
 /** 127.0.0.0/8 or ::1, as Ktor reports the peer address. */
 internal fun isLoopback(address: String): Boolean {
