@@ -8,6 +8,7 @@ import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
 import androidx.core.content.FileProvider
 import androidx.lifecycle.lifecycleScope
 import com.company.supportvisit.account.AccountDeletion
@@ -58,6 +59,8 @@ class SettingsActivity : AppCompatActivity() {
             val mode = modes[id]
             if (checked && mode != null && mode != ThemeManager.savedMode(this)) applyThemeMode(mode)
         }
+
+        setUpLanguageToggle()
 
         binding.btnBillingSettings.setOnClickListener {
             PlanManager.runIfAllowed(this, Feature.BILLING) { startActivity(Intent(this, BillingSettingsActivity::class.java)) }
@@ -117,6 +120,26 @@ class SettingsActivity : AppCompatActivity() {
         binding.headerReportSettings.isVisible = admin
         binding.btnBillingSettings.isVisible = admin
         binding.btnCustomizeReport.isVisible = admin
+    }
+
+    /** System / English / Hebrew. AppCompat restarts the screens in the new language. */
+    private fun setUpLanguageToggle() {
+        val languages = mapOf(
+            R.id.btnLanguageSystem to "",
+            R.id.btnLanguageEnglish to "en",
+            R.id.btnLanguageHebrew to "he"
+        )
+        val current = AppCompatDelegate.getApplicationLocales().get(0)?.language.orEmpty()
+            .let { if (it == "iw") "he" else it }
+        languages.entries.firstOrNull { it.value == current }?.let { binding.languageToggle.check(it.key) }
+        binding.languageToggle.addOnButtonCheckedListener { _, id, checked ->
+            val tag = languages[id] ?: return@addOnButtonCheckedListener
+            if (checked && tag != current) {
+                AppCompatDelegate.setApplicationLocales(
+                    if (tag.isEmpty()) LocaleListCompat.getEmptyLocaleList() else LocaleListCompat.forLanguageTags(tag)
+                )
+            }
+        }
     }
 
     private fun applyThemeMode(mode: Int) {

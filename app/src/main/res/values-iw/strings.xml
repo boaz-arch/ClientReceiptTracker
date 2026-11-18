@@ -69,6 +69,7 @@
 
     <!-- Settings -->
     <string name="mode_settings">ערכת נושא</string>
+    <string name="language_settings">שפה</string>
     <string name="light_mode">בהיר</string>
     <string name="dark_mode">כהה</string>
     <string name="system_mode">מערכת</string>

@@ -39,7 +39,12 @@ data class Config(
     /** Report emails per day for the whole server. */
     val mailGlobalDailyLimit: Int = 2000,
     /** Optional fixed sign-in for app-store reviewers (no email is sent). Null = off. */
-    val reviewLogin: ReviewLogin? = null
+    val reviewLogin: ReviewLogin? = null,
+    /**
+     * Proxy addresses whose X-Forwarded-For header is believed (loopback always is), e.g. the
+     * Docker bridge gateway 172.17.0.1 when the server runs in a container behind Apache.
+     */
+    val trustedProxies: Set<String> = emptySet()
 ) {
     companion object {
         fun fromEnv(env: Map<String, String> = System.getenv()): Config {
@@ -70,7 +75,8 @@ data class Config(
                 mailDailyLimit = env["MAIL_DAILY_LIMIT"]?.toIntOrNull() ?: 200,
                 newCompanyMailDailyLimit = env["MAIL_NEW_COMPANY_DAILY_LIMIT"]?.toIntOrNull() ?: 20,
                 mailGlobalDailyLimit = env["MAIL_GLOBAL_DAILY_LIMIT"]?.toIntOrNull() ?: 2000,
-                reviewLogin = ReviewLogin.fromEnv(env["REVIEW_LOGIN_EMAIL"], env["REVIEW_LOGIN_CODE"])
+                reviewLogin = ReviewLogin.fromEnv(env["REVIEW_LOGIN_EMAIL"], env["REVIEW_LOGIN_CODE"]),
+                trustedProxies = list("TRUSTED_PROXIES")
             )
         }
     }

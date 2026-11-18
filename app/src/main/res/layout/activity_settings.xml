@@ -53,6 +53,44 @@
 
         </com.google.android.material.button.MaterialButtonToggleGroup>
 
+        <TextView
+            style="@style/SettingsSectionHeader"
+            android:text="@string/language_settings" />
+
+        <!-- Language: each name is written in its own language, so it can always be found. -->
+        <com.google.android.material.button.MaterialButtonToggleGroup
+            android:id="@+id/languageToggle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:selectionRequired="true"
+            app:singleSelection="true">
+
+            <Button
+                android:id="@+id/btnLanguageSystem"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/system_mode" />
+
+            <Button
+                android:id="@+id/btnLanguageEnglish"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/language_english" />
+
+            <Button
+                android:id="@+id/btnLanguageHebrew"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/language_hebrew" />
+
+        </com.google.android.material.button.MaterialButtonToggleGroup>
+
         <!-- Company: admins only (or a phone working on its own). -->
         <LinearLayout
             android:id="@+id/sectionCompany"

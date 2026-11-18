@@ -168,6 +168,37 @@ class TeamApiTest {
     }
 
     @Test
+    fun `a technician can read only their own visit files, a manager reads all`() = testApplication {
+        application { module(testConfig(dataDir), mailer) }
+        val p = People(client, mailer)
+        p.company("boss@a.test")
+        p.join("boss@a.test", "dana@a.test")
+        p.join("boss@a.test", "omer@a.test")
+        val dana = p.token("dana@a.test")
+        val omer = p.token("omer@a.test")
+        client.put("/api/v1/visits/v1") { bearerAuth(dana); setBody("""{"id":"v1"}""") }
+        client.put("/api/v1/visits/v1/files/photo-1.jpg") { bearerAuth(dana); setBody("jpg".toByteArray()) }
+
+        assertEquals(HttpStatusCode.OK, client.get("/api/v1/visits/v1/files/photo-1.jpg") { bearerAuth(dana) }.status)
+        assertEquals(HttpStatusCode.Forbidden, client.get("/api/v1/visits/v1/files/photo-1.jpg") { bearerAuth(omer) }.status)
+        assertEquals(HttpStatusCode.Forbidden, client.post("/api/v1/visits/v1/files/photo-1.jpg/link") { bearerAuth(omer) }.status)
+        assertEquals(HttpStatusCode.Forbidden, client.get("/api/v1/visits/nope/files/photo-1.jpg") { bearerAuth(omer) }.status,
+            "files of an unknown visit are not readable by technicians")
+        assertEquals(HttpStatusCode.OK, client.get("/api/v1/visits/v1/files/photo-1.jpg") { bearerAuth(p.token("boss@a.test")) }.status)
+        assertEquals(HttpStatusCode.OK, client.post("/api/v1/visits/v1/files/photo-1.jpg/link") { bearerAuth(p.token("boss@a.test")) }.status)
+    }
+
+    @Test
+    fun `X-Forwarded-For is trusted only from the local proxy`() {
+        assertTrue(isLoopback("127.0.0.1"))
+        assertTrue(isLoopback("/0:0:0:0:0:0:0:1"))
+        assertTrue(!isLoopback("10.10.0.5"))
+        assertTrue(!isLoopback("81.218.149.33"))
+        assertTrue(isTrustedProxy("172.17.0.1", setOf("172.17.0.1")), "a configured Docker gateway")
+        assertTrue(!isTrustedProxy("172.17.0.1", emptySet()))
+    }
+
+    @Test
     fun `reports are emailed from the server with the company name, and only by their creator or a manager`() = testApplication {
         application { module(testConfig(dataDir, mailDailyLimit = 2), mailer) }
         val p = People(client, mailer)
