@@ -145,6 +145,20 @@ class MainActivity : AppCompatActivity() {
         viewModel.refresh()
         maybeAskForCompanySetup()
         showUnfinishedVisit()
+        showRunningTimer()
+    }
+
+    /** "Timer running on <task> since 10:15": tap to open the task and finish it. */
+    private fun showRunningTimer() {
+        lifecycleScope.launch {
+            val running = app.taskRepository.runningTimer(TeamSession.userId(this@MainActivity).ifBlank { null })
+            binding.tvTimer.isVisible = running != null
+            val (task, entry) = running ?: return@launch
+            val since = Instant.ofEpochMilli(entry.start).atZone(ZoneId.systemDefault())
+                .format(DateTimeFormatter.ofPattern("HH:mm", java.util.Locale.US))
+            binding.tvTimer.text = getString(R.string.timer_running_on, task.title, since)
+            binding.tvTimer.setOnClickListener { startActivity(TaskEditActivity.intent(this@MainActivity, task.id)) }
+        }
     }
 
     /** "Visit in progress since 10:15": a New Visit form that was started and not sent yet. */

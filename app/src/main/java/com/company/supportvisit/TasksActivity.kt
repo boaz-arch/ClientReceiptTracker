@@ -1,5 +1,6 @@
 package com.company.supportvisit
 
+import com.company.supportvisit.data.TaskTime
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.ViewGroup
@@ -92,14 +93,19 @@ class TasksActivity : AppCompatActivity() {
     private fun metaLine(task: TaskEntity): Pair<String, Boolean> {
         val parts = mutableListOf<String>()
         var overdue = false
+        val me = TeamSession.userId(this)
+        if (TaskTime.running(task.timeEntries, me.ifBlank { null }) != null) parts += getString(R.string.timer_running)
+        val minutes = TaskTime.totalMinutes(task.timeEntries)
+        if (minutes > 0) parts += getString(R.string.task_hours, TaskTime.format(minutes))
         task.dueDate?.let { due ->
             parts += DateUtils.formatForDisplay(due)
             overdue = !task.done && runCatching { LocalDate.parse(due).isBefore(LocalDate.now()) }.getOrDefault(false)
         }
         task.clientId?.let { clientsById[it]?.name }?.let { parts += it }
-        val me = TeamSession.userId(this)
         if (task.assigneeId != null && task.assigneeId != me) parts += getString(R.string.task_for, task.assigneeName.orEmpty())
-        if (task.createdById != null && task.createdById != me && task.assigneeId == me) parts += getString(R.string.task_from, task.createdByName.orEmpty())
+        if (task.createdById != null && task.createdById != me && task.assigneeId == me && !task.createdByName.isNullOrBlank()) {
+            parts += getString(R.string.task_from, task.createdByName)
+        }
         return parts.joinToString(" · ") to overdue
     }
 

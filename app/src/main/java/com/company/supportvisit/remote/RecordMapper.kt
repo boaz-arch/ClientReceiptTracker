@@ -110,6 +110,7 @@ object RecordMapper {
         .put("doneAt", t.doneAt ?: JSONObject.NULL)
         .put("createdAt", t.createdAt)
         .put("updatedAt", t.updatedAt)
+        .put("timeEntries", JsonCodec.timeEntriesToJsonArray(t.timeEntries))
 
     fun jsonToTask(json: JSONObject): TaskEntity? {
         val id = json.optString("id").ifBlank { return null }
@@ -127,7 +128,8 @@ object RecordMapper {
             doneAt = if (!json.has("doneAt") || json.isNull("doneAt")) null else json.optLong("doneAt"),
             createdAt = json.optLong("createdAt", 0L),
             updatedAt = json.optLong("updatedAt", 0L),
-            remoteDirty = false
+            remoteDirty = false,
+            timeEntries = JsonCodec.timeEntriesFromJsonArray(json.optJSONArray("timeEntries"))
         )
     }
 

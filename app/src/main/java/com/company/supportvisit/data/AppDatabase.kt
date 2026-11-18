@@ -9,7 +9,7 @@ import androidx.room.TypeConverters
 
 @Database(
     entities = [VisitEntity::class, DraftEntity::class, ClientEntity::class, TaskEntity::class],
-    version = 4,
+    version = 5,
     exportSchema = true,
     autoMigrations = [
         // v2: clients table; visit type, parts, photos, technician signature and server sync fields.
@@ -17,7 +17,9 @@ import androidx.room.TypeConverters
         // v3: billing (break, billable override, hourly rate snapshot, client hours allowance).
         AutoMigration(from = 2, to = 3),
         // v4: tasks (to-do list).
-        AutoMigration(from = 3, to = 4)
+        AutoMigration(from = 3, to = 4),
+        // v5: time logged on tasks.
+        AutoMigration(from = 4, to = 5)
     ]
 )
 @TypeConverters(Converters::class)

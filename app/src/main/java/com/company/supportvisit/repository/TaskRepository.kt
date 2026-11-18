@@ -2,6 +2,8 @@ package com.company.supportvisit.repository
 
 import com.company.supportvisit.data.TaskDao
 import com.company.supportvisit.data.TaskEntity
+import com.company.supportvisit.data.TaskTime
+import com.company.supportvisit.data.TimeEntry
 import kotlinx.coroutines.flow.Flow
 import java.util.UUID
 
@@ -22,6 +24,40 @@ class TaskRepository(private val dao: TaskDao) {
         )
         dao.upsert(saved)
         return saved
+    }
+
+    /** Someone's running timer on any task (one at a time per person), with its task. */
+    suspend fun runningTimer(userId: String?): Pair<TaskEntity, TimeEntry>? =
+        dao.getAll().firstNotNullOfOrNull { t -> TaskTime.running(t.timeEntries, userId)?.let { t to it } }
+
+    /**
+     * Starts [userId]'s timer on this task. A timer they left running on another task is
+     * finished first; returns that task, if any, so the screen can say so.
+     */
+    suspend fun startTimer(taskId: String, userId: String?, userName: String?, now: Long = System.currentTimeMillis()): TaskEntity? {
+        val stoppedElsewhere = runningTimer(userId)?.first?.takeIf { it.id != taskId }
+        stoppedElsewhere?.let { finishTimer(it.id, userId, now) }
+        val task = dao.getById(taskId) ?: return stoppedElsewhere
+        if (TaskTime.running(task.timeEntries, userId) == null) {
+            save(task.copy(timeEntries = task.timeEntries + TimeEntry(userId = userId, userName = userName, start = now)))
+        }
+        return stoppedElsewhere
+    }
+
+    suspend fun finishTimer(taskId: String, userId: String?, now: Long = System.currentTimeMillis()) {
+        val task = dao.getById(taskId) ?: return
+        val entries = task.timeEntries.map { if (it.isRunning && it.userId == userId) it.copy(end = maxOf(now, it.start)) else it }
+        if (entries != task.timeEntries) save(task.copy(timeEntries = entries))
+    }
+
+    suspend fun addTimeEntry(taskId: String, entry: TimeEntry) {
+        val task = dao.getById(taskId) ?: return
+        save(task.copy(timeEntries = (task.timeEntries + entry).sortedBy { it.start }))
+    }
+
+    suspend fun deleteTimeEntry(taskId: String, entryId: String) {
+        val task = dao.getById(taskId) ?: return
+        save(task.copy(timeEntries = task.timeEntries.filterNot { it.id == entryId }))
     }
 
     suspend fun setDone(task: TaskEntity, done: Boolean) =

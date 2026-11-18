@@ -463,4 +463,20 @@
     <string name="widget_description">פתיחת דוח ביקור בהקשה אחת</string>
     <string name="widget_new_visit">+ ביקור חדש</string>
     <string name="widget_past_visits">ביקורים קודמים</string>
+    <string name="time_spent">זמן עבודה</string>
+    <string name="time_total">סה״כ: %1$s שעות</string>
+    <string name="time_hint">רק סופר שעות. לא נשלח דוח.</string>
+    <string name="timer_start">התחלה</string>
+    <string name="timer_finish">סיום · %1$s</string>
+    <string name="add_time">הזנת שעות</string>
+    <string name="add_time_title">הוספת זמן</string>
+    <string name="time_entry_date">תאריך</string>
+    <string name="time_entry_now">עכשיו</string>
+    <string name="error_time_required">יש לבחור שעת התחלה ושעת סיום</string>
+    <string name="timer_stopped_on">הטיימר שלך הופסק במשימה: %1$s</string>
+    <string name="delete">מחיקה</string>
+    <string name="delete_time_entry_title">למחוק את הזמן הזה?</string>
+    <string name="task_hours">%1$s שעות</string>
+    <string name="timer_running">טיימר פועל</string>
+    <string name="timer_running_on">טיימר פועל במשימה %1$s מאז %2$s. יש להקיש כדי לפתוח.</string>
 </resources>
