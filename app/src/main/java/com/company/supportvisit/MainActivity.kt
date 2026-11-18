@@ -1,6 +1,8 @@
 package com.company.supportvisit
 
 import android.content.Intent
+import com.company.supportvisit.plans.Feature
+import com.company.supportvisit.plans.PlanManager
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.viewModels
@@ -54,8 +56,12 @@ class MainActivity : AppCompatActivity() {
         binding.btnPastVisits.setOnClickListener { startActivity(PastVisitsActivity.intent(this)) }
         binding.tvUnsent.setOnClickListener { startActivity(PastVisitsActivity.intent(this)) }
         binding.btnClients.setOnClickListener { startActivity(Intent(this, ClientsActivity::class.java)) }
-        binding.btnMonthlyReports.setOnClickListener { startActivity(Intent(this, MonthlyReportActivity::class.java)) }
-        val openInsights = { startActivity(Intent(this, InsightsActivity::class.java)) }
+        binding.btnMonthlyReports.setOnClickListener {
+            PlanManager.runIfAllowed(this, Feature.BILLING) { startActivity(Intent(this, MonthlyReportActivity::class.java)) }
+        }
+        val openInsights = {
+            PlanManager.runIfAllowed(this, Feature.INSIGHTS) { startActivity(Intent(this, InsightsActivity::class.java)) }
+        }
         binding.btnInsights.setOnClickListener { openInsights() }
         binding.cardMonth.setOnClickListener { openInsights() }
         binding.btnTasks.setOnClickListener { startActivity(Intent(this, TasksActivity::class.java)) }

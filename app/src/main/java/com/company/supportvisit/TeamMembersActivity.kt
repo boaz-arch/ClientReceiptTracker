@@ -1,6 +1,7 @@
 package com.company.supportvisit
 
 import android.os.Bundle
+import com.company.supportvisit.plans.PlanManager
 import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -68,6 +69,10 @@ class TeamMembersActivity : AppCompatActivity() {
 
     /** People join by signing in with the invited email address and accepting. */
     private fun invite() {
+        if (!PlanManager.canAddMember(this, TeamSession.memberCount(this))) {
+            PlanManager.showUpgrade(this)
+            return
+        }
         val dialog = DialogInviteBinding.inflate(layoutInflater)
         AlertDialog.Builder(this)
             .setTitle(R.string.invite_member)
