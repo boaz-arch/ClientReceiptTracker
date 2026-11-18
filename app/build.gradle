@@ -13,6 +13,21 @@ if (localPropertiesFile.exists()) {
 // The Support Visit server the app talks to (sign-in, sync, email). Empty = not configured.
 def defaultServerUrl = localProperties.getProperty("SUPPORT_SERVER_URL", System.getenv("SUPPORT_SERVER_URL") ?: "")
 
+// Release signing: keystore.properties (never committed) or environment variables (CI).
+// Without them the release build is unsigned, which is fine for checking that it compiles.
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+if (keystorePropertiesFile.exists()) {
+    keystorePropertiesFile.withInputStream { keystoreProperties.load(it) }
+}
+def signingValue = { String key, String env -> keystoreProperties.getProperty(key) ?: System.getenv(env) }
+def releaseStoreFile = signingValue("storeFile", "SIGNING_STORE_FILE")
+def hasReleaseSigning = releaseStoreFile && rootProject.file(releaseStoreFile).exists()
+
+// Version: passed by the release workflow from the git tag (v1.2.3 -> 1.2.3 / 10203).
+def appVersionName = (findProperty("versionName") ?: "1.0").toString()
+def appVersionCode = (findProperty("versionCode") ?: "1").toString().toInteger()
+
 android {
 
     namespace 'com.company.supportvisit'
@@ -26,19 +41,42 @@ android {
         minSdk 26
         targetSdk 35
 
-        versionCode 1
-        versionName "1.0"
+        versionCode appVersionCode
+        versionName appVersionName
 
         buildConfigField("String", "DEFAULT_SERVER_URL", "\"$defaultServerUrl\"")
+
+        // Plan limits (Free vs Pro). Off until pricing is decided: build with -PenforcePlans=true to turn on.
+        buildConfigField("boolean", "ENFORCE_PLANS", (findProperty("enforcePlans") ?: "false").toString())
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        if (hasReleaseSigning) {
+            release {
+                storeFile rootProject.file(releaseStoreFile)
+                storePassword signingValue("storePassword", "SIGNING_STORE_PASSWORD")
+                keyAlias signingValue("keyAlias", "SIGNING_KEY_ALIAS")
+                keyPassword signingValue("keyPassword", "SIGNING_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
+
+        debug {
+            // Same applicationId as release on purpose: phones already running a debug build keep their data.
+            versionNameSuffix "-debug"
+        }
 
         release {
 
-            minifyEnabled false
+            minifyEnabled true
+            shrinkResources true
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
 
             proguardFiles(
                     getDefaultProguardFile('proguard-android-optimize.txt'),
