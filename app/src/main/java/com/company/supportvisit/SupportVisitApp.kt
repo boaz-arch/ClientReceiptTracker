@@ -12,6 +12,7 @@ import com.company.supportvisit.repository.VisitRepository
 import com.company.supportvisit.security.AppLock
 import com.company.supportvisit.settings.ThemeManager
 import com.company.supportvisit.sync.SyncScheduler
+import com.company.supportvisit.telemetry.Telemetry
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -33,6 +34,8 @@ class SupportVisitApp : Application() {
     override fun onCreate() {
         super.onCreate()
 
+        Telemetry.installCrashHandler(this)
+
         ThemeManager.applySaved(this)
         TeamSession.load(this)
         AppLock.install(this)
@@ -42,6 +45,8 @@ class SupportVisitApp : Application() {
         appScope.launch {
             visitRepository.migrateLegacyIfNeeded()
             if (AuthSession.refreshAccount() != null) TeamRepository.refresh(this@SupportVisitApp)
+            // Crash reports from earlier runs and usage counters (if the user allows them).
+            Telemetry.flush(this@SupportVisitApp)
         }
 
         // Picks up anything left unsent from a previous session (runs once online).

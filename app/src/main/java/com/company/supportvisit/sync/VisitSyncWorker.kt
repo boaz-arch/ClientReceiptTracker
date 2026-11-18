@@ -17,6 +17,7 @@ import com.company.supportvisit.remote.RecordMapper
 import com.company.supportvisit.remote.ServerApi
 import com.company.supportvisit.repository.VisitRepository
 import com.company.supportvisit.settings.ServerSettings
+import com.company.supportvisit.telemetry.Telemetry
 import com.company.supportvisit.team.Branding
 import com.company.supportvisit.utils.DateUtils
 import com.company.supportvisit.utils.PdfReportGenerator
@@ -52,6 +53,7 @@ class VisitSyncWorker(
                 null
             } catch (e: Exception) {
                 Log.w(TAG, "Sending a visit failed", e)
+                Telemetry.track(applicationContext, Telemetry.SYNC_FAILED)
                 classify(e)
             }
             if (outcome != null) {
@@ -62,6 +64,7 @@ class VisitSyncWorker(
         }
 
         val serverOk = syncWithServer()
+        Telemetry.flush(applicationContext)
 
         if (retryable.isEmpty()) return if (serverOk) Result.success() else retryOrSucceed()
         if (runAttemptCount + 1 < MAX_ATTEMPTS) return Result.retry()

@@ -1,6 +1,7 @@
 package com.company.supportvisit.ui
 
 import android.app.Application
+import com.company.supportvisit.telemetry.Telemetry
 import android.graphics.Bitmap
 import android.net.Uri
 import android.util.Log
@@ -272,6 +273,7 @@ class NewVisitViewModel(application: Application) : AndroidViewModel(application
                     technicianEmail = AuthSession.accountEmail.value
                 )
                 SyncScheduler.enqueue(getApplication())
+                Telemetry.track(getApplication(), Telemetry.VISIT_SUBMITTED)
                 _state.update { it.copy(isSubmitting = false, isSubmitted = true, message = R.string.visit_saved) }
             } catch (e: Exception) {
                 Log.w(TAG, "Saving visit failed", e)
