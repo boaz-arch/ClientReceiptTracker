@@ -415,4 +415,20 @@
     <string name="invites_pending">Invited, waiting to join</string>
     <string name="invite_cancel">Cancel invitation</string>
 
+    <!-- Phase 6: privacy, telemetry, plans -->
+    <string name="privacy_settings">Privacy</string>
+    <string name="telemetry_switch">Send crash reports and usage statistics</string>
+    <string name="telemetry_summary">Anonymous: no client details, no content you enter. Helps fix problems.</string>
+    <string name="privacy_policy">Privacy policy</string>
+    <string name="terms_of_use">Terms of use</string>
+    <string name="legal_unavailable">The document can\'t be opened right now.</string>
+    <string name="clear_local_data">Clear data on this phone</string>
+    <string name="clear_local_data_message">Removes all visits, clients, photos and settings stored on this phone and signs you out. Data already on the server stays there and comes back when you sign in again.</string>
+    <string name="clear_local_data_confirm">Clear</string>
+    <string name="clear_local_data_unsent">Some visits haven\'t been sent yet and would be lost. Send them first (Past visits).</string>
+    <string name="clear_local_data_done">Data on this phone was cleared.</string>
+    <string name="clear_local_data_failed">Couldn\'t clear the data. Please try again.</string>
+    <string name="pro_feature_title">Pro feature</string>
+    <string name="pro_feature_message">This is part of the Pro plan. Contact us to upgrade your company.</string>
+
 </resources>

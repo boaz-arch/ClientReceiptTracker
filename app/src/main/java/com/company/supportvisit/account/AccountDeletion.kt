@@ -7,6 +7,7 @@ import com.company.supportvisit.auth.AuthSession
 import com.company.supportvisit.remote.ServerApi
 import com.company.supportvisit.settings.ServerSettings
 import com.company.supportvisit.sync.SyncScheduler
+import com.company.supportvisit.telemetry.Telemetry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -64,6 +65,8 @@ object AccountDeletion {
 
     /** Removes everything the app stored on this phone (database, files, settings, keys). */
     suspend fun wipeLocalData(context: Context) = withContext(Dispatchers.IO) {
+        // The privacy choice outlives the wipe: someone who turned reports off keeps them off.
+        val telemetryOn = Telemetry.isEnabled(context)
         WorkManager.getInstance(context).cancelAllWork()
         context.app.database.clearAllTables()
         context.filesDir.listFiles()?.forEach { it.deleteRecursively() }
@@ -73,5 +76,6 @@ object AccountDeletion {
             ?.forEach { prefsFile ->
                 context.getSharedPreferences(prefsFile.nameWithoutExtension, Context.MODE_PRIVATE).edit().clear().commit()
             }
+        if (!telemetryOn) Telemetry.setEnabled(context, false)
     }
 }

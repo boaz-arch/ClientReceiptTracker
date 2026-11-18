@@ -415,4 +415,20 @@
     <string name="invites_pending">הוזמנו, ממתינים להצטרפות</string>
     <string name="invite_cancel">ביטול ההזמנה</string>
 
+    <!-- Phase 6: privacy, telemetry, plans -->
+    <string name="privacy_settings">פרטיות</string>
+    <string name="telemetry_switch">שליחת דוחות קריסה ונתוני שימוש</string>
+    <string name="telemetry_summary">אנונימי: בלי פרטי לקוחות ובלי תוכן שאתם מזינים. עוזר לתקן תקלות.</string>
+    <string name="privacy_policy">מדיניות פרטיות</string>
+    <string name="terms_of_use">תנאי שימוש</string>
+    <string name="legal_unavailable">לא ניתן לפתוח את המסמך כרגע.</string>
+    <string name="clear_local_data">מחיקת הנתונים בטלפון</string>
+    <string name="clear_local_data_message">מוחק את כל הביקורים, הלקוחות, התמונות וההגדרות השמורים בטלפון ומנתק אתכם. נתונים שכבר בשרת נשארים שם ויחזרו כשתתחברו שוב.</string>
+    <string name="clear_local_data_confirm">מחיקה</string>
+    <string name="clear_local_data_unsent">יש ביקורים שעוד לא נשלחו והם יאבדו. שלחו אותם קודם (ביקורים קודמים).</string>
+    <string name="clear_local_data_done">הנתונים בטלפון נמחקו.</string>
+    <string name="clear_local_data_failed">לא ניתן היה למחוק את הנתונים. נסו שוב.</string>
+    <string name="pro_feature_title">יכולת Pro</string>
+    <string name="pro_feature_message">זה חלק ממסלול Pro. צרו איתנו קשר כדי לשדרג את החברה.</string>
+
 </resources>
