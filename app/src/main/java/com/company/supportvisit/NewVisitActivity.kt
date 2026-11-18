@@ -1,9 +1,12 @@
 package com.company.supportvisit
 
 import android.app.TimePickerDialog
+import android.content.ActivityNotFoundException
+import android.content.Intent
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.ArrayAdapter
@@ -11,6 +14,7 @@ import android.widget.Toast
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
@@ -40,11 +44,14 @@ import com.company.supportvisit.ui.labelRes
 import com.company.supportvisit.utils.DateUtils
 import com.company.supportvisit.utils.Money
 import com.github.gcacace.signaturepad.views.SignaturePad
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 class NewVisitActivity : AppCompatActivity() {
@@ -99,7 +106,12 @@ class NewVisitActivity : AppCompatActivity() {
             )
         }
 
-        restoreDraft(isFreshStart = savedInstanceState == null)
+        binding.btnPreviewPdf.setOnClickListener { previewPdf() }
+        setUpLeavePrompt()
+
+        val copyFrom = intent.getStringExtra(EXTRA_COPY_FROM)
+        if (savedInstanceState == null && copyFrom != null) startFromCopy(copyFrom)
+        else restoreDraft(isFreshStart = savedInstanceState == null)
 
         observeState()
     }
@@ -280,6 +292,79 @@ class NewVisitActivity : AppCompatActivity() {
         }
     }
 
+    /** Fills the form from an earlier visit (Visit details > Copy to a new visit). */
+    private fun startFromCopy(visitId: String) {
+        lifecycleScope.launch {
+            val visit = viewModel.copyFrom(visitId) ?: return@launch restoreDraft(isFreshStart = true)
+            restoring = true
+            binding.etClientName.setText(visit.clientName, false)
+            binding.etClientEmail.setText(visit.clientEmail)
+            binding.etStartTime.text = null
+            binding.etEndTime.text = null
+            binding.etDescription.setText(visit.workDescription)
+            binding.signaturePad.clear()
+            binding.technicianSignaturePad.clear()
+            restoring = false
+            Snackbar.make(binding.root, R.string.visit_copied, Snackbar.LENGTH_LONG).show()
+        }
+    }
+
+    /**
+     * Back with something filled in asks whether to keep the draft or throw it away, instead of
+     * leaving silently. (The draft is auto-saved either way until it's discarded.)
+     */
+    private fun setUpLeavePrompt() {
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                val state = viewModel.state.value
+                val filledIn = viewModel.hasContent() || !binding.signaturePad.isEmpty ||
+                    !binding.technicianSignaturePad.isEmpty
+                if (state.isSubmitting || state.isSubmitted || !filledIn) {
+                    finish()
+                    return
+                }
+                MaterialAlertDialogBuilder(this@NewVisitActivity)
+                    .setTitle(R.string.leave_visit_title)
+                    .setMessage(R.string.leave_visit_message)
+                    .setPositiveButton(R.string.keep_draft) { _, _ -> finish() }
+                    .setNegativeButton(R.string.discard_draft) { _, _ ->
+                        viewModel.discardDraft()
+                        finish()
+                    }
+                    .setNeutralButton(R.string.stay, null)
+                    .show()
+            }
+        })
+    }
+
+    /** Shows the report as it would be sent, signed or not, without saving or sending it. */
+    private fun previewPdf() {
+        binding.btnPreviewPdf.isEnabled = false
+        lifecycleScope.launch {
+            try {
+                val file = viewModel.buildPreview(
+                    currentForm(),
+                    binding.signaturePad.bitmapOrNull(),
+                    binding.technicianSignaturePad.bitmapOrNull().takeIf { sections.technicianSignature },
+                    sections
+                )
+                val uri = FileProvider.getUriForFile(this@NewVisitActivity, "$packageName.provider", file)
+                val view = Intent(Intent.ACTION_VIEW).setDataAndType(uri, "application/pdf")
+                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                try {
+                    startActivity(view)
+                } catch (e: ActivityNotFoundException) {
+                    Toast.makeText(this@NewVisitActivity, R.string.no_pdf_app, Toast.LENGTH_LONG).show()
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "PDF preview failed", e)
+                Toast.makeText(this@NewVisitActivity, R.string.preview_failed, Toast.LENGTH_LONG).show()
+            } finally {
+                binding.btnPreviewPdf.isEnabled = true
+            }
+        }
+    }
+
     private fun discardDraft() {
         viewModel.discardDraft()
         restoring = true
@@ -363,6 +448,8 @@ class NewVisitActivity : AppCompatActivity() {
     }
 
     private fun setupTimePickers() {
+        binding.btnStartNow.setOnClickListener { binding.etStartTime.setText(nowHhMm()) }
+        binding.btnEndNow.setOnClickListener { binding.etEndTime.setText(nowHhMm()) }
         binding.etStartTime.setOnClickListener {
             showTimePicker(binding.etStartTime.text.toString()) { binding.etStartTime.setText(it) }
         }
@@ -370,6 +457,8 @@ class NewVisitActivity : AppCompatActivity() {
             showTimePicker(binding.etEndTime.text.toString()) { binding.etEndTime.setText(it) }
         }
     }
+
+    private fun nowHhMm(): String = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm", Locale.US))
 
     private fun showTimePicker(current: String, onTimeSelected: (String) -> Unit) {
         val parts = current.split(":").mapNotNull { it.toIntOrNull() }
@@ -400,7 +489,11 @@ class NewVisitActivity : AppCompatActivity() {
     }
 
     companion object {
+        private const val TAG = "NewVisitActivity"
         private const val DEFAULT_HOUR = 9
+
+        /** Visit id to start from (Copy to a new visit). */
+        const val EXTRA_COPY_FROM = "copy_from"
 
         /** Long enough for a technician to notice the Discard option. */
         private const val DRAFT_SNACKBAR_MS = 10_000

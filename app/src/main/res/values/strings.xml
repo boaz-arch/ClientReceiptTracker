@@ -436,4 +436,20 @@
 
     <string name="nav_back">Back</string>
     <string name="press_back_again_to_exit">Press back again to exit</string>
+    <string name="start_now">Start now</string>
+    <string name="end_now">End now</string>
+    <string name="preview_pdf">Preview PDF</string>
+    <string name="preview_failed">Couldn’t create the preview</string>
+    <string name="no_pdf_app">No app on this phone can open PDFs</string>
+    <string name="leave_visit_title">Leave this visit?</string>
+    <string name="leave_visit_message">It’s saved as a draft, so you can finish it later.</string>
+    <string name="keep_draft">Keep draft</string>
+    <string name="stay">Stay</string>
+    <string name="copy_visit">Copy to a new visit</string>
+    <string name="replace_draft_title">Replace your unfinished visit?</string>
+    <string name="replace_draft_message">You have a visit report you haven’t sent. Copying this visit replaces it.</string>
+    <string name="replace">Replace</string>
+    <string name="visit_copied">Copied. Set the times and get a signature.</string>
+    <string name="draft_in_progress">Visit in progress since %1$s. Tap to continue.</string>
+    <string name="draft_unfinished">Unfinished visit report. Tap to continue.</string>
 </resources>

@@ -132,6 +132,32 @@
 
         </LinearLayout>
 
+        <!-- One tap fills in the current time: start when you arrive, end when you leave. -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btnStartNow"
+                style="@style/Widget.Material3.Button.TextButton.Icon"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/start_now"
+                app:icon="@drawable/ic_schedule" />
+
+            <Button
+                android:id="@+id/btnEndNow"
+                style="@style/Widget.Material3.Button.TextButton.Icon"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/end_now"
+                app:icon="@drawable/ic_schedule" />
+
+        </LinearLayout>
+
         <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -315,10 +341,18 @@
             android:text="@string/clear_signature" />
 
         <Button
-            android:id="@+id/btnSubmit"
+            android:id="@+id/btnPreviewPdf"
+            style="@style/Widget.Material3.Button.OutlinedButton"
             android:layout_width="match_parent"
             android:layout_height="52dp"
             android:layout_marginTop="16dp"
+            android:text="@string/preview_pdf" />
+
+        <Button
+            android:id="@+id/btnSubmit"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="8dp"
             android:text="@string/submit_and_send"
             android:textColor="@color/white"
             android:textSize="16sp" />

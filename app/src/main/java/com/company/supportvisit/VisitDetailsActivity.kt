@@ -30,6 +30,7 @@ import com.company.supportvisit.ui.labelRes
 import com.company.supportvisit.ui.messageRes
 import com.company.supportvisit.utils.DateUtils
 import com.company.supportvisit.utils.Money
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -125,6 +126,27 @@ class VisitDetailsActivity : AppCompatActivity() {
 
             btnOpenPdf.isEnabled = !visit.pdfLink.isNullOrBlank()
             btnOpenPdf.setOnClickListener { openLink(visit.pdfLink) }
+            btnCopyVisit.setOnClickListener { copyToNewVisit(visit.id) }
+        }
+    }
+
+    /** Opens New visit pre-filled from this one; asks first if that would replace an unsent draft. */
+    private fun copyToNewVisit(id: String) {
+        lifecycleScope.launch {
+            val open = {
+                startActivity(Intent(this@VisitDetailsActivity, NewVisitActivity::class.java)
+                    .putExtra(NewVisitActivity.EXTRA_COPY_FROM, id))
+            }
+            if (repository.getDraft() == null) {
+                open()
+                return@launch
+            }
+            MaterialAlertDialogBuilder(this@VisitDetailsActivity)
+                .setTitle(R.string.replace_draft_title)
+                .setMessage(R.string.replace_draft_message)
+                .setPositiveButton(R.string.replace) { _, _ -> open() }
+                .setNegativeButton(R.string.cancel, null)
+                .show()
         }
     }
 

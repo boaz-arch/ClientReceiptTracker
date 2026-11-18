@@ -434,4 +434,20 @@
 
     <string name="nav_back">חזרה</string>
     <string name="press_back_again_to_exit">יש ללחוץ שוב על חזרה כדי לצאת</string>
+    <string name="start_now">התחלה עכשיו</string>
+    <string name="end_now">סיום עכשיו</string>
+    <string name="preview_pdf">תצוגה מקדימה של PDF</string>
+    <string name="preview_failed">לא ניתן ליצור תצוגה מקדימה</string>
+    <string name="no_pdf_app">אין בטלפון אפליקציה שפותחת קובצי PDF</string>
+    <string name="leave_visit_title">לצאת מהביקור?</string>
+    <string name="leave_visit_message">הביקור נשמר כטיוטה, ואפשר להשלים אותו מאוחר יותר.</string>
+    <string name="keep_draft">שמירת טיוטה</string>
+    <string name="stay">המשך עריכה</string>
+    <string name="copy_visit">העתקה לביקור חדש</string>
+    <string name="replace_draft_title">להחליף את הביקור שלא הושלם?</string>
+    <string name="replace_draft_message">יש דוח ביקור שעדיין לא נשלח. העתקת הביקור הזה תחליף אותו.</string>
+    <string name="replace">החלפה</string>
+    <string name="visit_copied">הביקור הועתק. יש להזין שעות ולקבל חתימה.</string>
+    <string name="draft_in_progress">ביקור בתהליך מאז %1$s. יש להקיש כדי להמשיך.</string>
+    <string name="draft_unfinished">דוח ביקור שלא הושלם. יש להקיש כדי להמשיך.</string>
 </resources>

@@ -15,6 +15,9 @@ import com.company.supportvisit.billing.RetainerUsage
 import com.company.supportvisit.billing.isoRange
 import com.company.supportvisit.data.ClientEntity
 import com.company.supportvisit.data.DraftEntity
+import com.company.supportvisit.data.VisitEntity
+import com.company.supportvisit.data.VisitPhoto
+import com.company.supportvisit.utils.PdfReportGenerator
 import com.company.supportvisit.data.PartItem
 import com.company.supportvisit.data.VisitType
 import com.company.supportvisit.auth.AuthSession
@@ -212,6 +215,59 @@ class NewVisitViewModel(application: Application) : AndroidViewModel(application
             if (technician) technicianSignaturePath = path else signaturePath = path
             scheduleDraftSave()
         }
+    }
+
+    /** Whether anything has been filled in (today's date alone doesn't count). */
+    fun hasContent(): Boolean = !currentDraft().isEmpty()
+
+    /**
+     * Starts this form from an earlier visit: same client, email, visit type, description and
+     * parts, with today's date and no times, photos or signatures. Replaces the saved draft.
+     */
+    suspend fun copyFrom(visitId: String): VisitEntity? {
+        val visit = repository.getVisit(visitId) ?: return null
+        saveJob?.cancel()
+        draftLoaded = true
+        form = VisitForm(visit.clientName, visit.clientEmail, "", "", visit.workDescription)
+        signaturePath = null
+        technicianSignaturePath = null
+        _state.value = NewVisitUiState(
+            clientId = visit.clientId,
+            visitType = VisitType.fromKey(visit.visitType),
+            parts = visit.parts
+        )
+        visit.clientId?.let { id -> app.clientRepository.getClient(id)?.let { loadClientInfo(it) } }
+        draftDirty = true
+        saveDraftNow()
+        return visit
+    }
+
+    /** Builds the report PDF from what's on screen now, without saving or sending anything. */
+    suspend fun buildPreview(
+        currentForm: VisitForm,
+        signature: Bitmap?,
+        technicianSignature: Bitmap?,
+        sections: ReportSections
+    ): File = withContext(Dispatchers.IO) {
+        val s = _state.value
+        val context = getApplication<Application>()
+        val visit = VisitEntity(
+            id = "preview",
+            clientId = s.clientId,
+            clientName = currentForm.clientName.trim(),
+            clientEmail = currentForm.clientEmail.trim(),
+            visitDate = s.visitDate,
+            startTime = currentForm.startTime,
+            endTime = currentForm.endTime,
+            visitType = (if (sections.visitType) s.visitType else VisitType.OTHER).key,
+            workDescription = currentForm.workDescription.trim(),
+            parts = if (sections.parts) s.parts else emptyList(),
+            photos = if (sections.photos) s.photoPaths.map { VisitPhoto(localPath = it) } else emptyList(),
+            technicianEmail = AuthSession.accountEmail.value,
+            hourlyRate = s.client?.hourlyRate ?: BillingSettings.defaultHourlyRate(context)
+        )
+        val dir = File(context.cacheDir, "preview").apply { deleteRecursively(); mkdirs() }
+        PdfReportGenerator.createReport(context, visit, signature, dir, technicianSignature)
     }
 
     fun discardDraft() {

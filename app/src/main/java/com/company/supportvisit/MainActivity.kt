@@ -58,6 +58,7 @@ class MainActivity : AppCompatActivity() {
         binding.btnSettings.setOnClickListener { startActivity(Intent(this, SettingsActivity::class.java)) }
         binding.btnPastVisits.setOnClickListener { startActivity(PastVisitsActivity.intent(this)) }
         binding.tvUnsent.setOnClickListener { startActivity(PastVisitsActivity.intent(this)) }
+        binding.tvDraft.setOnClickListener { startActivity(Intent(this, NewVisitActivity::class.java)) }
         binding.btnClients.setOnClickListener { startActivity(Intent(this, ClientsActivity::class.java)) }
         binding.btnMonthlyReports.setOnClickListener {
             PlanManager.runIfAllowed(this, Feature.BILLING) { startActivity(Intent(this, MonthlyReportActivity::class.java)) }
@@ -127,6 +128,21 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         viewModel.refresh()
         maybeAskForCompanySetup()
+        showUnfinishedVisit()
+    }
+
+    /** "Visit in progress since 10:15": a New Visit form that was started and not sent yet. */
+    private fun showUnfinishedVisit() {
+        lifecycleScope.launch {
+            val draft = app.visitRepository.getDraft()
+            binding.tvDraft.isVisible = draft != null
+            if (draft == null) return@launch
+            binding.tvDraft.text = if (draft.startTime.isNotBlank() && draft.endTime.isBlank()) {
+                getString(R.string.draft_in_progress, draft.startTime)
+            } else {
+                getString(R.string.draft_unfinished)
+            }
+        }
     }
 
     /** The first admin of a new company sets up its name and logo before the team starts reporting. */
