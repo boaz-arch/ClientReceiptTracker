@@ -20,6 +20,9 @@ ssh "$target" 'mkdir -p ~/SupportVisit/scripts ~/SupportVisit/data && rm -rf ~/S
 tar -C "$root/server/build/install" -czf - supportvisit-server | ssh "$target" 'mkdir -p ~/SupportVisit/server.new && tar -C ~/SupportVisit/server.new --strip-components=1 -xzf -'
 tar -C "$root/server/deploy" -czf - .env.example pm2/ecosystem.config.js pm2/start.sh pm2/backup.sh \
   | ssh "$target" 'cd ~/SupportVisit && tar -xzf - && mv pm2/ecosystem.config.js pm2/start.sh . && mv pm2/backup.sh scripts/ && rmdir pm2 && chmod +x start.sh scripts/backup.sh'
+# Privacy policy and terms, served publicly at <PUBLIC_BASE_URL>/legal/privacy and /legal/terms.
+tar -C "$root/docs" -czf - PRIVACY_POLICY.md TERMS.md \
+  | ssh "$target" 'mkdir -p ~/SupportVisit/data/legal && cd ~/SupportVisit/data/legal && tar -xzf - && mv PRIVACY_POLICY.md privacy.md && mv TERMS.md terms.md'
 
 ssh "$target" bash -s -- "$JRE_URL" <<'REMOTE'
 set -euo pipefail
@@ -43,7 +46,7 @@ if [[ ! -f .env ]]; then
 fi
 chmod 600 .env
 # Settings added in later versions: append them (empty) so they're easy to fill in.
-for key in SMTP_HOST SMTP_PORT SMTP_USER SMTP_PASSWORD SMTP_FROM SMTP_TLS APP_NAME MAIL_DAILY_LIMIT MAIL_NEW_COMPANY_DAILY_LIMIT MAIL_GLOBAL_DAILY_LIMIT; do
+for key in SMTP_HOST SMTP_PORT SMTP_USER SMTP_PASSWORD SMTP_FROM SMTP_TLS APP_NAME MAIL_DAILY_LIMIT MAIL_NEW_COMPANY_DAILY_LIMIT MAIL_GLOBAL_DAILY_LIMIT REVIEW_LOGIN_EMAIL REVIEW_LOGIN_CODE; do
   if ! grep -q "^$key=" .env; then
     grep "^$key=" .env.example >> .env || true
     added=1

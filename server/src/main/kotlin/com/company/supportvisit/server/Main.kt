@@ -80,7 +80,8 @@ fun Application.module(config: Config, mailer: Mailer) {
     val files = FileStore(config.dataDir, config.maxUploadBytes)
     val signer = LinkSigner(config.linkSecret)
     val team = TeamStore(dbFile)
-    val accounts = AccountStore(dbFile, config.linkSecret)
+    val accounts = AccountStore(dbFile, config.linkSecret, reviewLogin = config.reviewLogin)
+    if (config.reviewLogin != null) log.warn("App-store review sign-in is ON for {}", config.reviewLogin.email)
     // Per client address: sign-in emails and code checks (on top of the per-email limits).
     val startLimiter = WindowLimiter(max = 20, windowMs = 3_600_000)
     val verifyLimiter = WindowLimiter(max = 40, windowMs = 3_600_000)
@@ -201,6 +202,8 @@ fun Application.module(config: Config, mailer: Mailer) {
                 runCatching { globalStartWarn.check("all") }.onFailure { log.warn("Unusually many sign-in emails this hour") }
                 val body = JSONObject(call.receiveText())
                 val email = AccountStore.normalizeEmail(body.optString("email"))
+                // The review account signs in with its fixed code; nothing is emailed.
+                if (accounts.isReviewAccount(email)) return@post call.respondJson(HttpStatusCode.OK, JSONObject().put("sent", true))
                 val code = accounts.startLogin(email)
                 val (subject, text) = Emails.loginCode(config.appName, code, body.optString("lang"))
                 send(Mail(listOf(email), subject, text, fromName = config.appName))

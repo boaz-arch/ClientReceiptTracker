@@ -37,7 +37,9 @@ data class Config(
     /** The same for a company's first 7 days, unless it has Pro. */
     val newCompanyMailDailyLimit: Int = 20,
     /** Report emails per day for the whole server. */
-    val mailGlobalDailyLimit: Int = 2000
+    val mailGlobalDailyLimit: Int = 2000,
+    /** Optional fixed sign-in for app-store reviewers (no email is sent). Null = off. */
+    val reviewLogin: ReviewLogin? = null
 ) {
     companion object {
         fun fromEnv(env: Map<String, String> = System.getenv()): Config {
@@ -67,8 +69,26 @@ data class Config(
                 proTenants = list("PRO_TENANT_IDS"),
                 mailDailyLimit = env["MAIL_DAILY_LIMIT"]?.toIntOrNull() ?: 200,
                 newCompanyMailDailyLimit = env["MAIL_NEW_COMPANY_DAILY_LIMIT"]?.toIntOrNull() ?: 20,
-                mailGlobalDailyLimit = env["MAIL_GLOBAL_DAILY_LIMIT"]?.toIntOrNull() ?: 2000
+                mailGlobalDailyLimit = env["MAIL_GLOBAL_DAILY_LIMIT"]?.toIntOrNull() ?: 2000,
+                reviewLogin = ReviewLogin.fromEnv(env["REVIEW_LOGIN_EMAIL"], env["REVIEW_LOGIN_CODE"])
             )
+        }
+    }
+}
+
+
+/**
+ * A fixed email + 6-digit code so Google Play reviewers can sign in without a mailbox.
+ * Turn it on only while a review is pending. It locks itself after [MAX_FAILURES] wrong codes.
+ */
+data class ReviewLogin(val email: String, val code: String) {
+    companion object {
+        const val MAX_FAILURES = 20
+
+        fun fromEnv(email: String?, code: String?): ReviewLogin? {
+            if (email.isNullOrBlank() || code.isNullOrBlank()) return null
+            require(code.matches(Regex("^\\d{6}$"))) { "REVIEW_LOGIN_CODE must be 6 digits" }
+            return ReviewLogin(AccountStore.normalizeEmail(email), code)
         }
     }
 }
