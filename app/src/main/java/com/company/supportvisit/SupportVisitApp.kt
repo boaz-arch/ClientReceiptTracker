@@ -1,5 +1,6 @@
 package com.company.supportvisit
 
+import com.company.supportvisit.notifications.Notifier
 import android.app.Application
 import android.content.Context
 import com.company.supportvisit.data.AppDatabase
@@ -33,6 +34,7 @@ class SupportVisitApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        Notifier.createChannels(this)
 
         Telemetry.installCrashHandler(this)
 

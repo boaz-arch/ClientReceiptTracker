@@ -450,4 +450,10 @@
     <string name="visit_copied">הביקור הועתק. יש להזין שעות ולקבל חתימה.</string>
     <string name="draft_in_progress">ביקור בתהליך מאז %1$s. יש להקיש כדי להמשיך.</string>
     <string name="draft_unfinished">דוח ביקור שלא הושלם. יש להקיש כדי להמשיך.</string>
+    <string name="channel_sending">שליחת דוחות ביקור</string>
+    <string name="channel_tasks">משימות</string>
+    <string name="notify_visit_failed_title">דוח ביקור לא נשלח</string>
+    <string name="notify_visit_failed_text">%1$s: יש להקיש כדי לראות למה ולנסות שוב.</string>
+    <string name="notify_task_assigned">משימה חדשה בשבילך</string>
+    <string name="notify_task_assigned_by">משימה חדשה מ%1$s</string>
 </resources>

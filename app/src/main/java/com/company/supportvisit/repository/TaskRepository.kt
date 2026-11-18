@@ -32,11 +32,15 @@ class TaskRepository(private val dao: TaskDao) {
     suspend fun markRemoteSynced(task: TaskEntity) = dao.markRemoteSynced(task.id, task.updatedAt)
 
     /** The server copy wins unless this phone has unsent changes to the task. */
-    suspend fun mergeRemote(remote: List<TaskEntity>) {
+    /** Stores the server's versions (local unsent edits win); returns the tasks new to this phone. */
+    suspend fun mergeRemote(remote: List<TaskEntity>): List<TaskEntity> {
+        val added = mutableListOf<TaskEntity>()
         remote.forEach { r ->
             val local = dao.getById(r.id)
+            if (local == null) added += r
             if (local == null || !local.remoteDirty) dao.upsert(r)
         }
+        return added
     }
 
     suspend fun deleteLocal(id: String) = dao.deleteById(id)

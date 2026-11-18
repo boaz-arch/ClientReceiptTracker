@@ -1,5 +1,6 @@
 package com.company.supportvisit.sync
 
+import com.company.supportvisit.notifications.Notifier
 import android.content.Context
 import android.graphics.BitmapFactory
 import android.util.Log
@@ -59,7 +60,12 @@ class VisitSyncWorker(
             if (outcome != null) {
                 val (error, canRetry) = outcome
                 val latest = repository.getVisit(visit.id) ?: visit
-                if (canRetry) retryable += latest to error else repository.markFailed(latest, error)
+                if (canRetry) {
+                    retryable += latest to error
+                } else {
+                    repository.markFailed(latest, error)
+                    Notifier.visitFailed(applicationContext, latest)
+                }
             }
         }
 
@@ -68,7 +74,11 @@ class VisitSyncWorker(
 
         if (retryable.isEmpty()) return if (serverOk) Result.success() else retryOrSucceed()
         if (runAttemptCount + 1 < MAX_ATTEMPTS) return Result.retry()
-        retryable.forEach { (visit, error) -> repository.markFailed(repository.getVisit(visit.id) ?: visit, error) }
+        retryable.forEach { (visit, error) ->
+            val latest = repository.getVisit(visit.id) ?: visit
+            repository.markFailed(latest, error)
+            Notifier.visitFailed(applicationContext, latest)
+        }
         return Result.failure()
     }
 

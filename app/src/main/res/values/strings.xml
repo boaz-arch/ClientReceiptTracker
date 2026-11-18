@@ -452,4 +452,10 @@
     <string name="visit_copied">Copied. Set the times and get a signature.</string>
     <string name="draft_in_progress">Visit in progress since %1$s. Tap to continue.</string>
     <string name="draft_unfinished">Unfinished visit report. Tap to continue.</string>
+    <string name="channel_sending">Sending visit reports</string>
+    <string name="channel_tasks">Tasks</string>
+    <string name="notify_visit_failed_title">A visit report wasn’t sent</string>
+    <string name="notify_visit_failed_text">%1$s: tap to see why and try again.</string>
+    <string name="notify_task_assigned">New task for you</string>
+    <string name="notify_task_assigned_by">New task from %1$s</string>
 </resources>

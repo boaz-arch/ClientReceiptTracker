@@ -1,12 +1,14 @@
 package com.company.supportvisit
 
 import android.content.Intent
+import android.Manifest
 import com.company.supportvisit.plans.Feature
 import com.company.supportvisit.plans.PlanManager
 import android.os.Bundle
 import android.os.SystemClock
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -17,6 +19,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.company.supportvisit.account.AccountDeletion
 import com.company.supportvisit.dashboard.DashboardViewModel
 import com.company.supportvisit.databinding.ActivityMainBinding
+import com.company.supportvisit.notifications.Notifier
 import com.company.supportvisit.auth.AuthSession
 import com.company.supportvisit.team.TeamSession
 import com.company.supportvisit.ui.applySystemBarInsets
@@ -51,6 +54,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
         binding.root.applySystemBarInsets()
         setUpPressBackTwiceToExit()
+        askForNotificationsOnce()
 
         binding.tvToday.text = LocalDate.now().format(DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL))
 
@@ -103,6 +107,18 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    private val notificationPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* the app works either way */ }
+
+    /** Android 13+: ask once whether we may notify about failed sends and assigned tasks. */
+    private fun askForNotificationsOnce() {
+        if (!Notifier.needsPermission(this)) return
+        val prefs = getSharedPreferences(PREFS_UI, MODE_PRIVATE)
+        if (prefs.getBoolean(KEY_ASKED_NOTIFICATIONS, false)) return
+        prefs.edit().putBoolean(KEY_ASKED_NOTIFICATIONS, true).apply()
+        notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 
     /** Back on the home screen asks for a second press within 2 seconds before leaving the app. */
@@ -194,5 +210,7 @@ class MainActivity : AppCompatActivity() {
 
     private companion object {
         const val EXIT_WINDOW_MS = 2_000L
+        const val PREFS_UI = "home_ui"
+        const val KEY_ASKED_NOTIFICATIONS = "asked_notifications"
     }
 }

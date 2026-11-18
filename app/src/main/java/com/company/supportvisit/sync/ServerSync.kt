@@ -1,5 +1,7 @@
 package com.company.supportvisit.sync
 
+import com.company.supportvisit.notifications.Notifier
+import com.company.supportvisit.team.TeamSession
 import android.content.Context
 import com.company.supportvisit.app
 import com.company.supportvisit.remote.RecordMapper
@@ -46,6 +48,9 @@ object ServerSync {
             val now = System.currentTimeMillis()
             val fullTaskSync = now - ServerSettings.tasksFullSyncAt(context) > FULL_TASK_SYNC_MS
             var taskCursor = if (fullTaskSync) 0L else ServerSettings.tasksCursor(context)
+            // The first pull after signing in brings every task at once: no notifications for those.
+            val firstTaskSync = ServerSettings.tasksFullSyncAt(context) == 0L
+            val me = TeamSession.userId(context)
             val seenTaskIds = HashSet<String>()
             do {
                 val page = api.taskChanges(taskCursor)
@@ -54,7 +59,11 @@ object ServerSync {
                 deleted.forEach { tasks.deleteLocal(it.optString("id")) }
                 val remote = live.mapNotNull(RecordMapper::jsonToTask)
                 remote.forEach { seenTaskIds += it.id }
-                tasks.mergeRemote(remote)
+                val added = tasks.mergeRemote(remote)
+                if (!firstTaskSync) {
+                    added.filter { it.assigneeId == me && it.createdById != me && !it.done }
+                        .forEach { Notifier.taskAssigned(context, it) }
+                }
                 taskCursor = page.cursor
                 ServerSettings.setTasksCursor(context, taskCursor)
             } while (page.hasMore)
