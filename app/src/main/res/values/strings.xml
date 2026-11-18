@@ -458,4 +458,11 @@
     <string name="notify_visit_failed_text">%1$s: tap to see why and try again.</string>
     <string name="notify_task_assigned">New task for you</string>
     <string name="notify_task_assigned_by">New task from %1$s</string>
+    <string name="shortcut_new_visit">New visit</string>
+    <string name="shortcut_past_visits">Past visits</string>
+    <string name="shortcut_tasks">Tasks</string>
+    <string name="widget_name">Quick visit</string>
+    <string name="widget_description">Start a visit report in one tap</string>
+    <string name="widget_new_visit">+ New visit</string>
+    <string name="widget_past_visits">Past visits</string>
 </resources>

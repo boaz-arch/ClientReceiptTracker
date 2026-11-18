@@ -456,4 +456,11 @@
     <string name="notify_visit_failed_text">%1$s: יש להקיש כדי לראות למה ולנסות שוב.</string>
     <string name="notify_task_assigned">משימה חדשה בשבילך</string>
     <string name="notify_task_assigned_by">משימה חדשה מ%1$s</string>
+    <string name="shortcut_new_visit">ביקור חדש</string>
+    <string name="shortcut_past_visits">ביקורים קודמים</string>
+    <string name="shortcut_tasks">משימות</string>
+    <string name="widget_name">ביקור מהיר</string>
+    <string name="widget_description">פתיחת דוח ביקור בהקשה אחת</string>
+    <string name="widget_new_visit">+ ביקור חדש</string>
+    <string name="widget_past_visits">ביקורים קודמים</string>
 </resources>
