@@ -80,6 +80,36 @@
             android:layout_marginTop="10dp"
             android:text="@string/clients_title" />
 
+        <!-- Shown only while a task timer is running -->
+        <TextView
+            android:id="@+id/tvTimer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_search_field"
+            android:paddingStart="14dp"
+            android:paddingTop="10dp"
+            android:paddingEnd="14dp"
+            android:paddingBottom="10dp"
+            android:textAlignment="viewStart"
+            android:textColor="?attr/colorPrimary"
+            android:visibility="gone" />
+
+        <!-- Shown only when a New Visit form was left unfinished -->
+        <TextView
+            android:id="@+id/tvDraft"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_search_field"
+            android:paddingStart="14dp"
+            android:paddingTop="10dp"
+            android:paddingEnd="14dp"
+            android:paddingBottom="10dp"
+            android:textAlignment="viewStart"
+            android:textColor="?attr/colorPrimary"
+            android:visibility="gone" />
+
         <!-- Shown only when something is waiting to be sent -->
         <TextView
             android:id="@+id/tvUnsent"

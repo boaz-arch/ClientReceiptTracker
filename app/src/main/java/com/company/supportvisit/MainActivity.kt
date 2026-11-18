@@ -1,8 +1,14 @@
 package com.company.supportvisit
 
 import android.content.Intent
+import android.Manifest
+import com.company.supportvisit.plans.Feature
+import com.company.supportvisit.plans.PlanManager
 import android.os.Bundle
+import android.os.SystemClock
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -13,6 +19,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.company.supportvisit.account.AccountDeletion
 import com.company.supportvisit.dashboard.DashboardViewModel
 import com.company.supportvisit.databinding.ActivityMainBinding
+import com.company.supportvisit.notifications.Notifier
 import com.company.supportvisit.auth.AuthSession
 import com.company.supportvisit.team.TeamSession
 import com.company.supportvisit.ui.applySystemBarInsets
@@ -46,6 +53,8 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.root.applySystemBarInsets()
+        setUpPressBackTwiceToExit()
+        askForNotificationsOnce()
 
         binding.tvToday.text = LocalDate.now().format(DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL))
 
@@ -53,9 +62,14 @@ class MainActivity : AppCompatActivity() {
         binding.btnSettings.setOnClickListener { startActivity(Intent(this, SettingsActivity::class.java)) }
         binding.btnPastVisits.setOnClickListener { startActivity(PastVisitsActivity.intent(this)) }
         binding.tvUnsent.setOnClickListener { startActivity(PastVisitsActivity.intent(this)) }
+        binding.tvDraft.setOnClickListener { startActivity(Intent(this, NewVisitActivity::class.java)) }
         binding.btnClients.setOnClickListener { startActivity(Intent(this, ClientsActivity::class.java)) }
-        binding.btnMonthlyReports.setOnClickListener { startActivity(Intent(this, MonthlyReportActivity::class.java)) }
-        val openInsights = { startActivity(Intent(this, InsightsActivity::class.java)) }
+        binding.btnMonthlyReports.setOnClickListener {
+            PlanManager.runIfAllowed(this, Feature.BILLING) { startActivity(Intent(this, MonthlyReportActivity::class.java)) }
+        }
+        val openInsights = {
+            PlanManager.runIfAllowed(this, Feature.INSIGHTS) { startActivity(Intent(this, InsightsActivity::class.java)) }
+        }
         binding.btnInsights.setOnClickListener { openInsights() }
         binding.cardMonth.setOnClickListener { openInsights() }
         binding.btnTasks.setOnClickListener { startActivity(Intent(this, TasksActivity::class.java)) }
@@ -95,10 +109,70 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private val notificationPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* the app works either way */ }
+
+    /** Android 13+: ask once whether we may notify about failed sends and assigned tasks. */
+    private fun askForNotificationsOnce() {
+        if (!Notifier.needsPermission(this)) return
+        val prefs = getSharedPreferences(PREFS_UI, MODE_PRIVATE)
+        if (prefs.getBoolean(KEY_ASKED_NOTIFICATIONS, false)) return
+        prefs.edit().putBoolean(KEY_ASKED_NOTIFICATIONS, true).apply()
+        notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
+
+    /** Back on the home screen asks for a second press within 2 seconds before leaving the app. */
+    private fun setUpPressBackTwiceToExit() {
+        var lastBackAt = 0L
+        var hint: Toast? = null
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                val now = SystemClock.elapsedRealtime()
+                if (now - lastBackAt < EXIT_WINDOW_MS) {
+                    hint?.cancel()
+                    finish()
+                } else {
+                    lastBackAt = now
+                    hint = Toast.makeText(this@MainActivity, R.string.press_back_again_to_exit, Toast.LENGTH_SHORT)
+                        .also { it.show() }
+                }
+            }
+        })
+    }
+
     override fun onResume() {
         super.onResume()
         viewModel.refresh()
         maybeAskForCompanySetup()
+        showUnfinishedVisit()
+        showRunningTimer()
+    }
+
+    /** "Timer running on <task> since 10:15": tap to open the task and finish it. */
+    private fun showRunningTimer() {
+        lifecycleScope.launch {
+            val running = app.taskRepository.runningTimer(TeamSession.userId(this@MainActivity).ifBlank { null })
+            binding.tvTimer.isVisible = running != null
+            val (task, entry) = running ?: return@launch
+            val since = Instant.ofEpochMilli(entry.start).atZone(ZoneId.systemDefault())
+                .format(DateTimeFormatter.ofPattern("HH:mm", java.util.Locale.US))
+            binding.tvTimer.text = getString(R.string.timer_running_on, task.title, since)
+            binding.tvTimer.setOnClickListener { startActivity(TaskEditActivity.intent(this@MainActivity, task.id)) }
+        }
+    }
+
+    /** "Visit in progress since 10:15": a New Visit form that was started and not sent yet. */
+    private fun showUnfinishedVisit() {
+        lifecycleScope.launch {
+            val draft = app.visitRepository.getDraft()
+            binding.tvDraft.isVisible = draft != null
+            if (draft == null) return@launch
+            binding.tvDraft.text = if (draft.startTime.isNotBlank() && draft.endTime.isBlank()) {
+                getString(R.string.draft_in_progress, draft.startTime)
+            } else {
+                getString(R.string.draft_unfinished)
+            }
+        }
     }
 
     /** The first admin of a new company sets up its name and logo before the team starts reporting. */
@@ -148,4 +222,9 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
+    private companion object {
+        const val EXIT_WINDOW_MS = 2_000L
+        const val PREFS_UI = "home_ui"
+        const val KEY_ASKED_NOTIFICATIONS = "asked_notifications"
+    }
 }

@@ -50,7 +50,8 @@ object PdfReportGenerator {
     fun createReport(
         context: Context,
         visit: VisitEntity,
-        signature: Bitmap,
+        /** Null only for a preview made before the client has signed. */
+        signature: Bitmap?,
         outputDir: File,
         technicianSignature: Bitmap? = null
     ): File {
@@ -158,7 +159,7 @@ object PdfReportGenerator {
 
         writer.space(10f)
         writer.paragraph(context.getString(R.string.label_client_signature), labelPaint, spacingAfter = 6f)
-        writer.bitmap(signature, SIGNATURE_MAX_WIDTH, SIGNATURE_MAX_HEIGHT)
+        if (signature != null) writer.bitmap(signature, SIGNATURE_MAX_WIDTH, SIGNATURE_MAX_HEIGHT) else writer.space(SIGNATURE_MAX_HEIGHT / 2)
 
         if (technicianSignature != null) {
             writer.space(10f)

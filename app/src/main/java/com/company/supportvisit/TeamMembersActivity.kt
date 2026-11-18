@@ -1,6 +1,7 @@
 package com.company.supportvisit
 
 import android.os.Bundle
+import com.company.supportvisit.plans.PlanManager
 import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -18,6 +19,7 @@ import com.company.supportvisit.team.Role
 import com.company.supportvisit.team.TeamRepository
 import com.company.supportvisit.team.TeamSession
 import com.company.supportvisit.ui.applySystemBarInsets
+import com.company.supportvisit.ui.setUpBackBar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -36,6 +38,7 @@ class TeamMembersActivity : AppCompatActivity() {
         binding = ActivityTeamMembersBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.root.applySystemBarInsets()
+        setUpBackBar()
 
         if (!TeamSession.role(this).canManageCompany) {
             finish()
@@ -68,6 +71,10 @@ class TeamMembersActivity : AppCompatActivity() {
 
     /** People join by signing in with the invited email address and accepting. */
     private fun invite() {
+        if (!PlanManager.canAddMember(this, TeamSession.memberCount(this))) {
+            PlanManager.showUpgrade(this)
+            return
+        }
         val dialog = DialogInviteBinding.inflate(layoutInflater)
         AlertDialog.Builder(this)
             .setTitle(R.string.invite_member)

@@ -1,5 +1,9 @@
 package com.company.supportvisit.sync
 
+import com.company.supportvisit.graph.GraphException
+import com.company.supportvisit.repository.TaskDeletions
+import com.company.supportvisit.notifications.Notifier
+import com.company.supportvisit.team.TeamSession
 import android.content.Context
 import com.company.supportvisit.app
 import com.company.supportvisit.remote.RecordMapper
@@ -37,24 +41,50 @@ object ServerSync {
 
             // Tasks: push changes, then pull (the server returns only tasks this member may see).
             val tasks = context.app.taskRepository
-            tasks.getRemoteDirty().forEach { task ->
-                api.putTask(RecordMapper.taskToJson(task))
-                tasks.markRemoteSynced(task)
+            TaskDeletions.pending(context).forEach { id ->
+                try {
+                    api.deleteTask(id)
+                } catch (e: GraphException) {
+                    // 404: never reached the server; 403: not ours to delete (it comes back on the
+                    // next full sync); 410: already deleted. Anything else is retried later.
+                    if (e.code != 404 && e.code != 403 && e.code != 410) throw e
+                }
+                TaskDeletions.done(context, id)
             }
+            tasks.getRemoteDirty().forEach { task ->
+                try {
+                    api.putTask(RecordMapper.taskToJson(task))
+                    tasks.markRemoteSynced(task)
+                } catch (e: GraphException) {
+                    when (e.code) {
+                        410 -> tasks.deleteLocal(task.id) // deleted by someone else meanwhile
+                        403 -> tasks.markRemoteSynced(task) // not allowed: the server's copy wins on the next full sync
+                        else -> throw e
+                    }
+                }
+            }
+            val waitingToDelete = TaskDeletions.pending(context)
             // Once a day re-read every visible task from the start, so tasks this member can no
             // longer see (reassigned to someone else, or they lost access) leave this phone too.
             val now = System.currentTimeMillis()
             val fullTaskSync = now - ServerSettings.tasksFullSyncAt(context) > FULL_TASK_SYNC_MS
             var taskCursor = if (fullTaskSync) 0L else ServerSettings.tasksCursor(context)
+            // The first pull after signing in brings every task at once: no notifications for those.
+            val firstTaskSync = ServerSettings.tasksFullSyncAt(context) == 0L
+            val me = TeamSession.userId(context)
             val seenTaskIds = HashSet<String>()
             do {
                 val page = api.taskChanges(taskCursor)
                 val (deleted, live) = page.items.partition { it.optBoolean("deleted") }
                 // Server tombstones win over local edits: the task is gone for everyone.
                 deleted.forEach { tasks.deleteLocal(it.optString("id")) }
-                val remote = live.mapNotNull(RecordMapper::jsonToTask)
+                val remote = live.mapNotNull(RecordMapper::jsonToTask).filterNot { it.id in waitingToDelete }
                 remote.forEach { seenTaskIds += it.id }
-                tasks.mergeRemote(remote)
+                val added = tasks.mergeRemote(remote)
+                if (!firstTaskSync) {
+                    added.filter { it.assigneeId == me && it.createdById != me && !it.done }
+                        .forEach { Notifier.taskAssigned(context, it) }
+                }
                 taskCursor = page.cursor
                 ServerSettings.setTasksCursor(context, taskCursor)
             } while (page.hasMore)

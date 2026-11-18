@@ -1,6 +1,7 @@
 package com.company.supportvisit
 
 import com.company.supportvisit.ui.applySystemBarInsets
+import com.company.supportvisit.ui.setUpBackBar
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
@@ -26,6 +27,12 @@ import com.company.supportvisit.team.TeamSession
 import androidx.core.view.isVisible
 import com.company.supportvisit.ui.SignInHelper
 import com.company.supportvisit.utils.CsvExporter
+import com.company.supportvisit.plans.Feature
+import com.company.supportvisit.plans.PlanManager
+import com.company.supportvisit.settings.ServerSettings
+import com.company.supportvisit.telemetry.Telemetry
+import androidx.core.net.toUri
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -41,6 +48,7 @@ class SettingsActivity : AppCompatActivity() {
         binding = ActivitySettingsBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.root.applySystemBarInsets()
+        setUpBackBar(R.string.settings)
 
         val modes = mapOf(
             R.id.btnLightMode to AppCompatDelegate.MODE_NIGHT_NO,
@@ -57,7 +65,7 @@ class SettingsActivity : AppCompatActivity() {
         setUpLanguageToggle()
 
         binding.btnBillingSettings.setOnClickListener {
-            startActivity(Intent(this, BillingSettingsActivity::class.java))
+            PlanManager.runIfAllowed(this, Feature.BILLING) { startActivity(Intent(this, BillingSettingsActivity::class.java)) }
         }
         binding.btnCustomizeReport.setOnClickListener {
             startActivity(Intent(this, ReportSettingsActivity::class.java))
@@ -85,6 +93,12 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         binding.btnExportCsv.setOnClickListener { exportCsv() }
+
+        binding.switchTelemetry.isChecked = Telemetry.isEnabled(this)
+        binding.switchTelemetry.setOnCheckedChangeListener { _, checked -> Telemetry.setEnabled(this, checked) }
+        binding.btnPrivacyPolicy.setOnClickListener { openLegal("privacy") }
+        binding.btnTerms.setOnClickListener { openLegal("terms") }
+        binding.btnClearLocalData.setOnClickListener { confirmClearLocalData() }
 
         binding.btnConnectMicrosoft.setOnClickListener { signIn() }
         binding.btnDeleteAccount.setOnClickListener { confirmDeleteAccount() }
@@ -151,6 +165,52 @@ class SettingsActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 Log.w(TAG, "CSV export failed", e)
                 Toast.makeText(this@SettingsActivity, R.string.export_failed, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    /** Privacy policy and terms are published by the server at /legal/{privacy,terms}. */
+    private fun openLegal(doc: String) {
+        val url = ServerSettings.serverUrl(this)
+        if (url == null) {
+            Toast.makeText(this, R.string.legal_unavailable, Toast.LENGTH_LONG).show()
+            return
+        }
+        runCatching { startActivity(Intent(Intent.ACTION_VIEW, "$url/legal/$doc".toUri())) }
+            .onFailure { Toast.makeText(this, R.string.legal_unavailable, Toast.LENGTH_LONG).show() }
+    }
+
+    /** Removes everything on this phone (not on the server) and signs out. Unsent visits would be lost, so it refuses. */
+    private fun confirmClearLocalData() {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.clear_local_data)
+            .setMessage(R.string.clear_local_data_message)
+            .setNegativeButton(R.string.cancel, null)
+            .setPositiveButton(R.string.clear_local_data_confirm) { _, _ -> clearLocalData() }
+            .show()
+    }
+
+    private fun clearLocalData() {
+        binding.btnClearLocalData.isEnabled = false
+        lifecycleScope.launch {
+            try {
+                if (app.visitRepository.observeUnsentCount().first() > 0) {
+                    Toast.makeText(this@SettingsActivity, R.string.clear_local_data_unsent, Toast.LENGTH_LONG).show()
+                    return@launch
+                }
+                runCatching { AuthSession.signOut() }
+                AccountDeletion.wipeLocalData(this@SettingsActivity)
+                AuthSession.clear()
+                TeamSession.clear(this@SettingsActivity)
+                Toast.makeText(this@SettingsActivity, R.string.clear_local_data_done, Toast.LENGTH_LONG).show()
+                startActivity(Intent(this@SettingsActivity, MainActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK))
+                finish()
+            } catch (e: Exception) {
+                Log.w(TAG, "Clearing local data failed", e)
+                Toast.makeText(this@SettingsActivity, R.string.clear_local_data_failed, Toast.LENGTH_LONG).show()
+            } finally {
+                binding.btnClearLocalData.isEnabled = true
             }
         }
     }

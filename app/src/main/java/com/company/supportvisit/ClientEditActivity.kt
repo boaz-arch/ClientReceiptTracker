@@ -16,6 +16,7 @@ import java.time.YearMonth
 import com.company.supportvisit.databinding.ActivityClientEditBinding
 import com.company.supportvisit.sync.SyncScheduler
 import com.company.supportvisit.ui.applySystemBarInsets
+import com.company.supportvisit.ui.setUpBackBar
 import com.company.supportvisit.utils.ValidationUtils
 import kotlinx.coroutines.launch
 
@@ -32,6 +33,7 @@ class ClientEditActivity : AppCompatActivity() {
         binding = ActivityClientEditBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.root.applySystemBarInsets()
+        setUpBackBar()
 
         val clientId = intent.getStringExtra(EXTRA_CLIENT_ID)
         if (clientId != null) {

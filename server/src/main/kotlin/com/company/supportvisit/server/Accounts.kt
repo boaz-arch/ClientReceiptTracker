@@ -20,7 +20,17 @@ class RateLimitedException(val retryAfterSeconds: Long) : Exception("Too many at
  * session token. Codes and tokens are stored only as HMACs, so a copy of the database can't
  * be used to sign in.
  */
-class AccountStore(dbFile: File, secret: String, private val random: SecureRandom = SecureRandom()) {
+class AccountStore(
+    dbFile: File,
+    secret: String,
+    private val random: SecureRandom = SecureRandom(),
+    private val reviewLogin: ReviewLogin? = null
+) {
+
+    private var reviewFailures = 0
+
+    /** True for the app-store review account: no code is emailed to it. */
+    fun isReviewAccount(email: String): Boolean = reviewLogin != null && normalizeEmail(email) == reviewLogin.email
 
     companion object {
         const val CODE_TTL_MS = 10L * 60 * 1000
@@ -107,6 +117,7 @@ class AccountStore(dbFile: File, secret: String, private val random: SecureRando
         existingUserId: (String) -> String? = { null }
     ): Pair<String, UserAccount> {
         val e = normalizeEmail(email)
+        if (reviewLogin != null && e == reviewLogin.email) return verifyReviewLogin(e, code, now, existingUserId)
         val row = connection.prepareStatement("SELECT code_hash, expires_at, attempts FROM login_codes WHERE email = ?").use { ps ->
             ps.setString(1, e)
             ps.executeQuery().use { rs -> if (rs.next()) Triple(rs.getString(1), rs.getLong(2), rs.getInt(3)) else null }
@@ -123,6 +134,22 @@ class AccountStore(dbFile: File, secret: String, private val random: SecureRando
         // Used up, but keep the hourly counters so the rate limit still applies.
         connection.prepareStatement("UPDATE login_codes SET expires_at = 0 WHERE email = ?").use { ps ->
             ps.setString(1, e); ps.executeUpdate()
+        }
+        val user = userByEmail(e) ?: createUser(e, existingUserId(e), now)
+        return newSession(user.userId, now) to user
+    }
+
+    private fun verifyReviewLogin(
+        e: String,
+        code: String,
+        now: Long,
+        existingUserId: (String) -> String?
+    ): Pair<String, UserAccount> {
+        val review = reviewLogin!!
+        if (reviewFailures >= ReviewLogin.MAX_FAILURES) throw AuthException("code_expired")
+        if (!MessageDigest.isEqual(review.code.toByteArray(), code.trim().toByteArray())) {
+            reviewFailures++
+            throw AuthException("invalid_code")
         }
         val user = userByEmail(e) ?: createUser(e, existingUserId(e), now)
         return newSession(user.userId, now) to user

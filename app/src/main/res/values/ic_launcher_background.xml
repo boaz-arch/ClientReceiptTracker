@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Launcher icon background: the light tile colour of the icon artwork. -->
+    <color name="ic_launcher_background">#FDFCFD</color>
+</resources>

@@ -6,4 +6,9 @@
         name="files"
         path="."/>
 
+    <!-- PDF previews made before a visit is sent. -->
+    <cache-path
+        name="preview"
+        path="preview/" />
+
 </paths>

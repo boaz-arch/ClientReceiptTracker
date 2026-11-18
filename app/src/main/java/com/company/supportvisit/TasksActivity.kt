@@ -1,5 +1,6 @@
 package com.company.supportvisit
 
+import com.company.supportvisit.data.TaskTime
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.ViewGroup
@@ -19,6 +20,7 @@ import com.company.supportvisit.databinding.ItemTaskBinding
 import com.company.supportvisit.sync.SyncScheduler
 import com.company.supportvisit.team.TeamSession
 import com.company.supportvisit.ui.applySystemBarInsets
+import com.company.supportvisit.ui.setUpBackBar
 import com.company.supportvisit.utils.DateUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
@@ -51,6 +53,7 @@ class TasksActivity : AppCompatActivity() {
         binding = ActivityTasksBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.root.applySystemBarInsets()
+        setUpBackBar()
 
         binding.rvTasks.layoutManager = LinearLayoutManager(this)
         binding.rvTasks.adapter = adapter
@@ -90,14 +93,19 @@ class TasksActivity : AppCompatActivity() {
     private fun metaLine(task: TaskEntity): Pair<String, Boolean> {
         val parts = mutableListOf<String>()
         var overdue = false
+        val me = TeamSession.userId(this)
+        if (TaskTime.running(task.timeEntries, me.ifBlank { null }) != null) parts += getString(R.string.timer_running)
+        val minutes = TaskTime.totalMinutes(task.timeEntries)
+        if (minutes > 0) parts += getString(R.string.task_hours, TaskTime.format(minutes))
         task.dueDate?.let { due ->
             parts += DateUtils.formatForDisplay(due)
             overdue = !task.done && runCatching { LocalDate.parse(due).isBefore(LocalDate.now()) }.getOrDefault(false)
         }
         task.clientId?.let { clientsById[it]?.name }?.let { parts += it }
-        val me = TeamSession.userId(this)
         if (task.assigneeId != null && task.assigneeId != me) parts += getString(R.string.task_for, task.assigneeName.orEmpty())
-        if (task.createdById != null && task.createdById != me && task.assigneeId == me) parts += getString(R.string.task_from, task.createdByName.orEmpty())
+        if (task.createdById != null && task.createdById != me && task.assigneeId == me && !task.createdByName.isNullOrBlank()) {
+            parts += getString(R.string.task_from, task.createdByName)
+        }
         return parts.joinToString(" · ") to overdue
     }
 

@@ -16,6 +16,7 @@ import com.company.supportvisit.databinding.ActivityPastVisitsBinding
 import com.company.supportvisit.ui.PastVisitsViewModel
 import com.company.supportvisit.ui.SignInHelper
 import com.company.supportvisit.ui.applySystemBarInsets
+import com.company.supportvisit.ui.setUpBackBar
 import kotlinx.coroutines.launch
 
 class PastVisitsActivity : AppCompatActivity() {
@@ -35,6 +36,7 @@ class PastVisitsActivity : AppCompatActivity() {
         binding = ActivityPastVisitsBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.root.applySystemBarInsets()
+        setUpBackBar()
 
         binding.recyclerVisits.layoutManager = LinearLayoutManager(this)
         binding.recyclerVisits.adapter = adapter

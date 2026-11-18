@@ -1,5 +1,6 @@
 package com.company.supportvisit.data
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -22,5 +23,10 @@ data class TaskEntity(
     val doneAt: Long? = null,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
-    val remoteDirty: Boolean = true
+    val remoteDirty: Boolean = true,
+
+    // --- Added in database version 5 ---
+    /** Hours logged on this task (timer or entered by hand). */
+    @ColumnInfo(defaultValue = "[]")
+    val timeEntries: List<TimeEntry> = emptyList()
 )

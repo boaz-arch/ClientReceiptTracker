@@ -1,0 +1,117 @@
+name: Release
+
+# Push a tag like v1.2.3 to build a signed release:
+#   git tag v1.2.3 && git push origin v1.2.3
+# The version name is 1.2.3 and the version code 10203 (major*10000 + minor*100 + patch).
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build, e.g. 1.2.3 (no GitHub Release is created for manual runs)'
+        required: true
+
+# Actions are pinned to exact commits (a moved tag can't change what runs with the signing key).
+# Building only reads the repository; the separate publish job, which uses no third-party
+# actions, is the only one allowed to write (to create the GitHub Release).
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    outputs:
+      version: ${{ steps.version.outputs.name }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Work out the version
+        id: version
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+        run: |
+          raw="${INPUT_VERSION:-${GITHUB_REF_NAME#v}}"
+          if [[ ! "$raw" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            echo "Version must look like 1.2.3 (got '$raw')" >&2; exit 1
+          fi
+          code=$(( BASH_REMATCH[1] * 10000 + BASH_REMATCH[2] * 100 + BASH_REMATCH[3] ))
+          echo "name=$raw" >> "$GITHUB_OUTPUT"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+
+      - name: Check the signing secrets
+        env:
+          KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+          SERVER_URL: ${{ secrets.SUPPORT_SERVER_URL }}
+        run: |
+          missing=()
+          [[ -n "$KEYSTORE_BASE64" ]] || missing+=(SIGNING_KEYSTORE_BASE64)
+          [[ -n "$SERVER_URL" ]] || missing+=(SUPPORT_SERVER_URL)
+          if (( ${#missing[@]} )); then
+            echo "Missing GitHub secrets: ${missing[*]} (see docs/RELEASE.md)" >&2; exit 1
+          fi
+
+      - name: Restore the upload keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+        run: echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload.jks"
+
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
+        with:
+          distribution: temurin
+          java-version: |
+            17
+            21
+
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4.4.3
+
+      - name: Test and build the signed AAB and APK
+        env:
+          SUPPORT_SERVER_URL: ${{ secrets.SUPPORT_SERVER_URL }}
+          SIGNING_STORE_FILE: ${{ runner.temp }}/upload.jks
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: >
+          ./gradlew --no-daemon
+          -PversionName=${{ steps.version.outputs.name }}
+          -PversionCode=${{ steps.version.outputs.code }}
+          :app:testReleaseUnitTest :app:bundleRelease :app:assembleRelease
+
+      - name: Collect the files
+        run: |
+          mkdir dist
+          v="${{ steps.version.outputs.name }}"
+          cp app/build/outputs/bundle/release/app-release.aab "dist/SupportVisit-$v.aab"
+          cp app/build/outputs/apk/release/app-release.apk "dist/SupportVisit-$v.apk"
+          # Needed to read crash reports from this version (R8 renames classes).
+          cp app/build/outputs/mapping/release/mapping.txt "dist/mapping-$v.txt"
+          rm -f "$RUNNER_TEMP/upload.jks"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-${{ steps.version.outputs.name }}
+          path: dist/
+          retention-days: 90
+
+  publish:
+    needs: release
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: release-${{ needs.release.outputs.version }}
+          path: dist/
+
+      - name: Create the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh release create "$GITHUB_REF_NAME" dist/*
+          --repo "$GITHUB_REPOSITORY"
+          --title "Support Visit $GITHUB_REF_NAME" --generate-notes

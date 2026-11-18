@@ -1,6 +1,7 @@
 package com.company.supportvisit
 
 import android.content.Intent
+import com.company.supportvisit.telemetry.Telemetry
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -24,6 +25,7 @@ import com.company.supportvisit.settings.BillingSettings
 import com.company.supportvisit.team.TeamRepository
 import com.company.supportvisit.ui.SignInHelper
 import com.company.supportvisit.ui.applySystemBarInsets
+import com.company.supportvisit.ui.setUpBackBar
 import com.company.supportvisit.utils.Money
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -51,6 +53,7 @@ class MonthlyReportActivity : AppCompatActivity() {
         binding = ActivityMonthlyReportBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.root.applySystemBarInsets()
+        setUpBackBar()
 
         // Nothing to export until a client's report is loaded.
         listOf(binding.btnSharePdf, binding.btnShareCsv, binding.btnEmailClient, binding.btnCreateInvoice)
@@ -63,8 +66,12 @@ class MonthlyReportActivity : AppCompatActivity() {
         binding.btnNextMonth.setOnClickListener { month = month.plusMonths(1); refresh() }
         binding.actClient.setOnItemClickListener { _, _, position, _ -> client = clients[position]; refresh() }
 
-        binding.btnSharePdf.setOnClickListener { withReport { share(pdf(it), "application/pdf") } }
-        binding.btnShareCsv.setOnClickListener { withReport { share(MonthlyReportExport.writeCsv(it, exportDir), "text/csv") } }
+        binding.btnSharePdf.setOnClickListener {
+            withReport { share(pdf(it), "application/pdf"); Telemetry.track(this, Telemetry.MONTHLY_REPORT_GENERATED) }
+        }
+        binding.btnShareCsv.setOnClickListener {
+            withReport { share(MonthlyReportExport.writeCsv(it, exportDir), "text/csv"); Telemetry.track(this, Telemetry.MONTHLY_REPORT_GENERATED) }
+        }
         binding.btnEmailClient.setOnClickListener { withReport(::confirmEmail) }
         binding.btnCreateInvoice.setOnClickListener { withReport(::createInvoice) }
 
@@ -199,6 +206,7 @@ class MonthlyReportActivity : AppCompatActivity() {
                 attachments = listOf(pdf to "application/pdf", csv to "text/csv")
             )
         }
+        Telemetry.track(this, Telemetry.MONTHLY_REPORT_GENERATED)
         Toast.makeText(this, R.string.monthly_report_email_sent, Toast.LENGTH_LONG).show()
     }
 
@@ -211,6 +219,7 @@ class MonthlyReportActivity : AppCompatActivity() {
         }
         busy {
             val result = provider.createDraftInvoice(r)
+            Telemetry.track(this, Telemetry.INVOICE_CREATED)
             AlertDialog.Builder(this)
                 .setTitle(R.string.invoice_created_title)
                 .setMessage(getString(R.string.invoice_created_message, result.number ?: result.documentId))

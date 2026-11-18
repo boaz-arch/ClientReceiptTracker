@@ -1,5 +1,7 @@
 package com.company.supportvisit
 
+import com.company.supportvisit.notifications.Notifier
+import com.company.supportvisit.shortcuts.Shortcuts
 import android.app.Application
 import android.content.Context
 import com.company.supportvisit.data.AppDatabase
@@ -12,6 +14,7 @@ import com.company.supportvisit.repository.VisitRepository
 import com.company.supportvisit.security.AppLock
 import com.company.supportvisit.settings.ThemeManager
 import com.company.supportvisit.sync.SyncScheduler
+import com.company.supportvisit.telemetry.Telemetry
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -32,6 +35,10 @@ class SupportVisitApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        Notifier.createChannels(this)
+        Shortcuts.publish(this)
+
+        Telemetry.installCrashHandler(this)
 
         ThemeManager.applySaved(this)
         TeamSession.load(this)
@@ -42,6 +49,8 @@ class SupportVisitApp : Application() {
         appScope.launch {
             visitRepository.migrateLegacyIfNeeded()
             if (AuthSession.refreshAccount() != null) TeamRepository.refresh(this@SupportVisitApp)
+            // Crash reports from earlier runs and usage counters (if the user allows them).
+            Telemetry.flush(this@SupportVisitApp)
         }
 
         // Picks up anything left unsent from a previous session (runs once online).

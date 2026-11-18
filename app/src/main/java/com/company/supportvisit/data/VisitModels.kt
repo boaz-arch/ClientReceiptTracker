@@ -62,6 +62,36 @@ object JsonCodec {
         VisitPhoto(o.optString("localPath").ifBlank { null }, o.optString("remoteUrl").ifBlank { null })
     }
 
+    fun timeEntriesToJsonArray(entries: List<TimeEntry>): JSONArray = JSONArray().apply {
+        entries.forEach { e ->
+            put(JSONObject().apply {
+                put("id", e.id)
+                put("start", e.start)
+                put("end", e.end ?: JSONObject.NULL)
+                e.userId?.let { put("userId", it) }
+                e.userName?.let { put("userName", it) }
+            })
+        }
+    }
+
+    fun timeEntriesToJson(entries: List<TimeEntry>): String = timeEntriesToJsonArray(entries).toString()
+
+    fun timeEntriesFromJson(json: String?): List<TimeEntry> = parseArray(json) { o -> timeEntryFrom(o) }.filterNotNull()
+
+    fun timeEntriesFromJsonArray(array: JSONArray?): List<TimeEntry> =
+        if (array == null) emptyList() else (0 until array.length()).mapNotNull { i -> array.optJSONObject(i)?.let(::timeEntryFrom) }
+
+    private fun timeEntryFrom(o: JSONObject): TimeEntry? {
+        val start = o.optLong("start", 0L).takeIf { it > 0L } ?: return null
+        return TimeEntry(
+            id = o.optString("id").ifBlank { java.util.UUID.randomUUID().toString() },
+            userId = o.optString("userId").ifBlank { null },
+            userName = o.optString("userName").ifBlank { null },
+            start = start,
+            end = if (!o.has("end") || o.isNull("end")) null else o.optLong("end")
+        )
+    }
+
     fun stringsToJson(values: List<String>): String = JSONArray(values).toString()
 
     fun stringsFromJson(json: String?): List<String> {
@@ -92,4 +122,6 @@ class Converters {
     @TypeConverter fun stringToPhotos(value: String?): List<VisitPhoto> = JsonCodec.photosFromJson(value)
     @TypeConverter fun stringListToString(value: List<String>): String = JsonCodec.stringsToJson(value)
     @TypeConverter fun stringToStringList(value: String?): List<String> = JsonCodec.stringsFromJson(value)
+    @TypeConverter fun timeEntriesToString(value: List<TimeEntry>): String = JsonCodec.timeEntriesToJson(value)
+    @TypeConverter fun stringToTimeEntries(value: String?): List<TimeEntry> = JsonCodec.timeEntriesFromJson(value)
 }

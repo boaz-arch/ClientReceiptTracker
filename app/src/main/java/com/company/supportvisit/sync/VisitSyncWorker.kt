@@ -1,5 +1,6 @@
 package com.company.supportvisit.sync
 
+import com.company.supportvisit.notifications.Notifier
 import android.content.Context
 import android.graphics.BitmapFactory
 import android.util.Log
@@ -17,6 +18,7 @@ import com.company.supportvisit.remote.RecordMapper
 import com.company.supportvisit.remote.ServerApi
 import com.company.supportvisit.repository.VisitRepository
 import com.company.supportvisit.settings.ServerSettings
+import com.company.supportvisit.telemetry.Telemetry
 import com.company.supportvisit.team.Branding
 import com.company.supportvisit.utils.DateUtils
 import com.company.supportvisit.utils.PdfReportGenerator
@@ -52,20 +54,31 @@ class VisitSyncWorker(
                 null
             } catch (e: Exception) {
                 Log.w(TAG, "Sending a visit failed", e)
+                Telemetry.track(applicationContext, Telemetry.SYNC_FAILED)
                 classify(e)
             }
             if (outcome != null) {
                 val (error, canRetry) = outcome
                 val latest = repository.getVisit(visit.id) ?: visit
-                if (canRetry) retryable += latest to error else repository.markFailed(latest, error)
+                if (canRetry) {
+                    retryable += latest to error
+                } else {
+                    repository.markFailed(latest, error)
+                    Notifier.visitFailed(applicationContext, latest)
+                }
             }
         }
 
         val serverOk = syncWithServer()
+        Telemetry.flush(applicationContext)
 
         if (retryable.isEmpty()) return if (serverOk) Result.success() else retryOrSucceed()
         if (runAttemptCount + 1 < MAX_ATTEMPTS) return Result.retry()
-        retryable.forEach { (visit, error) -> repository.markFailed(repository.getVisit(visit.id) ?: visit, error) }
+        retryable.forEach { (visit, error) ->
+            val latest = repository.getVisit(visit.id) ?: visit
+            repository.markFailed(latest, error)
+            Notifier.visitFailed(applicationContext, latest)
+        }
         return Result.failure()
     }
 

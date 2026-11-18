@@ -17,6 +17,7 @@ import com.company.supportvisit.data.ClientEntity
 import com.company.supportvisit.databinding.ActivityClientsBinding
 import com.company.supportvisit.databinding.ItemClientBinding
 import com.company.supportvisit.ui.applySystemBarInsets
+import com.company.supportvisit.ui.setUpBackBar
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
@@ -36,6 +37,7 @@ class ClientsActivity : AppCompatActivity() {
         binding = ActivityClientsBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.root.applySystemBarInsets()
+        setUpBackBar()
 
         binding.rvClients.layoutManager = LinearLayoutManager(this)
         binding.rvClients.adapter = adapter

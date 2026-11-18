@@ -84,6 +84,15 @@ pm2 logs supportvisit
 
 Rollback: `cp -a ~/supportvisit-previous-server/server ~/SupportVisit/ && pm2 restart supportvisit`.
 
+### Privacy policy, terms and app-store review
+
+- Every deploy copies `docs/PRIVACY_POLICY.md` and `docs/TERMS.md` to `data/legal/`, published at
+  `<PUBLIC_BASE_URL>/legal/privacy` and `/legal/terms`. The app links there from Settings → Privacy,
+  and Google Play needs the privacy link.
+- `REVIEW_LOGIN_EMAIL` and `REVIEW_LOGIN_CODE` (6 digits) in `.env` give Google Play reviewers a fixed
+  sign-in with no email. Set them only while a review is pending (see docs/PLAY_STORE.md). The log
+  warns while they are on, and the code locks after 20 wrong tries until the next restart.
+
 ### Reverse proxy (Apache)
 
 Inside the `<VirtualHost *:443>` of the site, **above** any `ProxyPass /` line:
