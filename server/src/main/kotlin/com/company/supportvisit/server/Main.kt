@@ -84,10 +84,10 @@ fun Application.module(config: Config, mailer: Mailer) {
     // Per client address: sign-in emails and code checks (on top of the per-email limits).
     val startLimiter = WindowLimiter(max = 20, windowMs = 3_600_000)
     val verifyLimiter = WindowLimiter(max = 40, windowMs = 3_600_000)
-    // Whole server: warns early, and refuses only far above normal use, so a flood can't
-    // easily lock everyone out (per-email and per-address limits do the real work).
-    val globalStartWarn = WindowLimiter(max = 500, windowMs = 3_600_000)
-    val globalStartLimiter = WindowLimiter(max = 5000, windowMs = 3_600_000)
+    // Whole server: a hard cap on sign-in emails per hour (far above a small business's real use),
+    // so the code email can't be turned into a mail relay; it warns well before refusing.
+    val globalStartWarn = WindowLimiter(max = 150, windowMs = 3_600_000)
+    val globalStartLimiter = WindowLimiter(max = 500, windowMs = 3_600_000)
 
     // Carry out account deletions whose grace period has ended: at start-up, then every hour.
     launch {
@@ -156,12 +156,21 @@ fun Application.module(config: Config, mailer: Mailer) {
         if (team.hasProGrant(tenantId) || tenantId in config.proTenants) "PRO" else "FREE"
 
     /**
-     * The client address. The server listens only on 127.0.0.1 behind Apache, which appends the
-     * real address as the LAST X-Forwarded-For entry (earlier entries can be forged by the client).
+     * The client address. Behind Apache (on this machine) the real address is the LAST
+     * X-Forwarded-For entry, which Apache appends; earlier entries can be forged by the client.
+     * The header is trusted only when the connection itself comes from the local proxy.
      */
-    fun ApplicationCall.clientKey(): String =
-        request.headers["X-Forwarded-For"]?.substringAfterLast(',')?.trim()?.takeIf { it.isNotEmpty() }
-            ?: request.local.remoteAddress
+    fun ApplicationCall.clientKey(): String {
+        val remote = request.local.remoteAddress
+        if (!isLoopback(remote)) return remote
+        return request.headers["X-Forwarded-For"]?.substringAfterLast(',')?.trim()?.takeIf { it.isNotEmpty() } ?: remote
+    }
+
+    /** Whether the signed-in member may read a visit's files: its creator, or a manager/admin. */
+    fun mayReadVisit(c: Caller, m: Member, visitId: String): Boolean {
+        val owner = store.ownershipOf(Store.Kind.VISITS, c.tenantId, visitId)
+        return m.role.canSeeEverything || (owner != null && owner.createdBy == c.userId)
+    }
 
     /**
      * Whether a company may send one more report email today: a daily limit per company (lower
@@ -458,16 +467,18 @@ fun Application.module(config: Config, mailer: Mailer) {
             }
 
             get("/visits/{id}/files/{name}") {
-                val c = call.caller()
+                val (c, m) = call.member()
+                if (!mayReadVisit(c, m, call.parameters["id"].orEmpty())) return@get call.forbidden("not_your_visit")
                 val file = files.file(c.tenantId, call.parameters["id"].orEmpty(), call.parameters["name"].orEmpty())
                 call.respondStoredFile(file)
             }
 
             // A temporary public link (default 15 minutes) for opening a file outside the app.
             post("/visits/{id}/files/{name}/link") {
-                val c = call.caller()
+                val (c, m) = call.member()
                 val id = call.parameters["id"].orEmpty()
                 val name = call.parameters["name"].orEmpty()
+                if (!mayReadVisit(c, m, id)) return@post call.forbidden("not_your_visit")
                 val file = files.file(c.tenantId, id, name)
                 if (!file.exists()) {
                     call.respondJson(HttpStatusCode.NotFound, JSONObject().put("error", "not_found"))
@@ -640,4 +651,10 @@ private suspend fun ApplicationCall.notFound() =
 
 private suspend fun ApplicationCall.respondJson(status: HttpStatusCode, body: JSONObject) {
     respondText(body.toString(), ContentType.Application.Json, status)
+}
+
+/** 127.0.0.0/8 or ::1, as Ktor reports the peer address. */
+internal fun isLoopback(address: String): Boolean {
+    val a = address.removePrefix("/").substringBefore('%')
+    return a.startsWith("127.") || a == "::1" || a == "0:0:0:0:0:0:0:1" || a == "localhost"
 }
